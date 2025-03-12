@@ -15,23 +15,26 @@ const ingestUtils = require( './ingestUtils' );
 // If project has peq in CEP, then get all links, locs, then filter links out for those that are from repos associated with cep.
 // if repoId is provided, filter to pass only from that repo.  Locs will overwrite in this latter case.
 async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, baseLinks, locData ) {
-    
-    let ventId = utils.validField( ceProject, "CEVentureId" )    ? ceProject.CEVentureId     : "";
-    let cepId  = utils.validField( ceProject, "CEProjectId" )    ? ceProject.CEProjectId     : "";
-    let name   = utils.validField( ceProject, "Name" )           ? ceProject.Name            : "";
-    let host   = utils.validField( ceProject, "HostPlatform" )   ? ceProject.HostPlatform    : "";
-    let pms    = utils.validField( ceProject, "ProjectMgmtSys" ) ? ceProject.ProjectMgmtSys  : "";
-    let desc   = utils.validField( ceProject, "Description" )    ? ceProject.Description     : "";
-    assert( host != "" && pms != "" && ventId != "" );
+
+    // CE data
+    let ventId = utils.validField( ceProject, "CEVentureId" )      ? ceProject.CEVentureId      : "";
+    let cepId  = utils.validField( ceProject, "CEProjectId" )      ? ceProject.CEProjectId      : "";
+    let name   = utils.validField( ceProject, "Name" )             ? ceProject.Name             : "";
+    let desc   = utils.validField( ceProject, "Description" )      ? ceProject.Description      : "";
+    // Host data
+    let host   = utils.validField( ceProject, "HostPlatform" )     ? ceProject.HostPlatform     : "";
+    let horg   = utils.validField( ceProject, "HostOrganization" ) ? ceProject.HostOrganization : "";
+    let pms    = utils.validField( ceProject, "ProjectMgmtSys" )   ? ceProject.ProjectMgmtSys   : "";
+    assert( host != "" && pms != "" && horg != "" );
     assert( utils.validField( ceProject, "CEProjectId" ) );
     
-    console.log( authData.who, name, "part of", ventId, "at", host, "using that host\'s", pms, "system." );
+    console.log( authData.who, name, "(CEVenture " + ventId + ") is hosted at", host + "(host org " + horg + ")", "using", pms );
 
     assert( pms  == config.PMS_GH2 );
     assert( host == config.HOST_GH );
     
-    // mainly to get pat
-    await ceAuth.getAuths( authData, host, pms, ventId, config.CE_ACTOR );
+    // mainly to get pat, a host authorization.  Host auths use host data.
+    await ceAuth.getAuths( authData, host, pms, horg, config.CE_ACTOR );
 
     // Get all hostRepoIds that belong to the ceProject
     // Add organization's unclaimed to each hostRepo that holds PEQ, since aws:peq table will not record delete movements to UNCL
@@ -208,8 +211,13 @@ async function linkRepo( authData, ghLinks, ceProjects, ceProjId, repoId, repoNa
     }
     
     let cep = ceProjects.findById( ceProjId );
+
+    // console.log( authData.who, "LU: Link Repo" );
+    // ceProjects.showX();
     
     // TESTING ONLY!  Outside testing, ceFlutter controls all access to this, will never need initBlank.
+    //                testDelete removes HostParts, then unlinkRepo.  unlinkRepo removes ceProjId from server state: ceProjects
+    //                testSetup, testCross then linkRepo.  linkRepo does not find cep, so uses blank.
     if( typeof cep === 'undefined' ) {
 	let testingRepos = [config.TEST_REPO, config.MULTI_TEST_REPO, config.CROSS_TEST_REPO, config.FLUTTER_TEST_REPO];
 	let repoShort    = repoName.split('/');

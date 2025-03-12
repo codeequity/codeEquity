@@ -109,7 +109,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 			   utils.getToday());
 }
 
-// Consider creating rejectLoc if this is not MAIN_PROJ.  At least, once we can create cols again.
+// Consider creating rejectLoc.  At least, once we can create cols again.
 // Either move card back to rejectLoc, or if delete it.
 async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) {
     let ceProjId = pd.ceProjectId;

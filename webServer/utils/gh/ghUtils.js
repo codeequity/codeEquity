@@ -58,7 +58,8 @@ async function postGH( PAT, url, postData, name, check422 ) {
 	ret = await fetch( url, params )
 	    .catch( e => { console.log("Fetch failed.", e); throw e; });
 
-	ret = await ret.json();
+	ret = await ret.json()
+	    .catch( e => { console.log("ret", ret.toString()); throw e; });
     }
     
     // Oddly, some GQl queries/mutations return with a status, some do not.

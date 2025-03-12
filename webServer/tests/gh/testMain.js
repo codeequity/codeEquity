@@ -99,7 +99,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-
+    
     ghUtils.show( true );
     awsUtils.show( true );
     tu.showCallCounts( true );
@@ -123,7 +123,7 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
     }
 
     // Undo assert to inspect active: false in CELinkage.  Need a test for this.
-    let mastCol1  = await ghctu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, wakeyPID, td.softContTitle );
+    // let mastCol1  = await ghctu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, wakeyPID, td.softContTitle );
     ghctu.remProject( authData, wakeyPID );
     assert( false );
 
@@ -150,7 +150,7 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-    
+
     subTest = await ghcTestCross.runTests( flutterTest, authData, authDataX, authDataM, testLinks, td, tdX, tdM );
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
@@ -168,13 +168,10 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
 }
 
 function flutterRename ( td ) {
-    td.mainTitle        = config.MAIN_PROJ_TEST;
+    td.testType         = "FrontEnd";
     td.dataSecTitle     = td.dataSecTitle   + " Flut";
     td.githubOpsTitle   = td.githubOpsTitle + " Flut";
     td.flatTitle        = td.flatTitle      + " Flut";
-
-    // td.softContTitle    = td.softContTitle  + " Flut";
-    // td.busOpsTitle      = td.busOpsTitle    + " Flut";
 }
 
 
@@ -236,7 +233,7 @@ async function runTests() {
     let tdM        = new testData.TestData();
     tdM.ghOwner    = config.MULTI_TEST_OWNER;
     tdM.actor      = config.MULTI_TEST_ACTOR;
-    tdM.ghRepo     = config.MULTI_TEST_REPO;
+    tdM.ghRepo     = flutterTest ? config.FLUTTER_MULTI_TEST_REPO : config.MULTI_TEST_REPO;
     tdM.ghFullName = tdM.ghOwner + "/" + tdM.ghRepo;
     
     let authDataM     = new authDataC.AuthData();
@@ -262,8 +259,8 @@ async function runTests() {
     // tdX.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdX.ghFullName );
     // tdM.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdM.ghFullName );
     td.ceProjectId  = flutterTest ? config.FLUTTER_TEST_CEPID : config.TEST_CEPID;
+    tdM.ceProjectId = flutterTest ? config.FLUTTER_MULTI_TEST_CEPID : config.MULTI_TEST_CEPID;
     tdX.ceProjectId = config.CROSS_TEST_CEPID;
-    tdM.ceProjectId = config.MULTI_TEST_CEPID;
 
     // Convert project names to flutter as needed to avoid crossover infection between server tests and flutter tests (the CEPIDs otherwise share projects)
     if( flutterTest ) {
@@ -274,20 +271,32 @@ async function runTests() {
     
     // cepDetails, typically set from ceFlutter
     let tdBlank = {};
-    tdBlank.projComponent = "ceServer Testing";   
-    tdBlank.description   = "testing only";       
+
     tdBlank.platform      = config.HOST_GH;
     tdBlank.org           = config.TEST_OWNER;
     tdBlank.ownerCategory = "Organization";       
     tdBlank.pms           = config.PMS_GH2;
 
     let tdXBlank = { ...tdBlank }; 
-    tdXBlank.CEProjectComponent = "ceServer Alt Testing";
+    // tdXBlank.CEProjectComponent = "ceServer Alt Testing";
 
     td.cepDetails  = tdBlank;  // same CEP
     tdM.cepDetails = tdBlank;  // same CEP
     tdX.cepDetails = tdXBlank;
+
+    // XXX very ugly calling convention to linkRepo .. needs updating
+    td.cepDetails.ceVentureId = flutterTest ? config.FLUTTER_TEST_CEVID : config.TEST_CEVID;
+    td.cepDetails.name        = flutterTest ? config.FLUTTER_TEST_NAME : config.TEST_NAME;
+    td.cepDetails.description = flutterTest ? config.FLUTTER_TEST_DESC : config.TEST_DESC;
+
+    tdM.cepDetails.ceVentureId = flutterTest ? config.FLUTTER_MULTI_TEST_CEVID : config.MULTI_TEST_CEVID;
+    tdM.cepDetails.name        = flutterTest ? config.FLUTTER_MULTI_TEST_NAME  : config.MULTI_TEST_NAME;
+    tdM.cepDetails.description = flutterTest ? config.FLUTTER_MULTI_TEST_DESC  : config.MULTI_TEST_DESC;
     
+    tdX.cepDetails.ceVentureId = config.CROSS_TEST_CEVID;
+    tdX.cepDetails.name        = config.CROSS_TEST_NAME;
+    tdX.cepDetails.description = config.CROSS_TEST_DESC;
+
     let testStatus = [ 0, 0, []];
 
     // XXX Add an arg if these are ever useful again

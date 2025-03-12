@@ -40,13 +40,18 @@ async function checkNewbornIssue( authData, testLinks, td, issueData, testStatus
     
     // CHECK dynamo linkage
     let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
-    let meltLink = links.filter((link) => link.hostIssueId == issueData[0] );
-    subTest = tu.checkEq( meltLink.length, 0, subTest, "invalid linkage" );
+    // may be -1 if no other card already exists
+    if( links !== -1 ) {
+	let meltLink = links.filter((link) => link.hostIssueId == issueData[0] );
+	subTest = tu.checkEq( meltLink.length, 0, subTest, "invalid linkage" );
+    }
     
     // CHECK dynamo Peq
     let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
-    let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issueData[0] );
-    subTest = tu.checkEq( meltPeqs.length, 0, subTest, "invalid peq" );
+    if( peqs != -1 ) {
+	let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issueData[0] );
+	subTest = tu.checkEq( meltPeqs.length, 0, subTest, "invalid peq" );
+    }
     
     return await tu.settle( subTest, testStatus, checkNewbornIssue, authData, testLinks, td, issueData, testStatus );
 }
@@ -174,14 +179,13 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
     let meltPeq = meltPeqs[0];
     if( meltPeq !== 'undefined' ) {
 	subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-	subTest = tu.checkEq( meltPeq.HostProjectSub.length, 3,            subTest, "peq project sub invalid" );
+	subTest = tu.checkEq( meltPeq.HostProjectSub.length, 2,            subTest, "peq project sub invalid" );
 	subTest = tu.checkEq( meltPeq.HostIssueTitle, issueData[3],        subTest, "peq title is wrong" );
 	subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,              subTest, "peq holders wrong" );
 	subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
 	subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
 	subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-	subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle, subTest, "peq project sub invalid" );
-	subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,  subTest, "peq project sub invalid" );
+	subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.dataSecTitle,  subTest, "peq project sub invalid" );
 	subTest = tu.checkEq( meltPeq.HostRepoId, td.ghRepoId,             subTest, "peq unclaimed RID bad" );
 	subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 	
@@ -246,7 +250,7 @@ async function testStepByStep( authData, testLinks, td ) {
     await gh2tu.refreshFlat( authData, td );
 
     const VERBOSE = true;
-    const flowPlan = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const flowPlan = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     
     // 1. Create issue 
     let meltData = await gh2tu.makeIssue( authData, td, ISS_FLOW, [] );               // [id, number, cardId, title] 

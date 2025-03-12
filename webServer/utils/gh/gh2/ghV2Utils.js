@@ -238,7 +238,9 @@ async function createIssue( authData, repoNode, pid, issue ) {
     if( !utils.validField( issue, "labels" ))     { issue.labels = []; }
     if( !utils.validField( issue, "assignees" ))  { issue.assignees = []; }
     if( !utils.validField( issue, "milestone" ))  { issue.milestone = null; }
-    
+
+    // XXX
+    assert( !issue.allocation );
     console.log( authData.who, "Create issue, from alloc?", repoNode, pid, issue.title, issue.allocation );
     
     // assert( !issue.allocation || issue.body == "", "Error.  createIssue body is about to be overwritten." );
@@ -737,6 +739,7 @@ async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
 
 
 async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelName, peqValue ) {
+    assert( !allocation ); // XXX
 
     console.log( authData.who, "Find or create label", repoNode, allocation, peqHumanLabelName, peqValue );
 

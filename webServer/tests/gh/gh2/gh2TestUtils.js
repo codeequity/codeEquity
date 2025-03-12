@@ -43,20 +43,9 @@ async function refreshRec( authData, td ) {
 
     // console.log( "Got hprojs", hostProjs );
     for( const proj of hostProjs ) {
-	if( proj.hostProjectName == td.mainTitle ) {
-	    td.masterPID = proj.hostProjectId;
-
-	    let columns = await getColumns( authData, proj.hostProjectId );
-	    for( const col of columns ) {
-		if( col.name == td.softContTitle ) { td.scColId = col.id; }
-		if( col.name == td.busOpsTitle )   { td.boColId = col.id; }
-		if( col.name == td.unallocTitle )  { td.unColId = col.id; }
-	    }
-	}
 	if( proj.hostProjectName == td.dataSecTitle )   { td.dataSecPID = proj.hostProjectId; }
 	if( proj.hostProjectName == td.githubOpsTitle ) { td.githubOpsPID = proj.hostProjectId; }
     }
-    assert( td.masterPID != -1 );
     assert( td.dataSecPID != -1 );
     assert( td.githubOpsPID != -1 );
 
@@ -542,16 +531,6 @@ async function getFlatLoc( authData, pid, projName, colName ) {
     return loc;
 }
 
-async function getFullLoc( authData, masterColName, pid, projName, colName ) {
-
-    let loc = await getFlatLoc( authData, pid, projName, colName );
-
-    // loc.projSub  = config.PROJ_COLS.includes( colName ) ? [masterColName, projName] : [masterColName, projName, colName];
-    loc.projSub  = [masterColName, projName, colName];
-    
-    return loc;
-}
-
 
 function findCardForIssue( cards, issueNum ) {
     let card = cards.find( c => c.issueNum == issueNum );
@@ -719,41 +698,6 @@ async function createDraftIssue( authData, pid, title, body ) {
     return pvId;
 }
 
-// This both creates an issue and a card
-// Act like a user.  User will create labeled issue in project, then move issue.
-//      This generates the following notifications:  issue:open, issue:label, item:create, maybe (?) item:edit (label), item:edit (move)
-//      The notifications are identical whether select project in issue create interface or not, with possible exception of item:edit(label), and ordering
-// Historical note: GH projects have changed - you can no longer create a card without a companion draft issue.  
-//      In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
-async function makeAlloc( authData, testLinks, ceProjId, rNodeId, pid, colId, title, amount ) {
-    console.log( "MAC", ceProjId, rNodeId, pid, colId, title, amount );
-    const locs = testLinks.getLocs( authData, { "ceProjId": ceProjId, "pid": pid, "colId": colId } );
-    assert( locs !== -1 );
-    let statusId = locs[0].hostUtility;
-
-    // First, wait for colId, can lag
-    await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, testLinks, ceProjId, pid, colId );
-
-    let label = await findOrCreateLabel( authData, rNodeId, true, "", amount );
-
-    let allocIssue = {};
-    allocIssue.title = title;
-    allocIssue.labels = [label];
-    allocIssue.allocation = true;
-
-    // Create labeled issue, create PV2 item in correct project.  This will now be in nostatus.
-    // issue:open, issue:label, item:create, maybe (?) item:edit
-    let issDat = await ghV2.createIssue( authData, rNodeId, pid, allocIssue );
-    issDat.push( title );
-    assert( issDat.length == 4 && issDat[0] != -1 && issDat[2] != -1 );
-
-    await ghV2.moveCard( authData, pid, issDat[2], statusId, colId );
-
-    console.log( "Made AllocCard and issue:", issDat );
-    await utils.sleep( tu.MIN_DELAY );
-    return issDat;
-}
-
 
 async function makeNewbornCard( authData, testLinks, ceProjId, pid, colId, title ) {
     const locs = testLinks.getLocs( authData, { "ceProjId": ceProjId, "pid": pid, "colId": colId } );    
@@ -806,14 +750,6 @@ async function makeIssue( authData, td, title, labels ) {
     return issue;
 }
 
-// [contentId, num, cardId, title]
-// NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
-async function makeAllocIssue( authData, td, title, labels ) {
-    let issue = await ghV2.createIssue( authData, td.ghRepoId, -1, {title: title, labels: labels, allocation: true} );
-    issue.push( title );
-    await utils.sleep( tu.MIN_DELAY );
-    return issue;
-}
 
 // NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
 async function blastIssue( authData, td, title, labels, assignees, specials ) {
@@ -884,8 +820,9 @@ async function delLabel( authData, label ) {
 }
 
 async function findOrCreateLabel( authData, repoNode, allocation, lname, peqValue ) {
+    assert( !allocation ); // XXX
+    
     let name = lname;
-
     if( typeof peqValue == "string" ) { peqValue = parseInt( peqValue.replace(/,/g, "" )); }
     
     if( peqValue > 0 ) { name = ghV2.makeHumanLabel( peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL )); }
@@ -1188,6 +1125,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     let assignCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "assign" )       ? specials.assign       : false;
     let opVal        = typeof specials !== 'undefined' && specials.hasOwnProperty( "opVal" )        ? specials.opVal        : false;
     let peqHolder    = typeof specials !== 'undefined' && specials.hasOwnProperty( "peqHolder" )    ? specials.peqHolder    : false;
+    let rejected     = typeof specials !== 'undefined' && specials.hasOwnProperty( "rejected" )     ? specials.rejected     : false;
     
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal, assignCnt, peqIID, peqCEP );
     let subTest = [ 0, 0, []];
@@ -1309,9 +1247,10 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 		    
 		    let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
 		    subTest   = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );
-		    
+
+		    // rejected tracks if a split attempted to be created in reserved, then was rejected.  psub not updated until ingest.
 		    // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
-		    if( pacts.length <= 3 && loc.projSub.length > 1 ) {
+		    if( !rejected && pacts.length <= 3 && loc.projSub.length > 1 ) {
 			const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR], config.GH_NO_STATUS ];
 			if( !pip.includes( loc.projSub[1] ) && peq.HostProjectSub[1] != config.GH_NO_STATUS ) { 
 			    subTest = tu.checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
@@ -1343,7 +1282,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     let assignees    = typeof specials !== 'undefined' && specials.hasOwnProperty( "assigns" )      ? specials.assigns      : [];
     let soft         = typeof specials !== 'undefined' && specials.hasOwnProperty( "soft" )         ? specials.soft         : false;
     
-    console.log( "Check unclaimed issue", loc.projName, loc.colName, labelVal );
+    console.log( "Check unclaimed issue", loc.projName, loc.colName, labelVal, issDat );
     let subTest = [ 0, 0, []];
     
     // Start promises
@@ -1356,18 +1295,29 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     let issue  = await findIssue( authData, issDat[0] );
     subTest = tu.checkEq( issue.id, issDat[0].toString(),     subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.number, issDat[1].toString(), subTest, "Github issue troubles" );
-    subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
+    subTest = tu.checkEq( issue.labels.length, labelCnt,      subTest, "Issue label count" );
     
     const lname = labelVal ? ghV2.makeHumanLabel( labelVal, config.PEQ_LABEL ) : ghV2.makeHumanLabel( 1000, config.PEQ_LABEL );
     const lval  = labelVal ? labelVal                     : 1000;
     subTest = tu.checkEq( typeof issue.labels.find( l => l.name == lname ) !== "undefined", true, subTest, "Issue label names missing" + lname );        
     subTest = tu.checkEq( issue.state, config.GH_ISSUE_OPEN,                   subTest, "Issue state" ); 
 
-    // CHECK github location
+    // CHECK github location.
+    // If this fails, check notification arrival distance.  if too long, break out and let this be a subtest failure before checking tCard guts
+    // console.log( "XXXX OI?", td.unclaimCID );
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
     let tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
-    subTest = tu.checkEq( tCard.length, 1,                        subTest, "No unclaimed" );
-    subTest = tu.checkEq( tCard[0].cardId, card.cardId,                   subTest, "Card id" );
+
+    // console.log( td.unclaimCID, tCard[0] );
+    // for( let i = 0; i < cards.length; i++ ) {
+    // console.log( cards[i].title, cards[i].issueNum, cards[i].cardId );
+    // }
+    
+    subTest = tu.checkEq( typeof tCard === 'undefined', false,       subTest, "No unclaimed" );
+    subTest = tu.checkEq( tCard.length, 1,                           subTest, "No unclaimed" );
+    if( typeof tCard !== 'undefined' && tCard.length >= 1 ) {
+	subTest = tu.checkEq( tCard[0].cardId, card.cardId,       subTest, "Card id" );
+    }
     
     // CHECK linkage
     let links  = await linksP;
@@ -1724,7 +1674,7 @@ async function checkNewbornIssue( authData, testLinks, td, issDat, testStatus, s
     
     // CHECK linkage
     let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
-    let link   = links.find( l => l.hostIssueId == issDat[0].toString() );
+    let link   = links != -1 ? links.find( l => l.hostIssueId == issDat[0].toString() ) : [].find( l => true );
     subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
     // CHECK dynamo Peq.  inactive, if it exists
@@ -1748,6 +1698,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
     let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
     let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 1;
     let checkPeq   = typeof specials !== 'undefined' && specials.hasOwnProperty( "checkPeq" )   ? specials.checkPeq   : false;
+    let rejected   = typeof specials !== 'undefined' && specials.hasOwnProperty( "rejected" )   ? specials.rejected   : false;
 
     console.log( "Check Split", issDat[3], origLoc.colName, newLoc.colName, situated.toString(), labelCnt.toString(), assignCnt.toString() );
     let subTest = [ 0, 0, []];
@@ -1797,7 +1748,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	    if( situated ) {
 		let lval = origVal / 2;
 		subTest = await checkSituatedIssue( authData, testLinks, td, origLoc, issDat,   card,      subTest, {opVal: opVal, label: lval, lblCount: labelCnt} );
-		let splitSpecials = checkPeq ? {label: lval, lblCount: labelCnt, assign: assignCnt } : {label: lval, lblCount: labelCnt }; 
+		let splitSpecials = checkPeq ? {label: lval, lblCount: labelCnt, assign: assignCnt, rejected: rejected } : {label: lval, lblCount: labelCnt, rejected: rejected }; 
 		subTest = await checkSituatedIssue( authData, testLinks, td, newLoc,  splitDat, splitCard, subTest, splitSpecials );
 	    }
 	    else {
@@ -2082,14 +2033,13 @@ async function checkAssignees( authData, td, assigns, issDat, testStatus ) {
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 3,            subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 2,            subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.HostIssueTitle, issDat[3],           subTest, "peq title is wrong" );
     subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,              subTest, "peq holders wrong" );
     subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );
     subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
     subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle, subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,  subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.dataSecTitle,  subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.HostRepoId, td.ghRepoId,             subTest, "peq unclaimed Repo bad" );
     subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
@@ -2130,14 +2080,13 @@ async function checkNoAssignees( authData, td, ass1, ass2, issDat, testStatus ) 
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 3,              subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 2,              subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.HostIssueTitle, issDat[3],          subTest, "peq title is wrong" );
     subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
     subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.dataSecTitle,    subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.HostRepoId, td.ghRepoId,             subTest, "peq unclaimed RID bad" );
     subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
@@ -2294,11 +2243,9 @@ exports.makeColumn      = makeColumn;
 exports.createColumnTest    = createColumnTest;
 exports.updateProject   = updateProject;
 exports.make4xCols      = make4xCols;
-exports.makeAlloc       = makeAlloc;
 exports.makeNewbornCard = makeNewbornCard;
 exports.makeProjectCard = makeProjectCard;
 exports.makeIssue       = makeIssue;
-exports.makeAllocIssue  = makeAllocIssue;
 exports.blastIssue      = blastIssue;
 exports.transferIssue   = transferIssue;
 
@@ -2333,7 +2280,6 @@ exports.findProjectByName = findProjectByName;
 exports.findProjectByRepo = findProjectByRepo;
 exports.findRepo        = findRepo;
 exports.getFlatLoc      = getFlatLoc; 
-exports.getFullLoc      = getFullLoc; 
 
 exports.findCardForIssue = findCardForIssue;
 // exports.ingestPActs      = ingestPActs;      

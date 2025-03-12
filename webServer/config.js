@@ -35,20 +35,39 @@ const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT";
 
 const TEST_OWNER        = "codeequity";
 const TEST_ACTOR        = "ariCETester";
+
 const TEST_REPO         = "ceTesterAri";
 const TEST_CEPID        = "CE_ServTest_usda23k425";    // XXX Remove once ceFlutter is back up
+const TEST_CEVID        = "CE_TEST_Serv_abcde12345";   // XXX Remove once ceFlutter is back up
+const TEST_NAME         = "CE Server Testing";         // XXX Remove once ceFlutter is back up
+const TEST_DESC         = "Internal testing: server";  // XXX Remove once ceFlutter is back up
 const FLUTTER_TEST_CEPID = "CE_FlutTest_ks8asdlg42";   // XXX Remove once ceFlutter is back up
+const FLUTTER_TEST_CEVID = "CE_TEST_Flut_abcde12345";  // XXX Remove once ceFlutter is back up
 const FLUTTER_TEST_REPO = "ceFlutterTester";
+const FLUTTER_TEST_NAME = "CE MD App Testing";          // XXX Remove once ceFlutter is back up
+const FLUTTER_TEST_DESC = "Internal testing: Front end"; // XXX Remove once ceFlutter is back up
 
 const CROSS_TEST_OWNER  = "codeequity";          
 const CROSS_TEST_ACTOR  = "ariCETester";          
 const CROSS_TEST_REPO   = "ceTesterAriAlt";
 const CROSS_TEST_CEPID  = "CE_AltTest_hakeld80a2";     // XXX Remove once ceFlutter is back up
+const CROSS_TEST_CEVID  = "CE_TEST_Alt_abcde12345";    // XXX Remove once ceFlutter is back up
+const CROSS_TEST_NAME   = "CE Alt Server Testing";     // XXX Remove once ceFlutter is back up
+const CROSS_TEST_DESC   = "Internal testing: server";  // XXX Remove once ceFlutter is back up
 
 const MULTI_TEST_OWNER  = "codeequity";
 const MULTI_TEST_ACTOR  = "connieCE";
+
 const MULTI_TEST_REPO   = "ceTesterConnie";
 const MULTI_TEST_CEPID  = "CE_ServTest_usda23k425";    // XXX Remove once ceFlutter is back up
+const MULTI_TEST_CEVID  = "CE_TEST_Serv_abcde12345";   // XXX Remove once ceFlutter is back up
+const MULTI_TEST_NAME   = "CE Server Testing";         // XXX Remove once ceFlutter is back up
+const MULTI_TEST_DESC   = "Internal testing: server";  // XXX Remove once ceFlutter is back up
+const FLUTTER_MULTI_TEST_REPO   = "ceFlutterConnie";
+const FLUTTER_MULTI_TEST_CEPID  = "CE_FlutTest_ks8asdlg42";    // XXX Remove once ceFlutter is back up
+const FLUTTER_MULTI_TEST_CEVID  = "CE_TEST_Flut_abcde12345";   // XXX Remove once ceFlutter is back up
+const FLUTTER_MULTI_TEST_NAME   = "CE MD App Testing";         // XXX Remove once ceFlutter is back up
+const FLUTTER_MULTI_TEST_DESC   = "Internal testing: Front end";  // XXX Remove once ceFlutter is back up
 
 
 // Required project columns.  Can rename, not reorder, and retain CE functionality
@@ -125,8 +144,6 @@ const NOTICE_BUFFER_SIZE = 20;
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
 
 const PROJ_COLS = ["Planned", "In Progress", "Pending PEQ Approval", "Accrued" ];    // Project columns used by codeEquity
-const MAIN_PROJ      = 'Modules';                                                         // Parent project for all tracked github projects in repo
-const MAIN_PROJ_TEST = 'Modules Flut';                                                    // Parent project for all tracked github projects in repo *** TESTING ONLY ***
 const UNCLAIMED      = 'UnClaimed';                                                       // Catch-all project for peq issues with no project home
 
 const PEQ_COLOR  = 'ffcc80';   // github color for PEQ labels
@@ -158,8 +175,6 @@ exports.PEQ      = PEQ;
 exports.PDESC    = PDESC;
 exports.ADESC    = ADESC;
 
-exports.MAIN_PROJ = MAIN_PROJ;
-exports.MAIN_PROJ_TEST = MAIN_PROJ_TEST;
 exports.EMPTY     = EMPTY;
 exports.UNCLAIMED = UNCLAIMED;
 
@@ -185,16 +200,33 @@ exports.TEST_OWNER       = TEST_OWNER;
 exports.TEST_ACTOR       = TEST_ACTOR;
 exports.TEST_REPO        = TEST_REPO;
 exports.TEST_CEPID       = TEST_CEPID;
+exports.TEST_CEVID       = TEST_CEVID;
+exports.TEST_NAME        = TEST_NAME;
+exports.TEST_DESC        = TEST_DESC;
 exports.FLUTTER_TEST_CEPID = FLUTTER_TEST_CEPID;
-exports.FLUTTER_TEST_REPO = FLUTTER_TEST_REPO;
+exports.FLUTTER_TEST_CEVID = FLUTTER_TEST_CEVID;
+exports.FLUTTER_TEST_NAME  = FLUTTER_TEST_NAME;
+exports.FLUTTER_TEST_DESC  = FLUTTER_TEST_DESC;
+exports.FLUTTER_TEST_REPO  = FLUTTER_TEST_REPO;
 exports.CROSS_TEST_OWNER = CROSS_TEST_OWNER;
 exports.CROSS_TEST_ACTOR  = CROSS_TEST_ACTOR;
 exports.CROSS_TEST_REPO  = CROSS_TEST_REPO;
 exports.CROSS_TEST_CEPID = CROSS_TEST_CEPID;
+exports.CROSS_TEST_CEVID = CROSS_TEST_CEVID;
+exports.CROSS_TEST_NAME  = CROSS_TEST_NAME;
+exports.CROSS_TEST_DESC  = CROSS_TEST_DESC;
 exports.MULTI_TEST_OWNER = MULTI_TEST_OWNER;
 exports.MULTI_TEST_ACTOR  = MULTI_TEST_ACTOR;
 exports.MULTI_TEST_REPO  = MULTI_TEST_REPO;
 exports.MULTI_TEST_CEPID = MULTI_TEST_CEPID;
+exports.MULTI_TEST_CEVID = MULTI_TEST_CEVID;
+exports.MULTI_TEST_NAME  = MULTI_TEST_NAME;
+exports.MULTI_TEST_DESC  = MULTI_TEST_DESC;
+exports.FLUTTER_MULTI_TEST_REPO  = FLUTTER_MULTI_TEST_REPO;
+exports.FLUTTER_MULTI_TEST_CEPID = FLUTTER_MULTI_TEST_CEPID;
+exports.FLUTTER_MULTI_TEST_CEVID = FLUTTER_MULTI_TEST_CEVID;
+exports.FLUTTER_MULTI_TEST_NAME  = FLUTTER_MULTI_TEST_NAME;
+exports.FLUTTER_MULTI_TEST_DESC  = FLUTTER_MULTI_TEST_DESC;
 
 exports.PEQ_LABEL   = PEQ_LABEL;
 exports.ALLOC_LABEL = ALLOC_LABEL;

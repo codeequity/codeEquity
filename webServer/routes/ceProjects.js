@@ -53,11 +53,15 @@ class CEProjects {
     findById( ceProjId ) {
 	return this.cep.find( cep => cep.CEProjectId == ceProjId ); 
     }
-    
+
+    // XXX Need better error message here if find that 1 repo is shared between 2 CEPs.
     findByRepo( host, org, repo ) {
 	let retVal = config.EMPTY;
+
+	// if( repo == "codeequity/ceFlutterTester" ) { this.showX(); }
+	
 	let proj = this.cep.find( cep => cep.HostPlatform == host &&
-				  cep.Organization == org &&
+				  cep.HostOrganization == org &&
 				  utils.validField( cep.HostParts, "hostRepositories" ) &&
 				  cep.HostParts.hostRepositories.reduce( (acc,cur) => acc || cur.repoName == repo, false ));
 	retVal = typeof proj === 'undefined' ? retVal : proj.CEProjectId;
@@ -72,23 +76,25 @@ class CEProjects {
 
     initBlank( ceProjId, cepDetails ) {
 
-	assert( typeof cepDetails.projComponent !== 'undefined' );
-	assert( typeof cepDetails.description   !== 'undefined' );
 	assert( typeof cepDetails.platform      !== 'undefined' );
 	assert( typeof cepDetails.org           !== 'undefined' );
 	assert( typeof cepDetails.ownerCategory !== 'undefined' );
 	assert( typeof cepDetails.pms           !== 'undefined' );
+	assert( typeof cepDetails.ceVentureId   !== 'undefined' );
+	assert( typeof cepDetails.name          !== 'undefined' );
+	assert( typeof cepDetails.description   !== 'undefined' );
 	
 	let blank = {};
 
 	// Ignore hostParts, set later in linkage
 	blank.CEProjectId        = ceProjId;
-	blank.CEProjectComponent = cepDetails.projComponent;
-	blank.Description        = cepDetails.description;
 	blank.HostPlatform       = cepDetails.platform;
-	blank.Organization       = cepDetails.org;
+	blank.HostOrganization   = cepDetails.org;
 	blank.OwnerCategory      = cepDetails.ownerCategory;
 	blank.ProjectMgmtSys     = cepDetails.pms;
+	blank.CEVentureId        = cepDetails.ceVentureId;	
+	blank.Name               = cepDetails.name;	
+	blank.Description        = cepDetails.description;	
 
 	this.cep.push( blank );
 	return blank;
@@ -126,15 +132,29 @@ class CEProjects {
 
 	return hRepos;
     }
+
+    showX() {
+	console.log( "CEProjects contents" );
+	for( const cep of this.cep ) {
+	    console.log( cep.CEProjectId, cep.CEVentureId, cep.Name, cep.HostOrganization );
+	    console.log( "... repos:" );
+	    for( const repo of cep.HostParts.hostRepositories ) {
+		console.log( repo.repoName, repo.repoId );
+	    }
+	}
+    }
     
+    // XXX broken
     // XXX does not properly show repositories, nor projectIds (i.e. HostParts.hostRepositories)
     show( count ) {
 	console.log( "CEProjects Map contents" );
 	if( Object.keys( this.hi2cp ).length <= 0 ) { return ""; }
 	
 	console.log( utils.fill( "ceProjectId", 20 ),
+		     utils.fill( "ceVentureId", 15 ),
+		     utils.fill( "Name", 15 ),
 		     utils.fill( "Host", 15 ),
-		     utils.fill( "Organization", 15 ),
+		     utils.fill( "HostOrg", 15 ),
 		     utils.fill( "HostIssueId", 22 ),
 		     utils.fill( "HostParts", 22 ),
 		   );
