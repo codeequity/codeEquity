@@ -200,6 +200,7 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     assert( td.ghFullName != tdM.ghFullName );
 
     // Add populate label to testProject2, to invoke repostatus. 
+    let unclPid  = await gh2tu.createProjectWorkaround( authDataM, tdM, "UnClaimed", "For testing request interleaving" );
     let multiPid = await gh2tu.createProjectWorkaround( authDataM, tdM, "Multi Proj", "For testing request interleaving" );
     let multiCid = await gh2tu.makeColumn( authDataM, testLinks, tdM.ceProjectId, tdM.ghFullName, multiPid, "Multi Col" );
 

@@ -58,13 +58,19 @@ class CEProjects {
     findByRepo( host, org, repo ) {
 	let retVal = config.EMPTY;
 
-	// if( repo == "codeequity/ceFlutterTester" ) { this.showX(); }
 	
-	let proj = this.cep.find( cep => cep.HostPlatform == host &&
-				  cep.HostOrganization == org &&
-				  utils.validField( cep.HostParts, "hostRepositories" ) &&
-				  cep.HostParts.hostRepositories.reduce( (acc,cur) => acc || cur.repoName == repo, false ));
-	retVal = typeof proj === 'undefined' ? retVal : proj.CEProjectId;
+	let projFRepo = this.cep.filter( cep => cep.HostPlatform == host &&
+					cep.HostOrganization == org &&
+					utils.validField( cep.HostParts, "hostRepositories" ) &&
+					cep.HostParts.hostRepositories.reduce( (acc,cur) => acc || cur.repoName == repo, false ));
+
+	if( projFRepo.length > 1 ) {
+	    console.log( "Error.  A host repository may only belong to 1 CodeEquity project." );
+	    console.log( repo, "was found in at least", projFRepo[0].CEProjectId, projFRepo[1].CEProjectId );
+	    assert( false );
+	}
+
+	retVal = projFRepo.length == 1? projFRepo[0].CEProjectId : retVal;
 	return retVal;
     }
     
