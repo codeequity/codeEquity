@@ -217,15 +217,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 			ingestUtils.rejectCard( authData, ghLinks, pd, newCard, rejectLoc, msg, false );
 		    }
 
-		    // don't split allocs into x3
-		    const fullIssue = await ghV2.getFullIssue( authData, newLinks[0].hostIssueId );
-		    assert( Object.keys( fullIssue ).length > 0 );
-		    
-		    let [_, allocation] = ghUtils.theOnePEQ( fullIssue.labels );
-		    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newCard.columnName )) {
-			let msg = "WARNING.  Allocations only useful in planning, or flat columns.  Leaving card in " + config.PROJ_COLS[config.PROJ_PLAN];
-			ingestUtils.rejectCard( authData, ghLinks, pd, newCard, rejectLoc, msg, true );
-		    }
+		    // XXX race condition for ir prog split reject.. why need delay?
+		    await ghV2.getFullIssue( authData, newLinks[0].hostIssueId );
 		}
 		else {
 		    console.log( authData.who, "No such card, ignoring move request." );
@@ -286,18 +279,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		return;
 	    }
 
-	    // allocations have issues
 	    let issueId = link.hostIssueId;
 	    assert( issueId != -1 );
-
-	    const fullIssue = await ghV2.getFullIssue( authData, issueId );
-	    assert( Object.keys( fullIssue ).length > 0 );	    
-	    let [_, allocation] = ghUtils.theOnePEQ( fullIssue.labels );
-	    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newColName )) {
-		let msg = "WARNING.  Allocations only useful in config:PROJ_PLAN, or flat columns.  Moving card back.";
-		ingestUtils.rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, msg, true );
-		return;
-	    }
 	    
 	    let oldNameIndex = config.PROJ_COLS.indexOf( link.hostColumnName );
 	    assert( cardId == link.hostCardId );

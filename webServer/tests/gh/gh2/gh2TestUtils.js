@@ -819,14 +819,13 @@ async function delLabel( authData, label ) {
     await tu.settleWithVal( "del label", tu.findNotice, query );
 }
 
-async function findOrCreateLabel( authData, repoNode, allocation, lname, peqValue ) {
-    assert( !allocation ); // XXX
+async function findOrCreateLabel( authData, repoNode, lname, peqValue ) {
     
     let name = lname;
     if( typeof peqValue == "string" ) { peqValue = parseInt( peqValue.replace(/,/g, "" )); }
     
-    if( peqValue > 0 ) { name = ghV2.makeHumanLabel( peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL )); }
-    let label = await ghV2.findOrCreateLabel( authData, repoNode, allocation, name, peqValue );
+    if( peqValue > 0 ) { name = ghV2.makeHumanLabel( peqValue, config.PEQ_LABEL ); }
+    let label = await ghV2.findOrCreateLabel( authData, repoNode, name, peqValue );
     return label;
 }
 
@@ -1018,99 +1017,6 @@ async function checkDemotedIssue( authData, testLinks, td, loc, issDat, card, te
     return await tu.settle( subTest, testStatus, checkDemotedIssue, authData, testLinks, td, loc, issDat, card, testStatus );
 }
 
-// Label reflects current peq values.  awsVal is peq val in dynamo, which was not updated.
-async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
-
-    let awsVal      = typeof specials !== 'undefined' && specials.hasOwnProperty( "awsVal" )    ? specials.awsVal      : 1000000;
-    let splitVal    = typeof specials !== 'undefined' && specials.hasOwnProperty( "splitVal" )  ? specials.splitVal    : awsVal;
-    let labelCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )  ? specials.lblCount    : 1;
-    let assignCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" ) ? specials.assignees   : false;
-    let state       = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )     ? specials.state       : config.GH_ISSUE_OPEN;
-
-    console.log( "Check Allocation", loc.projName, loc.colName, awsVal, splitVal );
-    let subTest = [ 0, 0, []];
-
-    // CHECK github issues
-    let issue  = await findIssue( authData, issDat[0] );
-    subTest = tu.checkEq( issue.id, issDat[0].toString(),     subTest, "Github issue troubles" );
-    subTest = tu.checkEq( issue.number, issDat[1].toString(), subTest, "Github issue troubles" );
-    subTest = tu.checkEq( issue.labels.length, labelCnt,      subTest, "Issue label count" );
-    subTest = tu.checkEq( issue.state, state,                 subTest, "Issue state" );
-
-    const lname = ghV2.makeHumanLabel( splitVal, config.ALLOC_LABEL );
-    const theLabel = issue.labels.find( l => l.name == lname ); 
-    subTest = tu.checkEq( typeof theLabel !== "undefined", true, subTest, "Issue label names missing " + lname );
-
-    // CHECK github location
-    cards = await getCards( authData, td.ghRepoId, loc.pid, loc.colId );
-    let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
-
-    subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready " + card + issDat );
-    if( typeof mCard[0] !== 'undefined' ) {
-    
-	subTest = tu.checkEq( mCard.length, 1,                       subTest, "Card claimed" );
-	subTest = tu.checkEq( mCard[0].cardId, card.cardId,          subTest, "Card claimed" );
-	
-	// CHECK linkage
-	let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
-	let link = ( links.filter((link) => link.hostIssueId == issDat[0] ))[0];
-	subTest = tu.checkEq( link.hostIssueNum, issDat[1].toString(), subTest, "Linkage Issue num" );
-	subTest = tu.checkEq( link.hostCardId, card.cardId,            subTest, "Linkage Card Id" );
-	subTest = tu.checkEq( link.hostColumnName, loc.colName,        subTest, "Linkage Col name" );
-	subTest = tu.checkEq( link.hostIssueName, issDat[3],           subTest, "Linkage Card Title" );
-	subTest = tu.checkEq( link.hostProjectName, loc.projName,      subTest, "Linkage Project Title" );
-	subTest = tu.checkEq( link.hostColumnId, loc.colId,            subTest, "Linkage Col Id" );
-	subTest = tu.checkEq( link.hostProjectId, loc.pid,             subTest, "Linkage project id" );
-	
-	// CHECK dynamo Peq
-	let allPeqs  =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
-	let peqs = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
-	subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
-	let peq = peqs[0];
-	
-	assignCnt = assignCnt ? assignCnt : 0;
-
-	if( typeof peq !== 'undefined' ) {
-	    subTest = tu.checkEq( peq.PeqType, config.PEQTYPE_ALLOC,      subTest, "peq type invalid" );        
-	    subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-	    subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],          subTest, "peq title is wrong" );
-	    subTest = tu.checkEq( peq.HostHolderId.length, assignCnt,     subTest, "peq gh holders wrong" );      
-	    subTest = tu.checkEq( peq.CEHolderId.length, 0,               subTest, "peq ce holders wrong" );    
-	    subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,          subTest, "peq grantor wrong" );      
-	    subTest = tu.checkEq( peq.Amount, awsVal,                     subTest, "peq amount" );
-	    subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
-	    subTest = tu.checkEq( peq.HostRepoId, link.hostRepoId,        subTest, "peq repo id bad" );
-	    // Can not depend on last element of pSub, since it is not generally updated after 1st move out of unclaimed. Catch last element of projSub from pact, below.
-	    for( let i = 0; i < loc.projSub.length - 1; i++ ) {
-		subTest = tu.checkEq( peq.HostProjectSub[i], loc.projSub[i], subTest, "peq project sub bad" ); 
-	    }
-	    
-	    // CHECK dynamo Pact
-	    let allPacts  = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
-	    let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-	    subTest = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );  
-	    
-	    // Could have been many operations on this.
-	    let foundMove = false;
-	    for( const pact of pacts ) {
-		let hr  = await tu.hasRaw( authData, pact.PEQActionId );
-		subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-		subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
-		subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
-		subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
-		if( pact.Subject.length >= 3 ) {
-		    if( link.hostColumnId == pact.Subject.slice(-1)) {
-			if( link.hostColumnName == loc.projSub.slice(-1) ) { foundMove = true; }
-		    }
-		    // console.log( "XXX", link, pact.Subject, loc.projSub, foundMove );
-		}
-	    }
-	    subTest = tu.checkEq( foundMove, true,                    subTest, "Did not find psub pact" );
-	}
-    }
-
-    return await tu.settle( subTest, testStatus, checkAlloc, authData, testLinks, td, loc, issDat, card, testStatus, specials );
-}
 
 // This does not strictly need to check for a peq amount, which is why it is not checkPeq.
 async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
@@ -1780,74 +1686,6 @@ function splitHelper( issues, title ) {
     return retVal;
 }
 
-async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc, testStatus, specials ) {
-    let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
-    let awsVal     = typeof specials !== 'undefined' && specials.hasOwnProperty( "aval" )       ? specials.aval       : 1000000;
-    let splitVal   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lval" )       ? specials.lval       : 1000000;
-
-    // One is for dynamo peq, one is for gh issue
-    // XXX remove assignCnt
-    let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 0;
-    let issAssignCnt = typeof specials !== 'undefined' && specials.hasOwnProperty( "issAssignees" )  ? specials.issAssignees  : 1;
-    
-    console.log( "Check Alloc Split", issDat[3], origLoc.colName, newLoc.colName );
-    let subTest = [ 0, 0, []];
-
-    // Get new issue
-    let issues      = await getIssues( authData, td );
-    let issue       = await findIssue( authData, issDat[0] );    
-
-    // Some tests will have two split issues here.  The newly split issue has a larger issNum
-    // Somehow, notice here is now consistently delayed 10s.. rate limit??
-    // let splitIssues = issues.filter( issue => issue.title.includes( issDat[3] + " split" ));
-    let splitIssues = await tu.settleWithVal( "filter resolved iss", splitHelper, issues, issDat[3] ); 
-    
-    const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
-    const splitDat  = typeof splitIss === 'undefined' ? [-1, -1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), -1, splitIss.title ];
-    
-    subTest = tu.checkEq( splitDat[0] != -1, true, subTest, "split iss not ready yet" );
-    if( splitDat[0] != -1 ) {
-	
-	// Get cards
-	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.ghFullName });
-	let issLink   = allLinks.find( l => l.hostIssueId == issDat[0].toString() );
-	let splitLink = allLinks.find( l => l.hostIssueId == splitDat[0].toString() );
-	
-	if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
-	
-	// Break this in two to avoid nested loop for settle timer
-	if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
-	    
-	    const card      = await getCard( authData, issLink.hostCardId );
-	    const splitCard = await getCard( authData, splitLink.hostCardId );
-	    splitDat[2]     = splitCard.cardId;
-
-	    let specials = { awsVal: awsVal, splitVal: splitVal, lblCount: labelCnt };
-	    testStatus = await checkAlloc( authData, testLinks, td, origLoc, issDat, card, testStatus, specials );
-	    specials.awsVal = splitVal;
-	    // no.. allocs do not get assignees
-	    // specials.assignees = issAssignCnt; 
-	    testStatus = await checkAlloc( authData, testLinks, td, newLoc,  splitDat, splitCard, testStatus, specials );
-	}
-	
-	if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
-	    subTest = tu.checkEq( issue.state, splitIss.state,    subTest, "Issues have different state" );
-	    
-	    // Check assign
-	    subTest = tu.checkEq( issue.assignees.length, issAssignCnt,    subTest, "Issue assignee count" );
-	    subTest = tu.checkEq( splitIss.assignees.length, issAssignCnt, subTest, "Issue assignee count" );
-	    
-	    // Check comment on splitIss
-	    const comments = await getComments( authData, splitDat[0] );
-	    subTest = tu.checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
-	}
-	
-	subTest = await tu.checkEq( typeof issLink   !== 'undefined', true, subTest, "issLink trouble" );
-	subTest = await tu.checkEq( typeof splitLink !== 'undefined', true, subTest, "splitLink trouble" );
-    }
-    
-    return await tu.settle( subTest, testStatus, checkAllocSplit, authData, testLinks, td, issDat, origLoc, newLoc, testStatus, specials );
-}
 
 async function checkNoSplit( authData, testLinks, td, issDat, newLoc, cardId, testStatus ) {
     
@@ -2198,8 +2036,8 @@ async function checkProgAssignees( authData, td, ass1, ass2, issDat, testStatus 
 
 // peq labels convert thousands, millions to k, m for human legibility
 function convertName( name ) {
-    const [peqValue, allocation] = ghUtils.parseLabelName( name );
-    if( peqValue > 0 ) { name = ghV2.makeHumanLabel( peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) ); }
+    const peqValue = ghUtils.parseLabelName( name );
+    if( peqValue > 0 ) { name = ghV2.makeHumanLabel( peqValue, config.PEQ_LABEL ); }
     return name;
 }
 
@@ -2288,14 +2126,12 @@ exports.checkNewlyClosedIssue   = checkNewlyClosedIssue;
 exports.checkNewlyOpenedIssue   = checkNewlyOpenedIssue;
 exports.checkNewlySituatedIssue = checkNewlySituatedIssue;
 exports.checkNewlyAccruedIssue  = checkNewlyAccruedIssue;
-exports.checkAlloc              = checkAlloc;                 // allocated issue
 exports.checkSituatedIssue      = checkSituatedIssue;         // has active peq
 exports.checkDemotedIssue       = checkDemotedIssue;          // has inactive peq
 exports.checkUntrackedIssue     = checkUntrackedIssue;        // partial link table
 exports.checkNewbornCard        = checkNewbornCard;           // no issue
 exports.checkNewbornIssue       = checkNewbornIssue;          // no card
 exports.checkSplit              = checkSplit;                 // result of incremental resolve
-exports.checkAllocSplit         = checkAllocSplit;            // result of incremental resolve
 exports.checkNoSplit            = checkNoSplit;               // no corresponding split issue
 exports.checkUnclaimedIssue     = checkUnclaimedIssue;        // has active peq, unc:unc
 exports.checkUnclaimedAccr      = checkUnclaimedAccr;

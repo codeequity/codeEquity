@@ -81,16 +81,13 @@ const PROJ_ACCR = 3;
 // Peq label grammar
 const PEQ      = 'PEQ: ';
 const PDESC    = 'PEQ value: '; 
-const ADESC    = 'Allocation ' + PDESC;
 
 // Peq label names
 const PEQ_LABEL   = 'PEQ';
-const ALLOC_LABEL = 'AllocPEQ';
 
 const EMPTY     = '---';
 
 // Flutter model enums
-const PEQTYPE_ALLOC = "allocation";
 const PEQTYPE_PLAN  = "plan";
 const PEQTYPE_PEND  = "pending";
 const PEQTYPE_GRANT = "grant";
@@ -146,8 +143,7 @@ const NOTICE_BUFFER_SIZE = 20;
 const PROJ_COLS = ["Planned", "In Progress", "Pending PEQ Approval", "Accrued" ];    // Project columns used by codeEquity
 const UNCLAIMED      = 'UnClaimed';                                                       // Catch-all project for peq issues with no project home
 
-const PEQ_COLOR  = 'ffcc80';   // github color for PEQ labels
-const APEQ_COLOR = 'fef2c0';   // github color Alloc PEQ labels
+const PEQ_COLOR  = 'ffcc80';   // github color for PEQ labels   alternative: fef2c0'
 
 // XXX speculative
 const GH_TEMPLATE = "CodeEquity Project Template";                                   // Contains default view for CodeEquity projects for GitHub
@@ -166,14 +162,12 @@ exports.PROJ_PEND = PROJ_PEND;
 exports.PROJ_ACCR = PROJ_ACCR;
 
 exports.PEQ_COLOR   = PEQ_COLOR;
-exports.APEQ_COLOR  = APEQ_COLOR;
 exports.GH_TEMPLATE = GH_TEMPLATE;
 exports.GH_VIEW     = GH_VIEW;
 exports.GH_VIEWCOL  = GH_VIEWCOL;
 
 exports.PEQ      = PEQ;
 exports.PDESC    = PDESC;
-exports.ADESC    = ADESC;
 
 exports.EMPTY     = EMPTY;
 exports.UNCLAIMED = UNCLAIMED;
@@ -229,9 +223,7 @@ exports.FLUTTER_MULTI_TEST_NAME  = FLUTTER_MULTI_TEST_NAME;
 exports.FLUTTER_MULTI_TEST_DESC  = FLUTTER_MULTI_TEST_DESC;
 
 exports.PEQ_LABEL   = PEQ_LABEL;
-exports.ALLOC_LABEL = ALLOC_LABEL;
 
-exports.PEQTYPE_ALLOC = PEQTYPE_ALLOC;
 exports.PEQTYPE_PLAN  = PEQTYPE_PLAN;
 exports.PEQTYPE_PEND  = PEQTYPE_PEND;
 exports.PEQTYPE_GRANT = PEQTYPE_GRANT;

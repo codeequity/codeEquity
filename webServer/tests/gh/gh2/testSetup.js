@@ -36,9 +36,8 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
 
     await tu.settleWithVal( "checkPopulated", awsUtils.checkPopulated, authData, td.ceProjectId, td.ghRepoId ); 
     
-    // This should NOT be needed.  But last makeAlloc above can be unfinished by the time test runs (i.e. can get card, but field is not yet available).
     // This rare sluggishness happened 6/30/23
-    await utils.sleep( 1000 );
+    // await utils.sleep( 1000 );
 }
 
 async function testPreferredCEProjects( authData, testLinks, td ) {

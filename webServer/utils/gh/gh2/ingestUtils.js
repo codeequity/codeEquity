@@ -36,8 +36,6 @@ function lockCard( cardId ) {
 // The implied action of an underlying move out of a column depends on the originating PEQType.
 // PeqType:GRANT  Illegal       There are no 'takebacks' when it comes to provisional equity grants
 //                              This type only exists for cards/issues in the 'Accrued' column... can not move out 
-// PeqType:ALLOC  Notice only.  Master proj is not consistent with config.PROJ_COLS.
-//                              !Master projects do not recognize <allocation>
 // PeqType:PLAN  most common
 async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) { 
     let reqBody  = pd.reqBody;
@@ -57,8 +55,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
     let verb   = "";
     let action = "";
     // Note, flat projects/cols like eggs and bacon fall into this group
-    if( peq['PeqType'] == config.PEQTYPE_ALLOC ||
-	( oldCol <= config.PROJ_PROG && newCol <= config.PROJ_PROG ) ) {
+    if( oldCol <= config.PROJ_PROG && newCol <= config.PROJ_PROG ) {
 	// moving between plan, and in-progress has no impact on peq summary, but does impact summarization
 	verb   = config.PACTVERB_CONF;
 	action = config.PACTACT_RELO;
@@ -146,7 +143,6 @@ async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) 
 
 async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, splitTag, doNotTrack, rebase ) {
     let origIssueId = pd.issueId;
-    if( !utils.validField( issue, "allocation" )) { issue.allocation = false; }
     let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
     assert( issueData[2] != -1 );
     
@@ -186,14 +182,13 @@ async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, spli
 
 	// Add assignees to pd, so recordPD pushes them to aws.  hostUserName.  Should be present as we are splitting a GH issue here.
 	// Without this, during ingest for ceFlutter, split issues will never see assignees.
-	// assignees are not relevant for allocations.  ignore to stay consistent with issueHandler
-	pd.assignees = issue.allocation ? [] : issue.assignees; 
+	pd.assignees = issue.assignees; 
 	awsUtils.recordPEQData(authData, pd, false, specials );
     }
     let success = await movePromise;
     assert( success );
     // If unlock is too soon, cardHandler:moved can soft-fail because GH may not have finished moving card, leading to bad link.
-    // splitAlloc can catch this.  If this happens again, wait on query to GH that card is showing up in column.
+    // If this happens again, wait on query to GH that card is showing up in column.
     unlockCards( link.hostCardId );
 
     // populateCE does not require this
@@ -254,21 +249,17 @@ async function resolve( authData, ghLinks, pd, issue, doNotTrack, rebase ) {
     let idx = 0;
     let newLabel = "";
     for( const label of issue.labels ) {
-	let content = ghUtils.parseLabelName( label.name );
-	let peqVal  = content[0];
-	let allocation  = content[1];
+	let peqVal = ghUtils.parseLabelName( label.name );
 
 	if( peqVal > 0 ) {
 	    console.log( authData.who, "Resolve, original peqValue:", peqVal );
 	    peqVal = Math.floor( peqVal / links.length );
 	    console.log( authData.who, ".... new peqValue:", peqVal );
 
-	    pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; 
-	    let peqHumanLabelName = ghV2.makeHumanLabel( peqVal, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
-	    newLabel = await ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, peqVal )
+	    pd.peqType = config.PEQTYPE_PLAN; 
+	    let peqHumanLabelName = ghV2.makeHumanLabel( peqVal, config.PEQ_LABEL );
+	    newLabel = await ghV2.findOrCreateLabel( authData, pd.repoId, peqHumanLabelName, peqVal )
 	    issue.labels[idx] = newLabel;
-	    if( allocation ) { issue.allocation = true; }
-	    else             { issue.allocation = false; }
 	    
 	    // update peqData for subsequent recording
 	    pd.peqValue = peqVal;
@@ -430,12 +421,11 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     pd.repoId    = issue.repository.id;
 
     // normal for card -> issue.  odd but legal for issue -> card
-    let allocation = ghUtils.getAllocated( issDat );
 
-    // Note.  If support convert from draft issue with <> shorthand, will need to use parsePEQ( issDat, allocation ) instead
+    // Note.  If support convert from draft issue with <> shorthand, will need to use parsePEQ( issDat ) instead
     if( !havePeq ) { pd.peqValue = ghUtils.parseLabelDescr( issDat ); }
 
-    if( !havePeq && pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
+    if( !havePeq && pd.peqValue > 0 ) { pd.peqType = config.PEQTYPE_PLAN; } 
     // console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     // fromLabel link is good, cardDat will be undefined.  fromCard is the reverse.
@@ -477,7 +467,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
     let orig = {};
     orig.hostColumnId = pd.columnId;
-    let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
+    let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, config.PEQ_LABEL );
     if( fromCard ) {
 	// Work from no status.
 	if( colName == config.EMPTY ) {
@@ -497,9 +487,8 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	
 	// If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
 	// Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
-	// Note: assigments are not relevant for allocations
 	// If moving card out of unclaimed, keep those assignees.. recordPEQData handles this for relocate
-	if( !allocation ) { pd.assignees = await ghV2.getAssignees( authData, pd.issueId ); }
+	pd.assignees = await ghV2.getAssignees( authData, pd.issueId );
     }
 
     orig.hostProjectName  = projName;
@@ -539,24 +528,6 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     }
     else {
 	console.log( authData.who, "No need to update peq" );
-    }
-
-    //  Repair.  situated card exists in PROG+ (really, just PROG).  Add alloc peq label.  need link added just above for reject
-    //         other cases will be caught in card:moved
-    if( fromLabel && allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( colName )) {
-	let msg = "WARNING.  Allocations only useful in config:PROJ_PLAN, or flat columns.  Moving card back.";
-	let rejectLoc = -1;
-	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId } );	
-	for( const aloc of locs ) {
-	    if( aloc.hostColumnName == config.PROJ_COLS[config.PROJ_PLAN] ) {
-		rejectLoc = { ...aloc };  // will modify rejectLoc below, so make it a shallow copy
-		break;
-	    }
-	}
-	rejectCard( authData, ghLinks, pd, { issueId: pd.issueId, cardId: origCardId }, rejectLoc, msg, true );	
-	// assert( lNodeId != -1 );
-	// await ghV2.removeLabel( authData, lNodeId, pd.issueId );
-	// return 'early';
     }
 }
 

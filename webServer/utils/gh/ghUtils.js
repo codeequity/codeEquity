@@ -142,11 +142,10 @@ async function errorHandler( source, e, func, ...params ) {
 
 
 
-// no commas, no shorthand, just like this:  'PEQ value: 500'  or 'Allocation PEQ value: 30000'
+// no commas, no shorthand, just like this:  'PEQ value: 500' 
 function parseLabelDescr( labelDescr ) {
     let peqValue = 0;
     let pDescLen = config.PDESC.length;
-    let aDescLen = config.ADESC.length;
 
     for( const line of labelDescr ) {
 	// malformed labels can have a null entry here
@@ -157,68 +156,47 @@ function parseLabelDescr( labelDescr ) {
 	    peqValue = parseInt( line.substring( pDescLen ) );
 	    break;
 	}
-	else if( line.indexOf( config.ADESC ) == 0 ) {
-	    // console.log( "Found peq val in", line.substring( aDescLen ) );
-	    peqValue = parseInt( line.substring( aDescLen ) );
-	    break;
-	}
     }
 
     return peqValue;
 }
 
-// '500 PEQ'  or '500 AllocPEQ'
+// '500 PEQ'
 function parseLabelName( name ) {
     let peqValue = 0;
-    let alloc = false;
     let splits = name.split(" ");
-    if( splits.length == 2 && ( splits[1] == config.ALLOC_LABEL || splits[1] == config.PEQ_LABEL )) {
+    if( splits.length == 2 && splits[1] == config.PEQ_LABEL ) {
 	// read "k" or "M" to make up for GH no longer allowing comma's in label names (big numbers became unreadable)
 	let unit = splits[0].slice(-1);
 	peqValue = ( unit == "M" || unit == "k" ) ? parseFloat( splits[0].slice(0,-1) ) : parseInt( splits[0] );
 	peqValue = ( unit == "M" )                ? peqValue * 1000000 : peqValue;
 	peqValue = (                unit == "k" ) ? peqValue * 1000    : peqValue;
 	
-	alloc = splits[1] == config.ALLOC_LABEL;
     }
-    return [peqValue, alloc];
-}
-
-// Allocation PEQ value         typical by resolve description & existing label description
-function getAllocated( content ) {
-    let res = false;
-    for( const line of content ) {
-	let s = line.indexOf( config.ADESC );  // existing label desc
-	if( s > -1 ){ res = true; break; }
-    }
-    return res;
+    return peqValue;
 }
 
 
 function theOnePEQ( labels ) {
     let peqValue = 0;
-    let alloc = false;
 
     for( const label of labels ) {
 	let content = label['description'];
 	let tval = parseLabelDescr( [content] );
-	let talloc = getAllocated( [content] );
 
 	if( tval > 0 ) {
 	    if( peqValue > 0 ) {
 		console.log( "Two PEQ labels detected for this issue.  Negotiation?" );
 		peqValue = 0;
-		alloc = false;
 		break;
 	    }
 	    else {
 		peqValue = tval;
-		alloc = talloc;
 	    }
 	}
     }
 
-    return [peqValue, alloc];
+    return peqValue;
 }
 
 // This needs to work for both users and orgs
@@ -298,7 +276,6 @@ exports.errorHandler = errorHandler;
 
 exports.parseLabelDescr = parseLabelDescr;
 exports.parseLabelName  = parseLabelName;
-exports.getAllocated    = getAllocated;
 exports.theOnePEQ       = theOnePEQ;
 
 exports.getOwnerId      = getOwnerId;

@@ -216,7 +216,7 @@ async function clearRepo( authData, testLinks, pd ) {
     let labels  = await gh2tu.getLabels( authData, pd ); 
 
     for( const label of labels ) {
-	if( ghUtils.parseLabelName( label.name )[0] > 0 ) { pLabels.push( label ); }
+	if( ghUtils.parseLabelName( label.name ) > 0 ) { pLabels.push( label ); }
     }
 
     if( pLabels.length > 0 ) {

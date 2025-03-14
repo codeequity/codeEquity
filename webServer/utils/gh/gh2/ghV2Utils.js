@@ -233,25 +233,13 @@ async function createIssue( authData, repoNode, pid, issue ) {
     let issueData = [-1,-1,-1]; // contentId, num, cardId
 
     assert( typeof issue.title !== 'undefined', "Error.  createIssue requires a title." );
-    if( !utils.validField( issue, "allocation" )) { issue.allocation = false; }
     if( !utils.validField( issue, "body" ))       { issue.body = ""; }
     if( !utils.validField( issue, "labels" ))     { issue.labels = []; }
     if( !utils.validField( issue, "assignees" ))  { issue.assignees = []; }
     if( !utils.validField( issue, "milestone" ))  { issue.milestone = null; }
 
-    // XXX
-    assert( !issue.allocation );
-    console.log( authData.who, "Create issue, from alloc?", repoNode, pid, issue.title, issue.allocation );
+    console.log( authData.who, "Create issue", repoNode, pid, issue.title );
     
-    // assert( !issue.allocation || issue.body == "", "Error.  createIssue body is about to be overwritten." );
-    if( issue.allocation ) {
-	issue.body += "";
-	issue.body += "This is an allocation issue added by CodeEquity.  It does not reflect specific work or issues to be resolved.  ";
-	issue.body += "It is simply a rough estimate of how much work will be carried out in this category.\n\n"
-	issue.body += "It is safe to filter this out of your issues list.\n\n";
-	issue.body += "It is NOT safe to close, reopen, or edit this issue.";
-    }
-
     // assignees, labels are lists of IDs, not full labels.
     issue.labels    = issue.labels.map(    lab  => Object.keys( lab  ).length > 0 ? lab.id  : lab );
     issue.assignees = issue.assignees.map( assn => Object.keys( assn ).length > 0 ? assn.id : assn );
@@ -282,7 +270,6 @@ async function createIssue( authData, repoNode, pid, issue ) {
 }
 
 // get unusual faceplate info
-// Label descriptions help determine if issue is an allocation
 async function getIssue( authData, issueId ) {
     let retVal   = [];
     if( issueId === -1 ) { return retVal; }
@@ -727,21 +714,19 @@ function makeHumanLabel( amount, peqTypeLabel ) {
     return retVal + " " + peqTypeLabel;
 }
 
-async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
+async function createPeqLabel( authData, repoNode, peqValue ) {
     
-    let peqHumanLabelName = makeHumanLabel( peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
+    let peqHumanLabelName = makeHumanLabel( peqValue, config.PEQ_LABEL );
     
-    let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
-    let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
+    let desc = config.PDESC + peqValue.toString();
+    let pcolor = config.PEQ_COLOR;
     let label = await createLabel( authData, repoNode, peqHumanLabelName, pcolor, desc );
     return label;
 }
 
 
-async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelName, peqValue ) {
-    assert( !allocation ); // XXX
-
-    console.log( authData.who, "Find or create label", repoNode, allocation, peqHumanLabelName, peqValue );
+async function findOrCreateLabel( authData, repoNode, peqHumanLabelName, peqValue ) {
+    console.log( authData.who, "Find or create label", repoNode, peqHumanLabelName, peqValue );
 
     if( typeof peqValue == "string" ) { peqValue = parseInt( peqValue.replace(/,/g, "" )); }
     
@@ -754,7 +739,7 @@ async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelN
 	console.log( authData.who, "Label not found, creating.." );
 	
 	if( peqValue < 0 ) { theLabel = await createLabel( authData, repoNode, peqHumanLabelName, '654321', "Oi!" ); }
-	else               { theLabel = await createPeqLabel( authData, repoNode, allocation, peqValue );            }
+	else               { theLabel = await createPeqLabel( authData, repoNode, peqValue );            }
 
 	// If a label was just created, GH can be too slow in allowing it to be found
 	try{
@@ -764,7 +749,7 @@ async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelN
 		e.status = 502;
 		throw e;
 	    }}
-	catch(e) { theLabel = await ghUtils.errorHandler( "findOrCreateLabel", e, findOrCreateLabel, authData, repoNode, allocation, peqHumanLabelName, peqValue ); }
+	catch(e) { theLabel = await ghUtils.errorHandler( "findOrCreateLabel", e, findOrCreateLabel, authData, repoNode, peqHumanLabelName, peqValue ); }
 	    
     }
     assert( theLabel != null && typeof theLabel !== 'undefined', "Did not manage to find or create the PEQ label" );
@@ -1474,7 +1459,6 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
 
     // console.log( link );
     
-    // e.g. add allocation card to proj: add card -> add issue -> rebuild card    
     if( link.hostProjectName != config.UNCLAIMED && link.hostColumnName != config.PROJ_ACCR ) { return false; }   
 	
     assert( link.hostCardId != -1 );

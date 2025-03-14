@@ -22,7 +22,8 @@ final CEUID_PLACEHOLDER = "HostUSER";
 
 // So lower values harder to print
 void _vPrint( appState, v, String astring ) {
-   if( v >= appState.verbose ) { print( astring ); }
+   // XXX
+   if( v + 2 >= appState.verbose ) { print( astring ); }
 }
 
 // XXX With move from Allocations stored with hostUserId, to ceUserId, uses of this go away once GH restrictions done (pact.subject assignees are names, currently)
@@ -1050,6 +1051,7 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
    if( ka == null ) {
       bool nonPeqChange = pact.action == PActAction.change && ( pact.note == PActNotes['colRename'] || pact.note == PActNotes['projRename'] );
       bool peqChange    = pact.action == PActAction.add || pact.action == PActAction.delete || pact.action == PActAction.notice;
+      if( !(pact.verb == PActVerb.confirm && ( nonPeqChange || peqChange )) ) { print( "XXX FAIL" ); }
       assert( pact.verb == PActVerb.confirm && ( nonPeqChange || peqChange ));
       assignees = peq.hostHolderId;
       if( assignees.length == 0 ) { assignees = [ appState.UNASSIGN ]; } 
@@ -1095,65 +1097,6 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
 }
 
 
-// XXX This method should go away once ceServer can be worked on again.  Don't bother speeding this up.
-void _reformPActs( context, container, List<PEQAction> todoPActs ) {
-   // current Modules Flut is projects_v2 id
-   final MF = "PVT_kwDOA8JELs4AfIcJ";
-   
-   List<String> mfPEQId = [];
-   // First pass, find relocates with modules flut id.  Get psub.0, which is the peqId
-   todoPActs.forEach( (p)
-                      { if( p.subject.contains( MF ) ) { mfPEQId.add( p.subject[0] ); }
-                      });
-   
-   print( "removing all pacts with peqId " + mfPEQId.toString() + " " + todoPActs.length.toString() );
-   assert( mfPEQId.length == 0 );
-
-   // todoPActs.removeWhere( (p) => p.subject.length > 0 && mfPEQId.contains( p.subject[0] ) );
-   // set ingested to true for these pacts, then remove.
-   List<String> markIds = [];
-   for( int i = todoPActs.length - 1; i >= 0; i-- ) {
-      var p = todoPActs[i];
-      if( p.subject.length > 0 && mfPEQId.contains( p.subject[0] )) {
-         markIds.add( p.id );
-         todoPActs.removeAt( i ); 
-      }
-   }
-
-   assert( markIds.length == 0 );
-   // unlock, set ingested
-   if( markIds.length > 0 ) {
-      String newPIDs = json.encode( markIds );
-      updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
-   }
-
-   print( "leaving " + todoPActs.length.toString() + " pacts" );
-
-}
-
-// XXX This method should go away once ceServer can be worked on again.  Don't bother speeding this up.
-void _removeAllocs( context, container, List<Tuple2<PEQAction, PEQ>> todos ) {
-   List<String> markIds = [];
-   for( int i = todos.length-1; i >= 0; i-- ) {
-      PEQAction pact = todos[i].item1;
-      PEQ       peq  = todos[i].item2;
-      if( peq.peqType == PeqType.allocation ) {
-         markIds.add( pact.id );
-         todos.removeAt( i );
-      }
-   }
-
-   assert( markIds.length == 0 );
-   
-   // unlock, set ingested
-   if( markIds.length > 0 ) {
-      String newPIDs = json.encode( markIds );
-      updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
-   }
-
-}
-
-
 // Note.  locking is sticky.
 // Record all PEQ actions:add, delete, accrue, relocate, change, notice
 // Examples of useful actions without associated PEQ
@@ -1174,10 +1117,6 @@ Future<void> updatePEQAllocations( context, container ) async {
    final todoPActions = await lockFetchPActions( context, container, '{ "Endpoint": "GetUnPAct", "CEProjectId": "$ceProjId" }' );
    print( "TIME FetchPAct " + DateTime.now().difference(startUPA).inSeconds.toString() );
    
-   // XXX Modules Until work on ceServer can start again, strip everything to do with Modules here
-   print( "Reform todoPActions to replicate what server will send" );
-   _reformPActs( context, container, todoPActions );
-
    if( todoPActions.length == 0 ) { print( "Allocations are up to date." );   return; }
 
 
@@ -1262,11 +1201,6 @@ Future<void> updatePEQAllocations( context, container ) async {
       i++;
    }
 
-   // XXX This should be removed once ceServer is updated to not send peqType:allocation pacts or peqs this way.
-   print( "Pre-Remove Allocs " + todos.length.toString());
-   _removeAllocs( context, container, todos );
-   print( "Post-Remove Allocs " + todos.length.toString());
-   
    _vPrint( appState, 4, "Pre order fix " + todos.length.toString());
    await fixOutOfOrder( todos, context, container );
    
