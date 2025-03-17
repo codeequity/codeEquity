@@ -327,7 +327,7 @@ class Linkage {
 	    console.log( query );
 	    this.show();
          }
-         */
+	*/
 	
 	if( links.length == 0 ) { links = -1; }
 	return links;

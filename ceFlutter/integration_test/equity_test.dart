@@ -744,9 +744,12 @@ void main() {
    print( "Mvmt" );
    // testWidgets('Equity Mvmt Page', skip:true, (WidgetTester tester) async {
    testWidgets('Equity Mvmt Page', skip:skip, (WidgetTester tester) async {
-         
+
          await restart( tester );
          await login( tester, true );
+
+         // This controls driver window size.  Driven window size is set on command line to flutter driver
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
          expect( await verifyAriHome( tester ), true );
          

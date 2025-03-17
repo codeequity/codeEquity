@@ -126,6 +126,7 @@ def runCmd( cmd, filterExp ):
     return resultsSum
 
 
+# NOTE to control driven window size, use command line arg here for browser-dimension.  Driver window is controlled in each test app with window.physicalSize*
 # NOTE using --no-build causes consequtive runs of flutter driver to connect to the same app, same state(!)
 # Hmm.  Running in release mode does not work well.  Basic entering text fails..
 def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
@@ -146,9 +147,9 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
         # This works for EQ for by-hand runs
         # cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # This used to work for EQ for crons, until title added.. ug.
-        # cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # 9 1/8th on screen, crons now work with title.  1075 works by hand.. 1065?
-        cmd = "flutter drive -d chrome --browser-dimension=1200,1065 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        # cmd = "flutter drive -d chrome --browser-dimension=1200,1065 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if optimized :
         cmd = cmd + " --release"
@@ -248,7 +249,7 @@ def main( cmd ):
     assert( verifyEmulator() )
 
     summary = ""
-    if( cmd == "" ) : summary = runTests( test = "search" )  # FOCUS AREA
+    if( cmd == "" ) : summary = runTests( test = "profile" )  # FOCUS AREA
     elif( cmd == "projectMain" ) : summary = runTests( test = "projectMain" )
     elif( cmd == "projectPact" ) : summary = runTests( test = "projectPact" )
     elif( cmd == "equity" ) : summary = runTests( test = "equity" )

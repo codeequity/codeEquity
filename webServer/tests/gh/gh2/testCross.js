@@ -47,8 +47,8 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     let crossCid = await gh2tu.makeColumn( authDataX, testLinks, tdX.ceProjectId, tdX.ghFullName, crossPid, "Cross Col" );
     
     const LAB = "704 " + config.PEQ_LABEL;
-    let lab   = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LAB, 704 );
-    let labX  = await gh2tu.findOrCreateLabel( authDataX, tdX.ghRepoId, false, LAB, 704 );
+    let lab   = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId,  LAB, 704 );
+    let labX  = await gh2tu.findOrCreateLabel( authDataX, tdX.ghRepoId, LAB, 704 );
 
     const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "builderCE";
@@ -200,6 +200,7 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     assert( td.ghFullName != tdM.ghFullName );
 
     // Add populate label to testProject2, to invoke repostatus. 
+    let unclPid  = await gh2tu.createProjectWorkaround( authDataM, tdM, "UnClaimed", "For testing request interleaving" );
     let multiPid = await gh2tu.createProjectWorkaround( authDataM, tdM, "Multi Proj", "For testing request interleaving" );
     let multiCid = await gh2tu.makeColumn( authDataM, testLinks, tdM.ceProjectId, tdM.ghFullName, multiPid, "Multi Col" );
 
@@ -207,12 +208,12 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     const LAB    = "903 " + config.PEQ_LABEL;
     const LABNP1 = "bug";
     const LABNP2 = "documentation";
-    let lab     = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LAB, 903 );
-    let labNP1  = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LABNP1, -1 );
-    let labNP2  = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LABNP2, -1 );
-    let labM    = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, false, LAB, 903 );
-    let labNP1M = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, false, LABNP1, -1 );
-    let labNP2M = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, false, LABNP2, -1 );
+    let lab     = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, LAB, 903 );
+    let labNP1  = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, LABNP1, -1 );
+    let labNP2  = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, LABNP2, -1 );
+    let labM    = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, LAB, 903 );
+    let labNP1M = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, LABNP1, -1 );
+    let labNP2M = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, LABNP2, -1 );
 
     const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "builderCE";

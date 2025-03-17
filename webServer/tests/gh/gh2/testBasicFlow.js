@@ -260,7 +260,7 @@ async function testStepByStep( authData, testLinks, td ) {
     if( VERBOSE ) { tu.testReport( testStatus, "A" ); }
     
     // 2. add peq label
-    let newLabel = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "", 1000 );
+    let newLabel = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, "", 1000 );
     await gh2tu.addLabel( authData, newLabel.id, meltData );
 
     // gh needs to create unclaimed first time through.  can take time. 
@@ -325,7 +325,7 @@ async function testEndpoint( authData, testLinks, td ) {
     let meltData = await gh2tu.makeIssue( authData, td, ISS_RACE, [] );               // [id, number, title]  (mix str/int)
     
     // 2. add peq label
-    let newLabel = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "", 1000 );
+    let newLabel = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, "", 1000 );
     await gh2tu.addLabel( authData, newLabel.id, meltData );
     
     // 3. Add to project
@@ -384,9 +384,9 @@ async function testBlast( authData, testLinks, td ) {
     let assignee1   = await gh2tu.getAssignee( authData, ASSIGNEE1 );
     let assignee2   = await gh2tu.getAssignee( authData, ASSIGNEE2 );
     
-    let lab1   = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "",      604 );
-    let labNP1 = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, LABNP1, -1 );	
-    let labNP2 = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, LABNP2, -1 );	
+    let lab1   = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, "",      604 );
+    let labNP1 = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, LABNP1, -1 );	
+    let labNP2 = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, LABNP2, -1 );	
 
 
     // 1. Simple blast
@@ -488,8 +488,6 @@ async function runTests( authData, testLinks, td ) {
     let t3 = await testBlast( authData, testLinks, td );
     // ghUtils.show( true );
     
-    // Basic flow alloc already done in setup.  Basically, create.  Period.
-
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );

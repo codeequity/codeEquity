@@ -60,7 +60,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 //      So when issue:label is received, card may exist in noStatus.  Or not, then issueLabel must createUnclaimed.
 async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
     // Zero's peqval if 2 found
-    [pd.peqValue, _] = ghUtils.theOnePEQ( issueLabels );  
+    pd.peqValue = ghUtils.theOnePEQ( issueLabels );  
 
     // label may be from json payload, or from internal call.  Convert id format.
     if( utils.validField( label, "node_id" ) ) { label.id = label.node_id; }
@@ -300,14 +300,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	{
 	    console.log( authData.who, "closed or reopened" );
 
-	    let allocation = false;
-	    [pd.peqValue,allocation] = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
+	    pd.peqValue = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( authData.who, "Not a PEQ issue, no action taken." );
-		return;
-	    }
-	    if( allocation ) {
-		console.log( authData.who, "Allocation, no action taken." );
 		return;
 	    }
 
@@ -355,19 +350,12 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    //       in this case, peq is not yet created, so peq.PEQId is bad.  
 	    console.log( authData.who, action, pd.reqBody.assignee.login, "to issue", pd.issueId );
 
-	    let allocation = false;
-	    [pd.peqValue, allocation] = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
+	    pd.peqValue = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
 		return;
 	    }
 
-	    // Allocations are simply closed/reopened.  No special activity.
-	    if( allocation ) {
-		console.log( "Allocation", action, "no other action taken" );
-		return;
-	    }
-	    
 	    // Peq issues only.  PEQ assignees are tracked in ceFlutter.  Just send PAct upstream.
 	    let peq = await awsUtils.getPEQ( authData, pd.ceProjectId, pd.issueId );
 

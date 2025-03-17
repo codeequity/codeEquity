@@ -56,7 +56,7 @@ Future<bool> validateAriPeqs(  WidgetTester tester ) async {
    await pumpSettle( tester, 1, verbose: true );
    await pumpSettle( tester, 1, verbose: true );
    expect( find.text( 'CE Project' ), findsOneWidget );
-   expect( find.text( '4,921' ), findsOneWidget );
+   expect( find.text( '6,124' ), findsOneWidget );
    expect( find.text( '802' ), findsOneWidget );
    expect( find.text( '6,500' ), findsOneWidget );
    expect( find.text( '0' ), findsOneWidget );
@@ -67,13 +67,13 @@ Future<bool> validateAriPeqs(  WidgetTester tester ) async {
    await tester.tap( flutPeqs );
    await pumpSettle( tester, 1, verbose: true );
    await pumpSettle( tester, 1, verbose: true );
-   expect( find.text( '4,921' ), findsOneWidget );
+   expect( find.text( '6,124' ), findsOneWidget );
 
    // Clear matters
    await tester.tap( find.byKey( Key( 'Clear' ))); 
    await pumpSettle( tester, 1, verbose: true );
    await pumpSettle( tester, 1, verbose: true );
-   expect( find.text( '4,921' ), findsNothing );
+   expect( find.text( '6,124' ), findsNothing );
 
    // Add serveTest
    await tester.tap( find.byKey( Key( "ppCEP"+CESE_PROJ_NAME )) );
@@ -90,7 +90,7 @@ Future<bool> validateAriPeqs(  WidgetTester tester ) async {
    await tester.tap( flutPeqs );
    await pumpSettle( tester, 1, verbose: true );
    await pumpSettle( tester, 1, verbose: true );
-   expect( find.text( '4,921' ), findsOneWidget );
+   expect( find.text( '6,124' ), findsOneWidget );
    expect( find.text( '0' ), findsNWidgets(9) );
    
    await tester.tap( find.byKey( Key( 'Clear' ))); 
@@ -164,8 +164,8 @@ Future<bool> validateFlutProfile( WidgetTester tester ) async {
    expect( find.text( 'Venture Equity Plan PEQs:' ), findsOneWidget );
    expect( find.text( '    Accrued:' ),             findsOneWidget );
    expect( find.text( '0.05%' ),                    findsOneWidget );
-   expect( find.text( '0.09%' ),                    findsOneWidget );
-   expect( find.text( '99.85%' ),                   findsOneWidget );
+   expect( find.text( '0.12%' ),                    findsOneWidget );
+   expect( find.text( '99.83%' ),                   findsOneWidget );
    expect( find.text( '15,000,000' ),               findsOneWidget );
 
    expect( find.text( 'Host Platform: GitHub' ),          findsOneWidget );

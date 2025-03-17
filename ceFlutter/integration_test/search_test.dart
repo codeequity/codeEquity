@@ -202,6 +202,7 @@ Future<bool> validateIncremental( WidgetTester tester ) async {
    return true;
 }
 
+// Sensitive to item count.. change testing content?  expect this to fail.
 Future<bool> validateScroll( WidgetTester tester ) async {
    print( "Validate scrolling" );
 
@@ -229,8 +230,8 @@ Future<bool> validateScroll( WidgetTester tester ) async {
    await pumpSettle( tester, 2, verbose: true );
    
    expect( find.text('LabelTest Dubs'), findsOneWidget );
-   expect( find.text('IR Accrued'), findsOneWidget );
    expect( find.text('LabelTest'), findsOneWidget );
+   expect( find.text('IR Plan'), findsOneWidget );
 
    // Not sure why, but needs two here.
    await dismiss( tester );

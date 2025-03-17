@@ -47,14 +47,17 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    let link = links.find( (l) => l.hostIssueId == peq.HostIssueId )
 		    assert( typeof link !== 'undefined' );
 
-		    let accr  = peq.PeqType == config.PEQTYPE_ALLOC;
+
+    		    // XXX accr was always false, starting a broken chain.  Verify correct now.
+		    let accr  = peq.PeqType == config.PEQTYPE_GRANT;
 		    let card  = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, link.issueId, accr );
 
+		    // XXX this was backwards.  verify correct now
 		    // Move to unclaimed:unclaimed or unclaimed:accrued col
 		    const loc = accr ?
-			  locs.find( (l) => l.ceProjectId == link.ceProjectId && l.hostProjectName == config.UNCLAIMED && l.hostColumnName == config.UNCLAIMED ) : 
-			  locs.find( (l) => l.ceProjectId == link.ceProjectId && l.hostProjectName == config.UNCLAIMED && l.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) ;
-		
+			  locs.find( (l) => l.ceProjectId == link.ceProjectId && l.hostProjectName == config.UNCLAIMED && l.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) :
+			  locs.find( (l) => l.ceProjectId == link.ceProjectId && l.hostProjectName == config.UNCLAIMED && l.hostColumnName == config.UNCLAIMED );
+		    
 		    assert( typeof loc !== 'undefined' );
 
 		    // XXX need to wait here?

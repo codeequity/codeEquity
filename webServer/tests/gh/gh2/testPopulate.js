@@ -42,9 +42,9 @@ async function testIncrementalResolve( authData, testLinks, td ) {
 
     // 1. Setup.
     console.log( "make labels" );
-    let label1k  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "", 1000 );
-    let labelDoc = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "documentation", -1 );
-    let labelBug = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "bug", -1 );
+    let label1k  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, "", 1000 );
+    let labelDoc = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, "documentation", -1 );
+    let labelBug = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, "bug", -1 );
 
     console.log( "make issues" );
     const issMoonDat = await gh2tu.makeIssue( authData, td, ISS_MOON, [ labelBug, labelDoc ] );

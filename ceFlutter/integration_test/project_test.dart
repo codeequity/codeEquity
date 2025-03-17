@@ -69,11 +69,11 @@ const Map<String,List<String>> ALLOCS_GOLD =
             "ariTester 33":       ["Category, Software Contributions Flut, Github Operations Flut, Stripes, ariTester",  "0", "352", "0", "0", "---"],
             "builderCE 34":         ["Category, Software Contributions Flut, Github Operations Flut, Stripes, builderCE",    "0", "352", "0", "0", "---"],
 
-      "UnClaimed 35":               ["Category, UnClaimed",                         "-1", "7,234", "0", "0", "-7234"],
-         "UnClaimed 36":            ["Category, UnClaimed, UnClaimed",              "0", "7,234", "0", "0", "---"],
-            "connieTester 37":          ["Category, UnClaimed, UnClaimed, connieTester",    "0", "752", "0", "0", "---"],
-            "ariTester 38":       ["Category, UnClaimed, UnClaimed, ariTester", "0", "3,467", "0", "0", "---"],
-            "builderCE 39":         ["Category, UnClaimed, UnClaimed, builderCE",   "0", "2,411", "0", "0", "---"],
+      "UnClaimed 35":               ["Category, UnClaimed",                         "-1", "10,843", "0", "0", "-10,843"],
+         "UnClaimed 36":            ["Category, UnClaimed, UnClaimed",              "0", "10,843", "0", "0", "---"],
+            "connieTester 37":          ["Category, UnClaimed, UnClaimed, connieTester",    "0", "1,504", "0", "0", "---"],
+            "ariTester 38":       ["Category, UnClaimed, UnClaimed, ariTester", "0", "4,670", "0", "0", "---"],
+            "builderCE 39":         ["Category, UnClaimed, UnClaimed, builderCE",   "0", "4,065", "0", "0", "---"],
             "Unassigned 40":        ["Category, UnClaimed, UnClaimed, Unassigned",  "0", "604", "0", "0", "---"],
 
 };

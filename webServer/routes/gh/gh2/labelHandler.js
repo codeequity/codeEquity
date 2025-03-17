@@ -15,16 +15,16 @@ const gh2Data   = require( './gh2Data' );
 const issueHandler = require( './issueHandler' );
 
 async function nameDrivesLabel( authData, labelId, name, description ) {
-    const [nameVal,alloc] = ghUtils.parseLabelName( name );
+    const nameVal = ghUtils.parseLabelName( name );
     if( nameVal <= 0 ) { return false; }
     
     const descrVal  = ghUtils.parseLabelDescr( [description] );
-    const consistentDescr     = ( alloc ? config.ADESC : config.PDESC ) + nameVal.toString();
+    const consistentDescr = config.PDESC + nameVal.toString();
     
     // Name drives description.  This will allow different color, if naming/descr is correct.
     if( nameVal != descrVal || consistentDescr != description ) {
 	console.log( "WARNING.  Modified PEQ label description not consistent with name.  Updating." );
-	const color = alloc ? config.APEQ_COLOR : config.PEQ_COLOR;
+	const color = config.PEQ_COLOR;
 	// Don't wait
 	ghV2.updateLabel( authData, labelId, name, consistentDescr, color );		    
     }
@@ -68,11 +68,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    if( typeof pd.reqBody.changes.name !== 'undefined' )        { origName = pd.reqBody.changes.name.from; }
 	    
 	    const origVal  = ghUtils.parseLabelDescr( [ origDesc ] );
-	    let allocation = ghUtils.getAllocated( [ origDesc ] );
-	    tVal = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
-
+	    
 	    // Only disallow if orig label being edited has active peqs.
-	    const query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: origVal, PeqType: tVal };
+	    const query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: origVal, PeqType: config.PEQTYPE_PLAN };
 	    const peqs  = await awsUtils.getPEQs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs to handle with this edited label" );
@@ -153,9 +151,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // make new label, iff the name changed.  If only descr, we are done already.  This need not be peq.
 	    if( origName != newName ) {
 		console.log( "Making new label to contain the edit" );
-		const [peqValue,_] = ghUtils.parseLabelName( newName );
-		const descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
-		if( peqValue > 0 ) { ghV2.createPeqLabel( authData, pd.repoId, allocation, peqValue );  }
+		const peqValue = ghUtils.parseLabelName( newName );
+		const descr = config.PDESC + peqValue.toString();
+		if( peqValue > 0 ) { ghV2.createPeqLabel( authData, pd.repoId, peqValue );  }
 		else               { ghV2.createLabel( authData, pd.repoId, newName, pd.reqBody.label.color, descr ); }
 	    }
 	    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
@@ -173,10 +171,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    const desc = pd.reqBody.label.description;
 	    if( !desc ) { return; } // bad label
 	    const lVal = ghUtils.parseLabelDescr( [ desc ] );
-	    let   tVal = ghUtils.getAllocated( [ desc ] );
-	    tVal = tVal ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
-	    let query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
+	    let query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: parseInt( lVal ), PeqType: config.PEQTYPE_PLAN };
 	    let peqs  = await awsUtils.getPEQs( authData, query );
 
 	    // Must modify peqs list for two peq val update (pvu) cases:
@@ -236,7 +232,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    // We have peqs.  Unlabel did not trigger, so no need to fix links or peqs.
 	    // remake label.  inform.
-	    let label = await ghV2.createPeqLabel( authData, pd.repoId, tVal == config.PEQTYPE_ALLOC, lVal );
+	    let label = await ghV2.createPeqLabel( authData, pd.repoId, lVal );
 	    
 	    // add label to all.  recreate card.  peq was not modified.
 	    for( const peq of peqs ) {
@@ -251,7 +247,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		let pv = 0;
 		let issueLabels = await ghV2.getLabels( authData, links[0].hostIssueId );
 		if( issueLabels != -1 ) {
-		    [pv,_] = ghUtils.theOnePEQ( issueLabels );
+		    pv = ghUtils.theOnePEQ( issueLabels );
 		}
 		if( issueLabels == -1 ||  pv <= 0 ) {
 		    console.log( authData.who, "No peq label conflicts, adding label back", label.id, links[0].hostIssueId );
@@ -269,7 +265,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	break;
     case 'created':  // do nothing
 	// GH doesn't allow labels with same name in repo.
-	// Protect PEQ or Alloc label name format, to avoid confusion.  No need to wait.
+	// Protect PEQ label name format, to avoid confusion.  No need to wait.
 	{
 	    nameDrivesLabel( authData, pd.reqBody.label.node_id, pd.reqBody.label.name, pd.reqBody.label.description );
 	}
