@@ -82,7 +82,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
     let cols    = dsCols;
     let randPID = td.dataSecPID;
     if( rn2 == 1 )  { cols = ghCols; randPID = td.githubOpsPID; }
-    noCards = await gh2tu.getCards( authData, td.ghRepoId, randPID, cols[rn4].id );
+    let noCards = await gh2tu.getCards( authData, td.ghRepoId, randPID, cols[rn4].id );
     subTest = tu.checkEq( noCards.length, 0, subTest, "Unalloc col card count" );
     
     // Check DYNAMO Linkage.. no cards no links

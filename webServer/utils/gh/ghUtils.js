@@ -56,12 +56,40 @@ async function postGH( PAT, url, postData, name, check422 ) {
     }
     else {
 	ret = await fetch( url, params )
+	    .then( response => {
+		if( !response.ok) { throw new Error('HTTP error.  Status ${response.status}'); }
+		return response.arrayBuffer();
+	    })
+	    .then( arrayBuffer => {
+		const buffer = Buffer.from( arrayBuffer );
+		return buffer;
+	    })
+	    .catch( e => {
+		console.log( "Error fetching.", e );
+	    });
+	const decoder = new TextDecoder('utf-8');
+	ret = decoder.decode(ret);
+	// ret = new Uint8Array(ret);
+	try {
+            ret = JSON.parse(ret);
+	} catch (e) {
+            throw new Error("The content obtained is not in JSON format")
+	}
+	// console.log( ret );
+
+    /*
+    else {
+	ret = await fetch( url, params )
 	    .catch( e => { console.log("Fetch failed.", e); throw e; });
 
-	console.log( "XXX ret", params );
-	
+	// console.log( "XXX ret", params );
+
 	ret = await ret.json()
-	    .catch( e => { console.log("ret", ret.toString()); throw e; });
+	    .catch( e => {
+		console.log("Failure Response1", e.message)
+		throw e;
+		});
+    */
     }
     
     // Oddly, some GQl queries/mutations return with a status, some do not.
