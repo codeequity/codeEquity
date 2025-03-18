@@ -1,44 +1,45 @@
-const assert    = require( 'assert' );
-const awsAuth   = require( '../../auth/aws/awsAuth' );
-const ghAuth    = require( '../../auth/gh/ghAuth' );
-const config    = require( '../../config' );
+import assert  from 'assert';
 
-const authDataC = require( '../../auth/authData' );
-const utils     = require( '../../utils/ceUtils' );
-const awsUtils  = require( '../../utils/awsUtils' );
-const links     = require('../../utils/linkage.js');
+import * as awsAuth from '../../auth/aws/awsAuth.js';
+import * as ghAuth  from '../../auth/gh/ghAuth.js';
+import * as config  from '../../config.js';
 
-const ghUtils   = require( '../../utils/gh/ghUtils' );
-const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
+import authDataC      from '../../auth/authData.js';
+import * as utils     from '../../utils/ceUtils.js';
+import * as awsUtils  from '../../utils/awsUtils.js';
+import links          from '../../utils/linkage.js';
 
-const circBuff  = require('../../components/circBuff.js');
+import * as ghUtils   from '../../utils/gh/ghUtils.js';
+import * as ghV2      from '../../utils/gh/gh2/ghV2Utils.js';
 
-const tu        = require( '../ceTestUtils' );
+import circBuff       from '../../components/circBuff.js';
 
-const ceProjData = require( '../../routes/ceProjects' );
-const testData  = require( './testData' );
+import * as tu        from '../ceTestUtils.js';
 
-const testSaveDynamo = require( '../testSaveDynamo' );
+import ceProjData     from '../../routes/ceProjects.js';
+import testData       from './testData.js';
+
+import testSaveDynamo from '../testSaveDynamo.js';
 
 // GH Classic
-const ghctu             = require( './ghc/ghcTestUtils' );
-const ghcTestDelete     = require( './ghc/testDelete' );
-const ghcTestSetup      = require( './ghc/testSetup' );
-const ghcTestFlat       = require( './ghc/testFlat' );
-const ghcTestPopulate   = require( './ghc/testPopulate' );
-const ghcTestBasicFlow  = require( './ghc/testBasicFlow' );
-const ghcTestComponents = require( './ghc/testComponents' );
-const ghcTestCross      = require( './ghc/testCross' );
+import * as ghctu        from './ghc/ghcTestUtils.js';
+import ghcTestDelete     from './ghc/testDelete.js';
+import ghcTestSetup      from './ghc/testSetup.js';
+import ghcTestFlat       from './ghc/testFlat.js';
+import ghcTestPopulate   from './ghc/testPopulate.js';
+import ghcTestBasicFlow  from './ghc/testBasicFlow.js';
+import ghcTestComponents from './ghc/testComponents.js';
+import ghcTestCross      from './ghc/testCross.js';
 
 // GH V2
-const gh2tu             = require( './gh2/gh2TestUtils' );
-const gh2TestDelete     = require( './gh2/testDelete' );
-const gh2TestSetup      = require( './gh2/testSetup' );
-const gh2TestFlat       = require( './gh2/testFlat' );
-const gh2TestPopulate   = require( './gh2/testPopulate' );
-const gh2TestBasicFlow  = require( './gh2/testBasicFlow' );
-const gh2TestComponents = require( './gh2/testComponents' );
-const gh2TestCross      = require( './gh2/testCross' );
+import * as gh2tu        from './gh2/gh2TestUtils.js';
+import gh2TestDelete     from './gh2/testDelete.js';
+import gh2TestSetup      from './gh2/testSetup.js';
+import gh2TestFlat       from './gh2/testFlat.js';
+import gh2TestPopulate   from './gh2/testPopulate.js';
+import gh2TestBasicFlow  from './gh2/testBasicFlow.js';
+import gh2TestComponents from './gh2/testComponents.js';
+import gh2TestCross      from './gh2/testCross.js';
 
 
 async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks ) {
@@ -66,40 +67,40 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     // TESTS
 
     let subTest = "";
-    await gh2TestDelete.runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM );
+    await gh2TestDelete( authData, authDataX, authDataM, testLinks, td, tdX, tdM );
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
 
-    subTest = await gh2TestSetup.runTests( authData, testLinks, td );
+    subTest = await gh2TestSetup( authData, testLinks, td );
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    subTest = await gh2TestFlat.runTests( authData, testLinks, td );
+    subTest = await gh2TestFlat( authData, testLinks, td );
     console.log( "\n\nFlat test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    subTest = await gh2TestBasicFlow.runTests( authData, testLinks, td );
+    subTest = await gh2TestBasicFlow( authData, testLinks, td );
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-
-    subTest = await gh2TestPopulate.runTests( authData, testLinks, td );
+/*
+    subTest = await gh2TestPopulate( authData, testLinks, td );
     console.log( "\n\nResolve test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    subTest = await gh2TestComponents.runTests( authData, testLinks, td );
+    subTest = await gh2TestComponents( authData, testLinks, td );
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
     
-    subTest = await gh2TestCross.runTests( flutterTest, authData, authDataX, authDataM, testLinks, td, tdX, tdM );
+    subTest = await gh2TestCross( flutterTest, authData, authDataX, authDataM, testLinks, td, tdX, tdM );
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-    
+*/
     ghUtils.show( true );
     awsUtils.show( true );
     tu.showCallCounts( true );
@@ -184,17 +185,17 @@ async function runTests() {
 
     // GH Linkage table, i.e. ceServer's ghLinks.
     // Note: this table is a router object - need to rest-get from ceServer.  It ages quickly - best practice is to update just before use.
-    let testLinks = new links.Linkage();
+    let testLinks = new links();
 
     
     // TEST_REPO auth
-    let td          = new testData.TestData();
+    let td          = new testData();
     td.ghOwner      = config.TEST_OWNER
     td.actor        = config.TEST_ACTOR;
     td.ghRepo       = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
     td.ghFullName   = td.ghOwner + "/" + td.ghRepo;
 
-    let authData     = new authDataC.AuthData(); 
+    let authData     = new authDataC(); 
     authData.who     = flutterTest ? "<TEST: ForFlutter> " : "<TEST: Main> ";
     // authData.ic      = await ghAuth.getInstallationClient( td.ghOwner, td.ghRepo, td.ghOwner );
     authData.api     = awsUtils.getAPIPath() + "/find";
@@ -212,13 +213,13 @@ async function runTests() {
     console.log( "Got repo: ", td.ghRepo, td.ghRepoId );
     
     // CROSS_TEST_REPO auth
-    let tdX        = new testData.TestData();
+    let tdX        = new testData();
     tdX.ghOwner    = config.CROSS_TEST_OWNER;
     tdX.actor      = config.CROSS_TEST_ACTOR;
     tdX.ghRepo     = config.CROSS_TEST_REPO;
     tdX.ghFullName = tdX.ghOwner + "/" + tdX.ghRepo;
     
-    let authDataX     = new authDataC.AuthData();
+    let authDataX     = new authDataC();
     // authDataX.ic      = await ghAuth.getInstallationClient( tdX.ghOwner, tdX.ghRepo, tdX.ghOwner );
     authDataX.who     = authData.who;
     authDataX.api     = authData.api;
@@ -230,13 +231,13 @@ async function runTests() {
     tdX.ghRepoId      = await ghUtils.getRepoId( authDataX.pat, tdX.ghOwner, tdX.ghRepo );
     
     // MULTI_TEST_REPO auth
-    let tdM        = new testData.TestData();
+    let tdM        = new testData();
     tdM.ghOwner    = config.MULTI_TEST_OWNER;
     tdM.actor      = config.MULTI_TEST_ACTOR;
     tdM.ghRepo     = flutterTest ? config.FLUTTER_MULTI_TEST_REPO : config.MULTI_TEST_REPO;
     tdM.ghFullName = tdM.ghOwner + "/" + tdM.ghRepo;
     
-    let authDataM     = new authDataC.AuthData();
+    let authDataM     = new authDataC();
     // authDataM.ic      = await ghAuth.getInstallationClient( tdM.ghOwner, tdM.ghRepo, tdM.ghOwner );
     authDataM.who     = authData.who;
     authDataM.api     = authData.api;

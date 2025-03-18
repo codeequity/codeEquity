@@ -1,7 +1,9 @@
-var express = require('express');
-var router  = express.Router();
-const utils = require( '../utils/ceUtils' );
-const auth  = require( "../auth/gh/ghAuth");
+import express from 'express';
+
+import * as utils from '../utils/ceUtils.js';
+import * as auth  from "../auth/gh/ghAuth.js";
+
+var router = express.Router();
 
 // XXX  proof of concept
 const OWNER = "codeEquity";
@@ -59,4 +61,5 @@ router.post('/:location?', async function (req, res) {
     
 });
 
-module.exports = router;
+
+export {router};

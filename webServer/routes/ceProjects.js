@@ -1,9 +1,9 @@
-const assert = require( 'assert' );
+import assert from 'assert';
 
-const config  = require( '../config' );
+import * as config  from '../config.js';
 
-const utils    = require( '../utils/ceUtils' );
-const awsUtils = require( '../utils/awsUtils' );
+import * as utils    from '../utils/ceUtils.js';
+import * as awsUtils from '../utils/awsUtils.js';
 
 // A simple fast lookup map to get ceProjectIds from job data
 // hostProjects are views, which may be shared across ceProjects.
@@ -190,4 +190,4 @@ class CEProjects {
     }
 }
 
-exports.CEProjects = CEProjects;
+export default CEProjects;

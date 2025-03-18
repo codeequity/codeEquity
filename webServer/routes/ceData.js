@@ -1,4 +1,4 @@
-const config  = require( '../config' );
+import * as config from '../config.js';
 
 class CEData {
 
@@ -79,4 +79,4 @@ class CEData {
     }
 }
 
-exports.CEData = CEData;
+export default CEData;

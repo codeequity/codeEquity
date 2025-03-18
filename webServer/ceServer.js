@@ -1,9 +1,12 @@
-var express = require('express');
-var path    = require('path');
-var logger  = require('morgan');
-var cors    = require('cors');
-var cookieParser = require('cookie-parser');
+import  express from 'express';
+import  path    from 'path';
+import  logger  from 'morgan';
+import  cors    from 'cors';
+import  cookieParser from 'cookie-parser';
 //var bodyParser   = require('body-parser');
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
 
 var ceServer = express();
 
@@ -27,14 +30,17 @@ ceServer.use(express.urlencoded({ extended: false }));
 ceServer.use(cookieParser());
 ceServer.use(cors());
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 ceServer.use(express.static(path.join(__dirname, 'public')));
 ceServer.use(express.static(path.join(__dirname, 'public-flutter')));
 
-var ceRouter = require('./routes/ceRouter');
-ceServer.use('/archive/github', ceRouter);
-ceServer.use('/github/testing', ceRouter);
+import * as ceRouter from './routes/ceRouter.js';
+ceServer.use('/archive/github', ceRouter.router);
+ceServer.use('/github/testing', ceRouter.router);
 
-var flutterRouter      = require('./routes/flutterRouter');
-ceServer.use('/update/github', flutterRouter);
+import * as flutterRouter from './routes/flutterRouter.js';
+ceServer.use('/update/github', flutterRouter.router);
 
-module.exports = ceServer;
+export default ceServer;

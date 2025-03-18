@@ -1,7 +1,7 @@
-const fetch  = require( 'node-fetch' );
-const assert = require('assert');
+import fetch from 'node-fetch';
+import assert from 'assert';
 
-const config = require( '../config');
+import * as config from '../config.js';
 
 
 // UNIT TESTING ONLY!!
@@ -191,21 +191,22 @@ async function ingestPActs( authData, pactIds ) {
 
 
 
-exports.randAlpha     = randAlpha;
-exports.validField    = validField;
-exports.fill          = fill;
-exports.postCE        = postCE;
-exports.sleep         = sleep;
-exports.getMillis     = getMillis;
-exports.millisDiff    = millisDiff;
-exports.getToday      = getToday;
-exports.settleWithVal = settleWithVal;
-exports.arrayEquals   = arrayEquals;
+export {randAlpha};
+export {validField};
+export {fill};
+export {postCE};
+export {sleep};
+export {getMillis};
+export {millisDiff};
+export {getToday};
+export {settleWithVal};
+export {arrayEquals};
 
-exports.getProjectSubs = getProjectSubs;
+export {getProjectSubs};
 
 // TESTING ONLY
-exports.TEST_EH       = TEST_EH;          // TESTING ONLY
-exports.TEST_EH_PCT   = TEST_EH_PCT;      // TESTING ONLY
-exports.FAKE_ISE      = FAKE_ISE;         // TESTING ONLY
-exports.failHere      = failHere;         // TESTING ONLY
+export {TEST_EH};         // TESTING ONLY
+export {TEST_EH_PCT};     // TESTING ONLY
+export {FAKE_ISE};        // TESTING ONLY
+export {failHere};        // TESTING ONLY
+

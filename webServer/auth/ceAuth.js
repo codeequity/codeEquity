@@ -1,7 +1,7 @@
-const awsAuth  = require( './aws/awsAuth' );
-const config   = require( '../config' );
+import * as awsAuth from './aws/awsAuth.js';
+import * as config from '../config.js';
 
-const gha      = require( './gh/ghAuth' );
+import * as gha from './gh/ghAuth.js';
 
 
 // Sit here to allow a separate test process to run without creating a new ceServer.
@@ -19,4 +19,4 @@ async function getAuths( authData, host, pms, org, actor ) {
     if( host == config.HOST_GH ) { await gha.getAuths( authData, pms, org, actor ); }
 }
 
-exports.getAuths = getAuths;
+export {getAuths};

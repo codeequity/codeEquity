@@ -1,10 +1,12 @@
-const fetch  = require( 'node-fetch' );
-const assert = require( 'assert' );
-var fs     = require( 'fs' ), json;    // read apiBasePath
+import fetch from 'node-fetch';
+import assert from 'assert';
 
-const config = require( '../config' );
+// var fs       = require( 'fs' ), json;    // read apiBasePath
+import fs from 'fs';
 
-const utils    = require( './ceUtils' );
+import * as config from '../config.js';
+
+import * as utils from './ceUtils.js';
 
 var postRecord = {};
 // var recordCount = 0;
@@ -563,41 +565,42 @@ async function getStoredLocs( authData, ceProjId ) {
 
 
 
-exports.getAPIPath   = getAPIPath;
-exports.getCognito   = getCognito;
-exports.getCEServer  = getCEServer;
-exports.getStoredPAT = getStoredPAT;
-exports.show         = show;
+export {getAPIPath};
+export {getCognito};
+export {getCEServer};
+export {getStoredPAT};
+export {show};
 
-exports.validatePEQ        = validatePEQ;
-exports.getProjectStatus   = getProjectStatus;
-exports.getPEQ             = getPEQ;
-exports.removePEQ          = removePEQ;
-exports.updatePEQPSub      = updatePEQPSub;
-exports.changeReportPEQVal = changeReportPEQVal;
-exports.recordPEQ          = recordPEQ;
-exports.rebuildPEQ         = rebuildPEQ;
-exports.recordPEQData      = recordPEQData;
+export {validatePEQ};
+export {getProjectStatus};
+export {getPEQ};
+export {removePEQ};
+export {updatePEQPSub};
+export {changeReportPEQVal};
+export {recordPEQ};
+export {rebuildPEQ};
+export {recordPEQData};
 
-exports.recordPEQAction = recordPEQAction;
-exports.checkPopulated  = checkPopulated;
-exports.setPopulated    = setPopulated;
-exports.rewritePAct     = rewritePAct;
+export {recordPEQAction};
+export {checkPopulated};
+export {setPopulated};
+export {rewritePAct};
 
-exports.refreshLinkageSummary = refreshLinkageSummary;
-exports.updateLinkageSummary  = updateLinkageSummary;
-exports.updateCEPHostParts    = updateCEPHostParts;
+export {refreshLinkageSummary};
+export {updateLinkageSummary};
+export {updateCEPHostParts};
 
-exports.getRaw       = getRaw; 
-exports.getPRaws     = getPRaws;
-exports.getPActs     = getPActs;
-exports.getPEQs      = getPEQs;
-exports.getPEQsById  = getPEQsById;
-exports.getHostPEQProjects = getHostPEQProjects;
-exports.getSummaries = getSummaries;
-exports.getLinkage   = getLinkage;
+export {getRaw};
+export {getPRaws};
+export {getPActs};
+export {getPEQs};
+export {getPEQsById};
+export {getHostPEQProjects};
+export {getSummaries};
+export {getLinkage};
 
-exports.cleanDynamo   = cleanDynamo;
-exports.clearIngested = clearIngested;
+export {cleanDynamo};
+export {clearIngested};
 
-exports.getStoredLocs = getStoredLocs;    // TESTING ONLY
+export {getStoredLocs};  // TESTING ONLY
+

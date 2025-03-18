@@ -1,13 +1,12 @@
-const config = require( '../../../config' );
+import * as config   from '../../../config.js';
+import * as utils    from '../../../utils/ceUtils.js';
+import * as awsUtils from '../../../utils/awsUtils.js';
 
-const utils   = require( '../../../utils/ceUtils' );
-const ghUtils = require( '../../../utils/gh/ghUtils' );    
+import * as tu       from '../../ceTestUtils.js';
+import * as ghUtils  from '../../../utils/gh/ghUtils.js';
+import * as gh2tu    from './gh2TestUtils.js';
 
-const tu     = require( '../../ceTestUtils' );
-
-const testData = require( '../testData' );
-const gh2tu    = require( './gh2TestUtils' );
-
+import testData from '../testData.js';
 
 async function createFlatProject( authData, testLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
@@ -121,4 +120,4 @@ async function runTests( authData, testLinks, td ) {
 }
 
 
-exports.runTests = runTests;
+export default runTests;

@@ -1,18 +1,15 @@
-const rootLoc = "../../../";
+import assert   from 'assert';
 
-const assert      = require( 'assert' );
+import * as config   from '../../../config.js';
+import * as utils    from '../../../utils/ceUtils.js';
+import * as awsUtils from '../../../utils/awsUtils.js';
+import * as ghUtils  from '../../../utils/gh/ghUtils.js';
 
-const config      = require( rootLoc + 'config' );
+import * as ghV2     from '../../../utils/gh/gh2/ghV2Utils.js';
 
-const utils    = require( rootLoc + 'utils/ceUtils' );
-const awsUtils = require( rootLoc + 'utils/awsUtils' );
-const ghUtils  = require( rootLoc + 'utils/gh/ghUtils' );
+import gh2Data  from './gh2Data.js';
 
-const ghV2      = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
-
-const gh2Data   = require( './gh2Data' );
-
-const issueHandler = require( './issueHandler' );
+import * as issueHandler from './issueHandler.js';
 
 async function nameDrivesLabel( authData, labelId, name, description ) {
     const nameVal = ghUtils.parseLabelName( name );
@@ -278,4 +275,4 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     return;
 }
 
-exports.handler    = handler;
+export {handler};

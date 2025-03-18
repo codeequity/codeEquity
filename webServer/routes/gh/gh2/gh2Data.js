@@ -1,20 +1,18 @@
-const assert  = require('assert');
+import assert  from 'assert';
 
-const rootLoc = "../../../";
+import * as config from '../../../config.js';
 
-const config  = require( rootLoc + 'config' );
+import ceData  from '../../ceData.js';
+import jobData from '../../jobData.js';
 
-const ceData  = require( '../../ceData' );
-const jobData = require( '../../jobData' );
-
-const utils   = require( rootLoc + "utils/ceUtils" );
-const ghUtils = require( rootLoc + "utils/gh/ghUtils" );
+import * as utils   from "../../../utils/ceUtils.js";
+import * as ghUtils from "../../../utils/gh/ghUtils.js";
 
 // Cache GitHub hostUserName, hostUserId
 var githubUsers = {};
 
 
-class GH2Data extends ceData.CEData{
+class GH2Data extends ceData{
 
     // Use projectV2 node ids, not databaseIds
     constructor( authData, jd, ceProjects, ceProjectId ) {
@@ -99,4 +97,4 @@ class GH2Data extends ceData.CEData{
     }
 }
 
-exports.GH2Data = GH2Data;
+export default GH2Data;

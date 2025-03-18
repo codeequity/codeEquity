@@ -1,11 +1,11 @@
-const config = require( '../../../config' );
+import * as config   from '../../../config.js';
+import * as utils    from '../../../utils/ceUtils.js';
 
-const utils  = require( '../../../utils/ceUtils' );
+import * as tu        from '../../ceTestUtils.js';
+import * as ghctu     from './ghcTestUtils.js';
 
-const tu     = require( '../../ceTestUtils' );
+import testData from '../testData.js';
 
-const testData = require( '../testData' );
-const ghctu    = require( './ghcTestUtils' );
 
 
 const FLAT_PROJ = "A Pre-Existing Project";
@@ -119,4 +119,4 @@ async function runTests( authData, ghLinks, td ) {
 }
 
 
-exports.runTests = runTests;
+export default runTests;

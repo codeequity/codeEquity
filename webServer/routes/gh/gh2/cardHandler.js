@@ -1,15 +1,13 @@
-const rootLoc = "../../../";
+import assert  from 'assert';
 
-const assert  = require( 'assert' );
-const config  = require( rootLoc + 'config' );
+import * as config  from '../../../config.js';
+import * as utils     from '../../../utils/ceUtils.js';
+import * as awsUtils  from '../../../utils/awsUtils.js';
 
-const utils     = require( rootLoc + 'utils/ceUtils' );
-const awsUtils  = require( rootLoc + 'utils/awsUtils' );
+import * as ghUtils     from '../../../utils/gh/ghUtils.js';
+import * as ingestUtils from '../../../utils/gh/gh2/ingestUtils.js';
 
-const ghUtils     = require( rootLoc + 'utils/gh/ghUtils' );
-const ingestUtils = require( rootLoc + 'utils/gh/gh2/ingestUtils' );
-
-const ghV2     = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
+import * as ghV2     from '../../../utils/gh/gh2/ghV2Utils.js';
 
 
 /*
@@ -207,7 +205,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    // Do not allow move into ACCR if trying to split in.
 		    if( newCard.columnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			let msg = "WARNING. " + newLinks[0].hostColumnName + " is reserved, can not create cards here. Leaving card in " + config.PROJ_COLS[config.PROJ_PLAN];
-			ingestUtils.rejectCard( authData, ghLinks, pd, newCard, rejectLoc, msg, true );
+			await ingestUtils.rejectCard( authData, ghLinks, pd, newCard, rejectLoc, msg, true );
 		    }
 
 		    // resolve doNotTrack sets link to empty.  but newCard has current loc
@@ -218,7 +216,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    }
 
 		    // XXX race condition for ir prog split reject.. why need delay?
-		    await ghV2.getFullIssue( authData, newLinks[0].hostIssueId );
+		    // await ghV2.getFullIssue( authData, newLinks[0].hostIssueId );
 		}
 		else {
 		    console.log( authData.who, "No such card, ignoring move request." );
@@ -322,5 +320,5 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
     return;
 }
 
-exports.handler    = handler;
-exports.deleteCard = deleteCard;
+export {handler};
+export {deleteCard};

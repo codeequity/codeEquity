@@ -28,4 +28,5 @@ class LocationData {
     }
     
 }
-exports.LocData = LocationData;
+
+export default LocationData;

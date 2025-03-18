@@ -1,17 +1,18 @@
-const assert = require( 'assert' );
-const config = require( '../../../config' );
+import assert   from 'assert';
 
-const utils    = require( '../../../utils/ceUtils' );
-const awsUtils = require( '../../../utils/awsUtils' );
+import * as config   from '../../../config.js';
+import * as utils    from '../../../utils/ceUtils.js';
+import * as awsUtils from '../../../utils/awsUtils.js';
 
-const tu       = require( '../../ceTestUtils' );
+import * as tu        from '../../ceTestUtils.js';
+import * as ghClassic from '../../../utils/gh/ghc/ghClassicUtils.js';
+import * as ghctu     from './ghcTestUtils.js';
 
-const ghClassic = require( '../../../utils/gh/ghc/ghClassicUtils' );
+import testData from '../testData.js';
+
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 
-const testData = require( '../testData' );
-const ghctu    = require( './ghcTestUtils' );
 
 const ISS_LAB   = "LabelTest";
 const ISS_LAB2  = "LabelTest Dubs";
@@ -1246,4 +1247,4 @@ async function runTests( authData, ghLinks, td ) {
 }
 
 
-exports.runTests = runTests;
+export default runTests;

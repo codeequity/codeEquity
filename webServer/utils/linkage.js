@@ -1,16 +1,16 @@
-const assert = require( 'assert' );
+import assert from 'assert';
 
-const config   = require( '../config' );
-const ceAuth   = require( '../auth/ceAuth' );
+import * as config   from '../config.js';
+import * as ceAuth   from '../auth/ceAuth.js';
 
-const utils    = require( '../utils/ceUtils' );
-const awsUtils = require( '../utils/awsUtils' );
+import * as utils    from '../utils/ceUtils.js';
+import * as awsUtils from '../utils/awsUtils.js';
 
-const locData  = require( './locData' );
+import locData from './locData.js';
 
 // Host-specific implementations
-const gh2LU    = require( './gh/gh2/linkageUtils' );
-const ghcLU    = require( './gh/ghc/linkageUtils' );
+import * as gh2LU from './gh/gh2/linkageUtils.js' ;
+import * as ghcLU from './gh/ghc/linkageUtils.js' ;
 
 // Linkage table contains all identifying info related to peq issues
 // Linkage table does not contain column, project name or issue name for carded issues
@@ -237,7 +237,7 @@ class Linkage {
 	    
 	    if( !utils.validField( this.locs, ceProjId ))                                        { this.locs[ceProjId] = {}; }
 	    if( !utils.validField( this.locs[ceProjId], locD.hostProjectId ))                    { this.locs[ceProjId][locD.hostProjectId] = {}; }
-	    if( !utils.validField( this.locs[ceProjId][locD.hostProjectId], locD.hostColumnId )) { this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId] = new locData.LocData(); }
+	    if( !utils.validField( this.locs[ceProjId][locD.hostProjectId], locD.hostColumnId )) { this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId] = new locData(); }
 	    
 	    let loc = this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId];
 	    loc.fromLoc( locD );
@@ -707,4 +707,5 @@ class Linkage {
     }
 }
 
-exports.Linkage = Linkage;
+// exports.Linkage = Linkage;
+export default Linkage;

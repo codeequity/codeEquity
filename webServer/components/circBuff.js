@@ -54,4 +54,5 @@ class CircularBuffer {
 
 }
 
-exports.CircularBuffer = CircularBuffer;
+// exports.CircularBuffer = CircularBuffer;
+export default CircularBuffer;

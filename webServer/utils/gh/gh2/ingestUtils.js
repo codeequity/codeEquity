@@ -1,14 +1,14 @@
-var assert = require( 'assert' );
+import assert from 'assert';
 
-const config   = require( '../../../config' );
-const utils    = require( '../../ceUtils' );
-const awsUtils = require( '../../awsUtils' );
+import * as config  from '../../../config.js';
+import * as utils    from '../../ceUtils.js';
+import * as awsUtils from '../../awsUtils.js';
 
-const ghUtils  = require( '../ghUtils' );
+import * as ghUtils  from '../ghUtils.js';
 
-const ghV2     = require( './ghV2Utils' );
+import * as ghV2     from './ghV2Utils.js';
 
-const gh2Data  = require( '../../../routes/gh/gh2/gh2Data' );
+import gh2Data  from '../../../routes/gh/gh2/gh2Data.js';
 
 // locked cards list, allowing cardHandler to postpone moves on cards that are still undergoing a resolve:split action
 var locked = [];
@@ -117,7 +117,7 @@ async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) 
     console.log( authData.who, msg );
 
     if( rejectLoc !== -1 ) {
-	ghV2.moveCard( authData, pid, cardId, rejectLoc.hostUtility, rejectLoc.hostColumnId );
+	await ghV2.moveCard( authData, pid, cardId, rejectLoc.hostUtility, rejectLoc.hostColumnId );
 	if( track ) {
 	    let link = ghLinks.updateLinkage( authData, ceProjId, issueId, cardId, rejectLoc.hostColumnId, rejectLoc.hostColumnName );
 	    // treat reject as a move from flat
@@ -531,9 +531,9 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     }
 }
 
-exports.recordMove        = recordMove;
-exports.rejectCard        = rejectCard;
-exports.resolve           = resolve;
-exports.populateCELinkage = populateCELinkage;
-exports.processNewPEQ     = processNewPEQ;
-exports.isLocked          = isLocked;
+export {recordMove};
+export {rejectCard};
+export {resolve};
+export {populateCELinkage};
+export {processNewPEQ};
+export {isLocked};

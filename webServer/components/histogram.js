@@ -1,4 +1,4 @@
-const utils    = require( "../utils/ceUtils" );
+import * as utils from "../utils/ceUtils.js";
 
 // minimalistic histogram.
 class Histogram {
@@ -81,4 +81,5 @@ class Histogram {
     }
 }
 
-exports.Histogram = Histogram;
+// exports.Histogram = Histogram;
+export default Histogram;

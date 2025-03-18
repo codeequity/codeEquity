@@ -64,8 +64,6 @@ class PEQ {
       var dynamicAssHost = json['HostHolderId'] ?? [];
 
       List<String> hps = new List<String>.from(dynamicSub);
-      // XXX Modules Until work on ceServer can start again, strip everything to do with Software Contributions here
-      // hps.removeWhere( (cat) => cat == "Software Contributions" );
       
       // DynamoDB is not camelCase
       return PEQ(
@@ -102,8 +100,6 @@ class PEQ {
       case "vestedPerc":     this.vestedPerc = value;                                       break;
       case "hostProjectSub":
          this.hostProjectSub = new List<String>.from( value );
-         // XXX Modules Until work on ceServer can start again, strip everything to do with Software Contributions here
-         // this.hostProjectSub.removeWhere( (cat) => cat == "Software Contributions" );
          break;
       case "hostRepoId":     this.hostRepoId = value;                                       break;
       case "hostIssueId":    this.hostIssueId = value;                                      break;

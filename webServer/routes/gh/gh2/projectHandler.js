@@ -1,9 +1,6 @@
-const rootLoc = "../../../";
-
-const config  = require( rootLoc + 'config' );
-
-const utils    = require( rootLoc + 'utils/ceUtils' );
-const awsUtils = require( rootLoc + 'utils/awsUtils' );
+import * as config  from  '../../../config.js';
+import * as utils    from '../../../utils/ceUtils.js';
+import * as awsUtils from '../../../utils/awsUtils.js';
 
 // Actions: created, edited, closed, reopened, or deleted
 async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
@@ -150,4 +147,4 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     return;
 }
 
-exports.handler = handler;
+export {handler};

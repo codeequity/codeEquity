@@ -1,9 +1,9 @@
-var assert = require( 'assert' );
+import assert from 'assert';
 
-const config = require( '../../../config' );
+import * as config  from '../../../config.js';
 
-const utils     = require( '../../ceUtils' );
-const ghUtils   = require( '../ghUtils' );
+import * as utils   from '../../ceUtils.js';
+import * as ghUtils from '../ghUtils.js';
 
 /*
 https://docs.github.com/en/free-pro-team@latest/graphql/reference/objects#repository
@@ -1654,8 +1654,8 @@ function parsePEQ( content, allocation ) {
     return peqValue;
 }
 
-exports.githubUtils = githubUtils;
-exports.githubSafe = githubSafe;
+export {githubUtils};
+export {githubSafe};
 
 
 

@@ -1,10 +1,10 @@
-const assert  = require( 'assert' );
-const fetch = require( 'node-fetch' );
+import assert  from 'assert';
+import fetch from 'node-fetch';
 
-const config = require( '../../config' );
+import * as config from '../../config.js';
 
-const utils    = require( '../ceUtils' );
-const awsUtils = require( '../awsUtils' );
+import * as utils    from '../ceUtils.js';
+import * as awsUtils from '../awsUtils.js';
 
 var handlerRetries = {}; 
 var postRecord = {}; 
@@ -58,6 +58,8 @@ async function postGH( PAT, url, postData, name, check422 ) {
 	ret = await fetch( url, params )
 	    .catch( e => { console.log("Fetch failed.", e); throw e; });
 
+	console.log( "XXX ret", params );
+	
 	ret = await ret.json()
 	    .catch( e => { console.log("ret", ret.toString()); throw e; });
     }
@@ -271,15 +273,15 @@ async function getIssueRepo( authData, issueId ) {
 }
 
 
-exports.postGH       = postGH;
-exports.errorHandler = errorHandler;
+export {postGH};
+export {errorHandler};
 
-exports.parseLabelDescr = parseLabelDescr;
-exports.parseLabelName  = parseLabelName;
-exports.theOnePEQ       = theOnePEQ;
+export {parseLabelDescr};
+export {parseLabelName};
+export {theOnePEQ};
 
-exports.getOwnerId      = getOwnerId;
-exports.getRepoId       = getRepoId;
-exports.getIssueRepo    = getIssueRepo;
+export {getOwnerId};
+export {getRepoId};
+export {getIssueRepo};
 
-exports.show            = show;
+export {show};

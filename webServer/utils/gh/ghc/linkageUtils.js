@@ -1,19 +1,21 @@
-const rootLoc = "../../../";
+import assert    from 'assert' ;
 
-const assert    = require( 'assert' );
+import * as config    from "../../../config.js" ;
+import * as ceAuth    from "../../../auth/ceAuth.js" ;
+import * as utils     from "../../../utils/ceUtils.js" ;
 
-const config    = require( rootLoc + 'config' );
-const ceAuth    = require( rootLoc + 'auth/ceAuth' );
-const utils     = require( rootLoc + 'utils/ceUtils' );
-
-const ghClassic = require( './ghClassicUtils' );
-const gh        = ghClassic.githubUtils;
+// import ghClassic from './ghClassicUtils.js' ;
 
 
 // classic is per repo.
 // Init repo with CE_ACTOR, which is typically a builder account that needs full access.
 
-async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData ) {
+async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData )  {
+    console.log( "GHC DEPRECATED" );
+    assert( false );
+}
+/*
+async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData )  {
 
     let host  = utils.validField( ceProject, "HostPlatform" )       ? ceProject.HostPlatform                    : "";
     let org   = utils.validField( ceProject, "Organization" )       ? ceProject.Organization                    : "";
@@ -71,5 +73,6 @@ async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData 
     }
     return { links: baseLinks, locs: locData };    
 }
-
-exports.buildHostLinks  = buildHostLinks; 
+*/
+export {buildHostLinks};
+			       

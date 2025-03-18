@@ -1,17 +1,16 @@
-const rootLoc = "../../../";
 
-const assert      = require( 'assert' );
+import assert   from 'assert';
 
-const config      = require( rootLoc + 'config' );
+import * as config   from '../../../config.js';
 
-const utils    = require( rootLoc + 'utils/ceUtils' );
-const awsUtils = require( rootLoc + 'utils/awsUtils' );
-const ghUtils  = require( rootLoc + 'utils/gh/ghUtils' );
+import * as utils    from '../../../utils/ceUtils.js';
+import * as awsUtils from '../../../utils/awsUtils.js';
+import * as ghUtils  from '../../../utils/gh/ghUtils.js';
 
-const ghV2        = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
-const ingestUtils = require( rootLoc + 'utils/gh/gh2/ingestUtils' );
+import * as ghV2        from '../../../utils/gh/gh2/ghV2Utils.js';
+import * as ingestUtils from '../../../utils/gh/gh2/ingestUtils.js';
 
-const cardHandler = require( './cardHandler' );
+import * as cardHandler from './cardHandler.js';
 
 // Terminology:
 // ceProject:      a codeequity project that includes 0 or more gh projects that CE knows about
@@ -596,5 +595,5 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     return;
 }
 
-exports.handler    = handler;
-exports.labelIssue = labelIssue;
+export {handler};
+export {labelIssue};
