@@ -205,9 +205,9 @@ async function cardIssue( authData, pid, issDat ) {
     assert( issDat.length == 3 );
     let issueData = [issDat[0],issDat[1],-1]; // contentId, num, cardId
     
-    query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
-    variables = {"proj": pid, "contentId": issDat[0]};
-    queryJ    = JSON.stringify({ query, variables });
+    let query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
+    let variables = {"proj": pid, "contentId": issDat[0]};
+    let queryJ    = JSON.stringify({ query, variables });
 
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "cardIssue" )
@@ -281,7 +281,7 @@ async function getIssue( authData, issueId ) {
     retIssue.push( issue.id );
     retVal.push( issue.title );
     if( issue.labels.edges.length > 0 ) {
-	for( label of issue.labels ) { retVal.push( label.description ); }
+	for( const label of issue.labels ) { retVal.push( label.description ); }
     }
     retIssue.push( retVal );
     retIssue.push( issue.number );
@@ -1572,7 +1572,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 //     workaround is to create project by hand in GH with all required columns.  then link and unlink from repo to replace create and delete.
 async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, repoId, repoName, name ) {
 
-    console.log( "XXX Trying to link", ceProjId, repoId, repoName, name, orgLogin, ownerLogin );
+    // console.log( "XXX Trying to link", ceProjId, repoId, repoName, name, orgLogin, ownerLogin );
     
     // Already linked?  Using links here may be overly conservative
     if( ghLinks !== -1 ) {
@@ -1583,13 +1583,15 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
 	}
     }
 
-    console.log( "XXX FPN", orgLogin, ownerLogin, name );
+    // console.log( "XXX FPN", orgLogin, ownerLogin, name );
     // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
     assert( pid !== -1 );
 
-    console.log( "XXX FPR", pid, repoId, name );
-    let rp = await findProjectByRepo( authData, repoId, name );
+    // XXX XXX XXX
+    // console.log( "XXX FPR", pid, repoId, name );
+    // let rp = await findProjectByRepo( authData, repoId, name );
+    let rp = -1;
     if( rp === -1 ) {
 	console.log( authData.who, "GH-linkProject", name, repoId );
 	
@@ -1643,7 +1645,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     console.log( authData.who, "create unclaimed col", unClaimedProjId, issueId, colName, accr );
 
     // Get locs again, to update after uncl. project creation 
-    locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
+    let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
     if( locs === -1 ) {
 	// XXX revisit once (if) GH API supports column creation
 	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand for", pd.ceProjectId  );
@@ -1734,7 +1736,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
     let missing = true;
     let foundCount = 0;
-    for( loc of locs ) {
+    for( const loc of locs ) {
 	let colName = loc.hostColumnName;
 	for( let i = 0; i < 4; i++ ) {
 	    if( colName == config.PROJ_COLS[i] ) {

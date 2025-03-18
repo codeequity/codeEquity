@@ -52,7 +52,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     let wakeyPID = await gh2tu.createProjectWorkaround( authData, td, wakeyName, "" );
     assert( wakeyPID != -1 );
     console.log( "Found", wakeyName, "with PID:", wakeyPID, "for ceProj:", td.ceProjectId );
-    
+
     const pacts    = await awsUtils.getPActs( authData,  { "CEProjectId": td.ceProjectId });
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
     const mrp = pacts != -1 ? pacts[ pacts.length - 1] : {"EntryDate": "01/01/1970"};
@@ -85,7 +85,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-/*
+
     subTest = await gh2TestPopulate( authData, testLinks, td );
     console.log( "\n\nResolve test complete." );
     await utils.sleep( 5000 );
@@ -100,7 +100,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-*/
+
     ghUtils.show( true );
     awsUtils.show( true );
     tu.showCallCounts( true );
@@ -307,7 +307,7 @@ async function runTests() {
 
     // Save dynamo data if run was successful
     if( testStatus[1] == 0 ) {
-	subTest = await testSaveDynamo.runTests( flutterTest ); 
+	let subTest = await testSaveDynamo( flutterTest ); 
 	console.log( "\n\nSave Dynamo complete" );
 	await utils.sleep( 1000 );
 	testStatus = tu.mergeTests( testStatus, subTest );

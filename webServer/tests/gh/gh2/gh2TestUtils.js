@@ -83,8 +83,6 @@ async function refreshFlat( authData, td ) {
 // Refresh unclaimed.
 // Note: if unclaimed has not yet been linked, expect config.EMPTY
 async function refreshUnclaimed( authData, td ) {
-    forceFind = typeof forceFind === 'undefined' ? false : forceFind;
-    
     let hostProjs = [];
     await ghV2.getProjectIds( authData, td.ghFullName, hostProjs, -1, true );
 

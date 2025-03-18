@@ -410,7 +410,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	    issDat.push( issue.labelContent );
 	    lNodeId = issue.labelNodeId; 
 	}
-	else if( issue.labels.length > 0 )              { for( node of issue.labels ) { issDat.push( node.description ); } }
+	else if( issue.labels.length > 0 )              { for( const node of issue.labels ) { issDat.push( node.description ); } }
     }
 	
     // console.log( authData.who, "PNP: issDat", issDat, pd.repoName, pact, fromCard );

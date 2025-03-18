@@ -100,7 +100,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
 	    let labelDat = [];
 	    if( issue.labels.length > 0 ) {
-		for( label of issue.labels ) { labelDat.push( label.description ); }
+		for( const label of issue.labels ) { labelDat.push( label.description ); }
 	    }	    
 	    let peqVal = ghUtils.parseLabelDescr( labelDat );
 	    let postpone = ( links === -1 && peqVal > 0 );
