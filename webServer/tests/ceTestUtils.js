@@ -1,16 +1,16 @@
-const assert   = require( 'assert' );
+import assert   from 'assert';
 
-const config   = require( '../config' );
+import * as config   from '../config.js';
 
-const utils    = require( '../utils/ceUtils' );
-const awsUtils = require( '../utils/awsUtils' );
+import * as utils    from '../utils/ceUtils.js';
+import * as awsUtils from '../utils/awsUtils.js';
 
-const circBuff = require('../components/circBuff.js');
+import circBuff from '../components/circBuff.js';
 
 const MIN_DELAY       = 1800;     
 const CE_DELAY_MAX    = 8;
 var CETestDelayCounts = {};
-var CE_Notes          = new circBuff.CircularBuffer( config.NOTICE_BUFFER_SIZE );
+var CE_Notes          = new circBuff( config.NOTICE_BUFFER_SIZE );
 
 
 // Fisher-yates (knuth) https://github.com/coolaj86/knuth-shuffle
@@ -275,38 +275,38 @@ async function settleWithVal( fname, func, ...params ) {
 }
 
 
-exports.MIN_DELAY        = MIN_DELAY;
+export {MIN_DELAY};
 
 // Generic utils
-exports.shuffle          = shuffle;    
+export {shuffle};
 
 // Communicate with ceServer, aws
-exports.showCallCounts   = showCallCounts;
-exports.getLinks         = getLinks;
-exports.getLocs          = getLocs;
-exports.findNotice       = findNotice;
-exports.remLinks         = remLinks;
-exports.purgeJobs        = purgeJobs;
-exports.linkProject      = linkProject;
-exports.unlinkProject    = unlinkProject;
-exports.linkRepo         = linkRepo;
-exports.unlinkRepo       = unlinkRepo;
+export {showCallCounts};
+export {getLinks};
+export {getLocs};
+export {findNotice};
+export {remLinks};
+export {purgeJobs};
+export {linkProject};
+export {unlinkProject};
+export {linkRepo};
+export {unlinkRepo};
 
 // minor testing utils
-exports.hasRaw           = hasRaw; 
-exports.buildIssueMap    = buildIssueMap;
-exports.makeTitleReducer = makeTitleReducer;
-exports.confirmProject   = confirmProject;
-exports.confirmColumn    = confirmColumn;
+export {hasRaw};
+export {buildIssueMap};
+export {makeTitleReducer};
+export {confirmProject};
+export {confirmColumn};
 
 // Core testing 
-exports.checkEq         = checkEq;
-exports.checkNEq        = checkNEq;
-exports.checkGE         = checkGE;
-exports.checkLE         = checkLE;
-exports.checkAr         = checkAr;
-exports.testReport      = testReport;
-exports.mergeTests      = mergeTests;
-exports.settle          = settle;
-exports.settleWithVal   = settleWithVal;
+export {checkEq};
+export {checkNEq};
+export {checkGE};
+export {checkLE};
+export {checkAr};
+export {testReport};
+export {mergeTests};
+export {settle};
+export {settleWithVal};
 

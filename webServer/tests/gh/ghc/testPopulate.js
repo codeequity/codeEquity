@@ -1,18 +1,18 @@
-var assert  = require( 'assert' );
+import assert   from 'assert';
 
-var config  = require( '../../../config' );
+import * as config   from '../../../config.js';
+import * as utils    from '../../../utils/ceUtils.js';
+import * as awsUtils from '../../../utils/awsUtils.js';
 
-const utils    = require( '../../../utils/ceUtils' );
-const awsUtils = require( '../../../utils/awsUtils' );
+import * as tu        from '../../ceTestUtils.js';
+import * as ghClassic from '../../../utils/gh/ghc/ghClassicUtils.js';
+import * as ghctu     from './ghcTestUtils.js';
 
-const tu       = require( '../../ceTestUtils' );
+import testData from '../testData.js';
 
-const ghClassic = require( '../../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 
-const testData = require( '../testData' );
-const ghctu    = require( './ghcTestUtils' );
 
 const ISS_NEWBIE   = "A newborn issue";
 const ISS_SINREC   = "A singly-carded issue";
@@ -713,4 +713,4 @@ async function runTests( authData, ghLinks, td ) {
 }
 
 
-exports.runTests = runTests;
+export default runTests;

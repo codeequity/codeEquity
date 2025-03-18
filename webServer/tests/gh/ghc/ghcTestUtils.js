@@ -1,15 +1,14 @@
-var assert = require( 'assert' );
+import assert from 'assert';
 
-var config = require( '../../../config' );
+import * as config    from '../../../config.js';
+import * as utils     from '../../../utils/ceUtils.js';
+import * as awsUtils  from '../../../utils/awsUtils.js';
 
-const utils    = require( '../../../utils/ceUtils' );
-const awsUtils = require( '../../../utils/awsUtils' );
+import * as ghUtils   from '../../../utils/gh/ghUtils.js';
+import * as tu        from '../../ceTestUtils.js';
 
-const ghUtils  = require( '../../../utils/gh/ghUtils' );
+import * as ghClassic from '../../../utils/gh/ghc/ghClassicUtils.js';
 
-const tu       = require( '../../ceTestUtils');
-
-const ghClassic = require( '../../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 
@@ -1774,73 +1773,73 @@ async function checkLabel( authData, label, name, desc, testStatus ) {
 }
 
 
-exports.refresh         = refresh;
-exports.refreshRec      = refreshRec;  
-exports.refreshFlat     = refreshFlat;
-exports.refreshUnclaimed = refreshUnclaimed;
-exports.getQuad         = getQuad;
+export {refresh};
+export {refreshRec};
+export {refreshFlat};
+export {refreshUnclaimed};
+export {getQuad};
 
-exports.makeProject     = makeProject;
-exports.remProject      = remProject;
-exports.makeColumn      = makeColumn;
-exports.updateColumn    = updateColumn;
-exports.updateProject   = updateProject;
-exports.make4xCols      = make4xCols;
-exports.makeAllocCard   = makeAllocCard;
-exports.makeNewbornCard = makeNewbornCard;
-exports.makeProjectCard = makeProjectCard;
-exports.makeIssue       = makeIssue;
-exports.makeAllocIssue  = makeAllocIssue;
-exports.blastIssue      = blastIssue;
+export {makeProject};
+export {remProject};
+export {makeColumn};
+export {updateColumn};
+export {updateProject};
+export {make4xCols};
+export {makeAllocCard};
+export {makeNewbornCard};
+export {makeProjectCard};
+export {makeIssue};
+export {makeAllocIssue};
+export {blastIssue };
 
-exports.addLabel        = addLabel;
-exports.remLabel        = remLabel;
-exports.updateLabel     = updateLabel;
-exports.delLabel        = delLabel;
-exports.addAssignee     = addAssignee;
-exports.remAssignee     = remAssignee;
-exports.moveCard        = moveCard;
-exports.remCard         = remCard;
-exports.closeIssue      = closeIssue;
-exports.reopenIssue     = reopenIssue;
-exports.remIssue        = remIssue;
+export {addLabel};
+export {remLabel};
+export {updateLabel};
+export {delLabel};
+export {addAssignee};
+export {remAssignee};
+export {moveCard};
+export {remCard};
+export {closeIssue};
+export {reopenIssue};
+export {remIssue};
 
-exports.getPeqLabels    = getPeqLabels;
-exports.getIssues       = getIssues;
-exports.getProjects     = getProjects;
-exports.getColumns      = getColumns;
-exports.getCards        = getCards;
-exports.getCard         = getCard;
-exports.getComments     = getComments;
-exports.findIssue       = findIssue;
-exports.findIssueByName = findIssueByName;
-exports.findProject     = findProject;
-exports.findRepo        = findRepo;
-exports.getFlatLoc      = getFlatLoc; 
-exports.getFullLoc      = getFullLoc; 
+export {getPeqLabels};
+export {getIssues};
+export {getProjects};
+export {getColumns};
+export {getCards};
+export {getCard};
+export {getComments};
+export {findIssue};
+export {findIssueByName};
+export {findProject};
+export {findRepo};
+export {getFlatLoc};
+export {getFullLoc};
 
-exports.findCardForIssue = findCardForIssue;
-// exports.ingestPActs      = ingestPActs;      
+export {findCardForIssue};
+// export {ingestPActs};
 
-exports.checkNewlyClosedIssue   = checkNewlyClosedIssue;
-exports.checkNewlyOpenedIssue   = checkNewlyOpenedIssue;
-exports.checkNewlySituatedIssue = checkNewlySituatedIssue;
-exports.checkNewlyAccruedIssue  = checkNewlyAccruedIssue;
-exports.checkAlloc              = checkAlloc;                 // allocated issue
-exports.checkSituatedIssue      = checkSituatedIssue;         // has active peq
-exports.checkDemotedIssue       = checkDemotedIssue;          // has inactive peq
-exports.checkUntrackedIssue     = checkUntrackedIssue;        // partial link table
-exports.checkNewbornCard        = checkNewbornCard;           // no issue
-exports.checkNewbornIssue       = checkNewbornIssue;          // no card
-exports.checkSplit              = checkSplit;                 // result of incremental resolve
-exports.checkAllocSplit         = checkAllocSplit;            // result of incremental resolve
-exports.checkNoSplit            = checkNoSplit;               // no corresponding split issue
-exports.checkUnclaimedIssue     = checkUnclaimedIssue;        // has active peq, unc:unc
-exports.checkUnclaimedAccr      = checkUnclaimedAccr;
-exports.checkNoCard             = checkNoCard;
-exports.checkPact               = checkPact;
-exports.checkNoIssue            = checkNoIssue;
-exports.checkAssignees          = checkAssignees;
-exports.checkNoAssignees        = checkNoAssignees;
-exports.checkProgAssignees      = checkProgAssignees;
-exports.checkLabel              = checkLabel;
+export {checkNewlyClosedIssue};
+export {checkNewlyOpenedIssue};
+export {checkNewlySituatedIssue};
+export {checkNewlyAccruedIssue};
+export {checkAlloc};
+export {checkSituatedIssue};
+export {checkDemotedIssue};
+export {checkUntrackedIssue};
+export {checkNewbornCard};
+export {checkNewbornIssue};
+export {checkSplit};
+export {checkAllocSplit};
+export {checkNoSplit};
+export {checkUnclaimedIssue};     // has active peq, unc:unc
+export {checkUnclaimedAccr};
+export {checkNoCard};
+export {checkPact};
+export {checkNoIssue};
+export {checkAssignees};
+export {checkNoAssignees};
+export {checkProgAssignees};
+export {checkLabel};

@@ -1,9 +1,10 @@
-var fs = require( 'fs' ), json;
 
-const utils = require( '../utils/ceUtils' );
-const tu    = require( './ceTestUtils' );
+import * as utils from '../utils/ceUtils.js';
+import * as tu    from './ceTestUtils.js';
 
-const execSync = require('child_process').execSync;
+//  var fs = require( 'fs' ), json;
+import fs from 'fs';
+import {execSync} from 'child_process';
 
 
 // time stamp is on file.  just want limited queue.  Easiest is by hour.
@@ -96,4 +97,4 @@ async function runTests( flutterTest ) {
 // Switch to runTests rather than exports if npm run testSave
 // runTests();
 
-exports.runTests = runTests;
+export default runTests;

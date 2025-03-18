@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 
-var ceServer = require('../ceServer');
-var debug    = require('debug')('ceServer:server');
-var http     = require('http');
+import ceServer from '../ceServer.js';
+
+// var debug    = import('debug')('ceServer:server');
+import Debug from "debug";
+const debug = Debug("ceServer:server");
+
+import http from 'http';
 
 
 function normalizePort(val) {

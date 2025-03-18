@@ -1,14 +1,12 @@
-var assert = require( 'assert' );
+import assert   from 'assert';
 
-var config = require( '../../../config' );
+import * as config   from '../../../config.js';
+import * as utils    from '../../../utils/ceUtils.js';
+import * as awsUtils from '../../../utils/awsUtils.js';
 
-const utils    = require( '../../../utils/ceUtils' );
-const awsUtils = require( '../../../utils/awsUtils' );
-const ghUtils  = require( '../../../utils/gh/ghUtils' );
-
-const tu       = require( '../../ceTestUtils' );
-
-const gh2tu    = require( './gh2TestUtils' );
+import * as tu       from '../../ceTestUtils.js';
+import * as ghUtils  from '../../../utils/gh/ghUtils.js';
+import * as gh2tu    from './gh2TestUtils.js';
 
 // XXXXXXXXXXXXXXXXXXXXXXXXX
 //     2/2023
@@ -113,4 +111,4 @@ async function runTests( authData, testLinks, td ) {
 
 //runTests();
 
-exports.runTests = runTests;
+export default runTests;

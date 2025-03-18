@@ -1,24 +1,24 @@
-const express = require( 'express' );
-const assert  = require( 'assert' );
+import express from  'express';
+import assert  from  'assert' ;
 
-const awsAuth  = require( '../auth/aws/awsAuth' );
-const utils    = require( '../utils/ceUtils' );
-const awsUtils = require( '../utils/awsUtils' );
-const links    = require( '../utils/linkage' );
-const config   = require( '../config' );
+import * as awsAuth from  '../auth/aws/awsAuth.js' ;
+import * as utils   from  '../utils/ceUtils.js' ;
+import * as awsUtils from  '../utils/awsUtils.js' ;
+import links    from  '../utils/linkage.js' ;
+import * as config from  '../config.js' ;
 
-const ceAuth   = require( '../auth/ceAuth' );
+import * as ceAuth  from  '../auth/ceAuth.js' ;
 
-const fifoQ    = require( '../components/queue' );
-const hist     = require( '../components/histogram' );
-const circBuff = require( '../components/circBuff' );
+import fifoQ    from  '../components/queue.js' ;
+import hist     from  '../components/histogram.js' ;
+import circBuff from  '../components/circBuff.js' ;
 
-const testing  = require( './gh/githubTestHandler' );
-const ghr      = require( './gh/githubRouter' );
+import testing  from  './gh/githubTestHandler.js' ;
+import * as ghr from  './gh/githubRouter.js' ;
 
-const authDataC  = require( '../auth/authData' );
-const jobData    = require( './jobData' );
-const ceProjData = require( './ceProjects' );
+import authDataC  from  '../auth/authData.js' ;
+import jobData    from  './jobData.js' ;
+import ceProjData from  './ceProjects.js' ;
 
 // INIT  This happens during server startup.
 //       Any major interface will get initialized here, once.
@@ -27,7 +27,7 @@ console.log( "*** INITIALIZING CEROUTER ***" );
 
 // CE Job Queue  just fifoQ
 var ceJobs = {};
-ceJobs.jobs = new fifoQ.Queue();
+ceJobs.jobs = new fifoQ();
 ceJobs.count = 0;
 ceJobs.delay = 0;
 ceJobs.maxDepth = 0;
@@ -37,21 +37,21 @@ ceJobs.lastCEP = config.EMPTY;
 var notificationCount = 0;
 
 // CE arrival hist
-var ceArrivals = new hist.Histogram( 1000, [1, 3, 5, 8, 12, 15, 20, 30] );
+var ceArrivals = new hist( 1000, [1, 3, 5, 8, 12, 15, 20, 30] );
 
 // CE Notification buffer, TESTING ONLY
-var ceNotification = new circBuff.CircularBuffer( config.NOTICE_BUFFER_SIZE );
+var ceNotification = new circBuff( config.NOTICE_BUFFER_SIZE );
 
-var authData = new authDataC.AuthData();
+var authData = new authDataC();
 var router   = express.Router();
 
 console.log( "*** CEROUTER init, HOST init ***" );
 
 // CEProjects data.  Few link/unlink.  Many notices in the middle.
-var ceProjects = new ceProjData.CEProjects();
+var ceProjects = new ceProjData();
 
 // Host Linkage table
-var hostLinks  = new links.Linkage();
+var hostLinks  = new links();
 
 init();
 
@@ -203,7 +203,7 @@ async function getNextJob( authData, res ) {
 	stampJob( jobData, jobData.delayCount );  // update to track cost
 	
 	let hostHandler = null;
-	if( jobData.host == config.HOST_GH ) { hostHandler = ghr.ghSwitcher; }
+	if( jobData.host == config.HOST_GH ) { hostHandler = ghr.switcher; }
 	else {
 	    console.log( "Warning.  Incoming notification is not from a known platform", jobData.reqBody );
 	    return res.end();
@@ -253,9 +253,9 @@ router.post('/:location?', async function (req, res) {
     // console.log( "BODY", req.body, "\nHEADERS", req.headers );
 
     // invisible, mostly
-    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( hostLinks, ceJobs, ceProjects, ceNotification, req.body, res ); }
+    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing( hostLinks, ceJobs, ceProjects, ceNotification, req.body, res ); }
 
-    let jd     = new jobData.JobData();
+    let jd     = new jobData();
     jd.reqBody = req.body;
 
     let hostHandler    = null;
@@ -265,8 +265,8 @@ router.post('/:location?', async function (req, res) {
     if( req.headers.hasOwnProperty( 'x-github-event' ) ) {
 	jd.host   = config.HOST_GH;
 	
-	hostHandler    = ghr.ghSwitcher;
-	hostGetJobData = ghr.ghGetJobSummaryData;
+	hostHandler    = ghr.switcher;
+	hostGetJobData = ghr.getJobSummaryData;
     }
     else {
 	console.log( "Warning.  Incoming notification is not from a known platform", req.headers );
@@ -324,12 +324,10 @@ router.post('/:location?', async function (req, res) {
 
 
 
+export {getNextJob};
 
-module.exports     = router;
+export {purgeQueue};
+export {demoteJob};
 
-exports.getNextJob = getNextJob; 
-
-exports.purgeQueue = purgeQueue;
-exports.demoteJob  = demoteJob;
-
-exports.setLastCEP = setLastCEP;
+export {setLastCEP};
+export {router};

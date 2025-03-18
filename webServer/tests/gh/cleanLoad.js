@@ -1,18 +1,21 @@
-var assert = require( 'assert' );
+import assert from 'assert';
 
-const awsAuth        = require( '../../auth/aws/awsAuth' );
-const auth           = require( '../../auth/gh/ghAuth' );
-const config         = require( '../../config' );
+import * as awsAuth   from '../../auth/aws/awsAuth.js';
+import * as auth      from '../../auth/gh/ghAuth.js';
+import * as config    from '../../config.js';
 
-const utils    = require( '../../utils/ceUtils' );
-const awsUtils = require( '../../utils/awsUtils' );
-const links    = require( '../../utils/linkage.js' );
+import * as utils     from '../../utils/ceUtils.js';
+import * as awsUtils  from '../../utils/awsUtils.js';
+import * as authDataC from '../../auth/authData.js';
 
-const testData  = require( './testData' );
-const authDataC = require( '../../auth/authData' );
+import links     from '../../utils/linkage.js.js';
+import testData  from './testData.js';
 
-var   fs       = require('fs'), json;
-const execSync = require('child_process').execSync;
+// var   fs       from'fs'), json;
+// const execSync = require('child_process').execSync;
+
+import fs from 'fs';
+import {execSync} from 'child_process';
 
 const baselineLoc = "./tests/flutterTestData/";
 

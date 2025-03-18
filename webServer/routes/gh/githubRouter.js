@@ -1,26 +1,25 @@
-const rootLoc = "../../";
+import assert  from 'assert';
 
-const assert  = require('assert');
+import * as ceAuth  from '../../auth/ceAuth.js';
 
-const config  = require( rootLoc + 'config');
-const ceAuth  = require( rootLoc + 'auth/ceAuth' );
+import * as config  from '../../config.js';
+import * as utils   from '../../utils/ceUtils.js';
+import * as ghUtils from '../../utils/gh/ghUtils.js';
 
-const hist    = require( rootLoc + 'components/histogram' );
+import links         from '../../utils/linkage.js';
+import * as ceRouter from '../../routes/ceRouter.js';
 
-const utils   = require( rootLoc + 'utils/ceUtils' );
-const links   = require( rootLoc + 'utils/linkage' );
-const ghUtils = require( rootLoc + 'utils/gh/ghUtils' );
+import hist          from '../../components/histogram.js';
 
-const ceRouter = require( rootLoc + 'routes/ceRouter' );
 
 // PMS_GHC
 
 // PMS_GH2
-const gh2Data    = require( rootLoc + 'routes/gh/gh2/gh2Data' );
-const gh2Item    = require( rootLoc + 'routes/gh/gh2/itemHandler' );
-const gh2Issue   = require( rootLoc + 'routes/gh/gh2/issueHandler' );
-const gh2Label   = require( rootLoc + 'routes/gh/gh2/labelHandler' );
-const gh2Project = require( rootLoc + 'routes/gh/gh2/projectHandler' );
+import gh2Data         from '../../routes/gh/gh2/gh2Data.js';
+import * as gh2Item    from '../../routes/gh/gh2/itemHandler.js';
+import * as gh2Issue   from '../../routes/gh/gh2/issueHandler.js';
+import * as gh2Label   from '../../routes/gh/gh2/labelHandler.js';
+import * as gh2Project from '../../routes/gh/gh2/projectHandler.js';
 
 // var noticeCount = 0;
 
@@ -29,8 +28,8 @@ const gh2Project = require( rootLoc + 'routes/gh/gh2/projectHandler' );
 // owner needed for personal access token
 
 // GitHub cost hist, latency hist
-var ghCost    = new hist.Histogram( 1, [300, 600, 900, 1500, 3000, 5000, 8000, 30000] );
-var ghLatency = new hist.Histogram( 1, [300, 600, 900, 1500, 3000, 5000, 8000, 30000] );
+var ghCost    = new hist( 1, [300, 600, 900, 1500, 3000, 5000, 8000, 30000] );
+var ghLatency = new hist( 1, [300, 600, 900, 1500, 3000, 5000, 8000, 30000] );
 
 
 // Github Demote queue
@@ -105,7 +104,7 @@ function getJobSummaryGH2( jobData, locator ) {
 
 
 // At this point, a pv2 notice is fast and clear cut, but a content notice will take time to determine.
-function getJobSummary( jobData, headers, locator ) {
+function getJobSummaryData( jobData, headers, locator ) {
     let retVal = -1;
     
     jobData.action = jobData.reqBody.action;
@@ -175,7 +174,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res ) {
 	// Can not set ceProjectId if this is a project_v2 notice - they live cross-repo.
 	// NOTE: pd.actorId starts as a promise - no real way to use it before resolves unless something is really broken,
 	//       and that something will cause error in server first.
-	let pd = new gh2Data.GH2Data( authData, jd, ceProjects );
+	let pd = new gh2Data( authData, jd, ceProjects );
 	if( pd.ceProjectId == -1 ) { await pd.setCEProjectId( authData, jd, ceProjects ); }
 	
 	ceRouter.setLastCEP( pd.ceProjectId );
@@ -269,6 +268,7 @@ async function reportCosts( ) {
 }
 
 
-exports.ghSwitcher          = switcher;
-exports.ghGetJobSummaryData = getJobSummary;
-exports.reportCosts         = reportCosts;
+export {switcher};
+export {getJobSummaryData};
+export {reportCosts};
+

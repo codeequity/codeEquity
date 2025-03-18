@@ -1,10 +1,8 @@
-const rootLoc = "../../";
+import assert from 'assert';
 
-const assert   = require( 'assert' );
-const ceRouter = require( rootLoc + 'routes/ceRouter' );
-
-const awsUtils  = require( rootLoc + 'utils/awsUtils' );
-const ghUtils   = require( rootLoc + 'utils/gh/ghUtils' );
+import * as ceRouter from '../../routes/ceRouter.js';
+import * as awsUtils from '../../utils/awsUtils.js';
+import * as ghUtils  from '../../utils/gh/ghUtils.js';
 
 async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, res ) {
 
@@ -53,4 +51,5 @@ async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, re
 	.json( retVal );
 }
 
-exports.handler = handler;
+// exports.handler = handler;
+export default handler;

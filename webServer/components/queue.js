@@ -16,4 +16,5 @@ class Queue {
     get first()    { return this.elements.length > 0 ? this.elements[0] : -1; }
 }
 
-exports.Queue = Queue;
+// exports.Queue = Queue;
+export default Queue;

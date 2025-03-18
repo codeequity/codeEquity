@@ -1,19 +1,17 @@
-var assert = require( 'assert' );
+import assert   from 'assert';
 
-var config = require( '../../../config' );
+import * as config   from '../../../config.js';
+import * as utils    from '../../../utils/ceUtils.js';
+import * as awsUtils from '../../../utils/awsUtils.js';
 
-const utils    = require( '../../../utils/ceUtils' );
-const awsUtils = require( '../../../utils/awsUtils' );
+import * as tu        from '../../ceTestUtils.js';
+import * as ghUtils   from '../../../utils/gh/ghUtils.js';
+import * as ghClassic from '../../../utils/gh/ghc/ghClassicUtils.js';
 
-const ghUtils  = require( '../../../utils/gh/ghUtils' );
+import * as ghctu     from './ghcTestUtils.js';
 
-const tu       = require( '../../ceTestUtils' );
-
-const ghClassic = require( '../../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
-
-const ghctu    = require( './ghcTestUtils' );
 
 
 // Adding a small sleep in each ghctu.make* - GH seems to get confused if requests come in too fast
@@ -313,4 +311,4 @@ async function runTests( authData, ghLinks, td ) {
 
 //runTests();
 
-exports.runTests = runTests;
+export default runTests;

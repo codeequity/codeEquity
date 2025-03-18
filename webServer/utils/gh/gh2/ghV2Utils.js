@@ -1,9 +1,9 @@
-var assert = require( 'assert' );
+import assert from 'assert';
 
-const config = require( '../../../config' );
+import * as config from  '../../../config.js';
 
-const utils     = require( '../../ceUtils' );
-const ghUtils   = require( '../ghUtils' );
+import * as utils   from '../../ceUtils.js' ;
+import * as ghUtils from '../ghUtils.js' ;
 
 // https://docs.github.com/en/free-pro-team@latest/graphql/reference/objects
 
@@ -1546,6 +1546,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
               projectsV2(first:99, query: $pName ) {edges{ node{ id title }}}}
     }}`;
     let variables = {"rid": rNodeId, "pName": pNameQuery };
+    // let variables = {"rid": rNodeId, "pName": projName };
     query = JSON.stringify({ query, variables });
 
     try {
@@ -1571,6 +1572,8 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 //     workaround is to create project by hand in GH with all required columns.  then link and unlink from repo to replace create and delete.
 async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, repoId, repoName, name ) {
 
+    console.log( "XXX Trying to link", ceProjId, repoId, repoName, name, orgLogin, ownerLogin );
+    
     // Already linked?  Using links here may be overly conservative
     if( ghLinks !== -1 ) {
 	let links  = await ghLinks.getLinks( authData, { ceProjId: ceProjId, repoId: repoId, projName: name } );    
@@ -1579,11 +1582,13 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
 	    return links[0].hostProjectId;
 	}
     }
-    
+
+    console.log( "XXX FPN", orgLogin, ownerLogin, name );
     // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
     assert( pid !== -1 );
 
+    console.log( "XXX FPR", pid, repoId, name );
     let rp = await findProjectByRepo( authData, repoId, name );
     if( rp === -1 ) {
 	console.log( authData.who, "GH-linkProject", name, repoId );
@@ -1823,67 +1828,67 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 }
 
 
-exports.getHostLinkLoc     = getHostLinkLoc;
+export {getHostLinkLoc};
 
-exports.createIssue        = createIssue;
-exports.getIssue           = getIssue;
-exports.getIssues          = getIssues;
-exports.getFullIssue       = getFullIssue;
-exports.updateIssue        = updateIssue;
-exports.updateTitle        = updateTitle;
-exports.addComment         = addComment;
-exports.rebuildIssue       = rebuildIssue;
-exports.addAssignee        = addAssignee;
-exports.remAssignee        = remAssignee;
-exports.getAssignees       = getAssignees;
-exports.transferIssue      = transferIssue;
+export {createIssue};
+export {getIssue};
+export {getIssues};
+export {getFullIssue};
+export {updateIssue};
+export {updateTitle};
+export {addComment};
+export {rebuildIssue};
+export {addAssignee};
+export {remAssignee};
+export {getAssignees};
+export {transferIssue};
 
-exports.makeHumanLabel     = makeHumanLabel;
-exports.createLabel        = createLabel;
-exports.createPeqLabel     = createPeqLabel;
-exports.getLabel           = getLabel;
-exports.getLabels          = getLabels;
-exports.findOrCreateLabel  = findOrCreateLabel;
-exports.updateLabel        = updateLabel;
-exports.removeLabel        = removeLabel;
-exports.removePeqLabel     = removePeqLabel;
-exports.addLabel           = addLabel;
-exports.rebuildLabel       = rebuildLabel;
+export {makeHumanLabel};
+export {createLabel};
+export {createPeqLabel};
+export {getLabel};
+export {getLabels};
+export {findOrCreateLabel};
+export {updateLabel};
+export {removeLabel};
+export {removePeqLabel};
+export {addLabel};
+export {rebuildLabel};
 
-exports.getProjectName      = getProjectName;
-exports.updateProject       = updateProject;
-exports.linkProject         = linkProject;
-exports.findProjectByName   = findProjectByName;
-exports.findProjectByRepo   = findProjectByRepo;
+export {getProjectName};
+export {updateProject};
+export {linkProject};
+export {findProjectByName};
+export {findProjectByRepo};
 
-exports.getColumnName      = getColumnName;
+export {getColumnName};
 
-exports.getCard            = getCard;
-exports.getCardFromIssue   = getCardFromIssue;
-exports.moveCard           = moveCard;
-exports.moveToStateColumn  = moveToStateColumn;
-exports.createProjectCard  = createProjectCard;
-exports.cardIssue          = cardIssue;
-exports.removeCard         = removeCard; 
+export {getCard};
+export {getCardFromIssue};
+export {moveCard};
+export {moveToStateColumn};
+export {createProjectCard};
+export {cardIssue};
+export {removeCard};
 
-exports.getLabelIssues     = getLabelIssues;
+export {getLabelIssues};
 
-exports.getProjIdFromPeq   = getProjIdFromPeq;
-exports.getProjectIds      = getProjectIds;
+export {getProjIdFromPeq};
+export {getProjectIds};
 
-exports.cleanUnclaimed     = cleanUnclaimed;
+export {cleanUnclaimed};
 
-exports.getCEProjectLayout = getCEProjectLayout;
+export {getCEProjectLayout};
 
-// exports.createProject       = createProject;          // XXX NYI
-exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI
-exports.createUnClaimedColumn  = createUnClaimedColumn;  // XXX NYI
-exports.createUnClaimedCard    = createUnClaimedCard;    
+// export {createProject};   // XXX NYI
+export {createUnClaimedProject}; // XXX NYI
+export {createUnClaimedColumn};  // XXX NYI
+export {createUnClaimedCard};    
 
-exports.cloneFromTemplate      = cloneFromTemplate;      // XXX speculative.  useful?
-exports.createCustomField      = createCustomField;      // XXX speculative.  useful?
-exports.createColumn           = createColumn;           
-exports.deleteColumn           = deleteColumn;           // XXX NYI
-exports.clearColumn            = clearColumn;            // XXX NYI
+export {cloneFromTemplate};      // XXX speculative.  useful?
+export {createCustomField};      // XXX speculative.  useful?
+export {createColumn};           
+export {deleteColumn};           // XXX NYI
+export {clearColumn};            // XXX NYI
 
-exports.checkReserveSafe       = checkReserveSafe;
+export {checkReserveSafe};

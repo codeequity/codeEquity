@@ -1,14 +1,12 @@
-const assert   = require( 'assert' );
+import assert   from 'assert';
 
-const config   = require( '../../../config' );
+import * as config   from '../../../config.js';
+import * as utils    from '../../../utils/ceUtils.js';
+import * as awsUtils from '../../../utils/awsUtils.js';
 
-const utils    = require( '../../../utils/ceUtils' );
-const awsUtils = require( '../../../utils/awsUtils' );
-const ghUtils  = require( '../../../utils/gh/ghUtils' );
-
-const tu       = require('../../ceTestUtils');
-
-const gh2tu    = require( './gh2TestUtils' );
+import * as tu       from '../../ceTestUtils.js';
+import * as ghUtils  from '../../../utils/gh/ghUtils.js';
+import * as gh2tu    from './gh2TestUtils.js';
 
 
 async function remDraftIssues( authData, testLinks, pd ) {
@@ -276,4 +274,4 @@ async function runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM
 
 
 // runTests();
-exports.runTests = runTests;
+export default runTests;

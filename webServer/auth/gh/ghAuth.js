@@ -1,19 +1,23 @@
-const { App }     = require("@octokit/app");
-const { Octokit } = require("@octokit/rest");
-const { request } = require("@octokit/request");
-const { retry }   = require("@octokit/plugin-retry");
+//const { App }     = require("@octokit/app");
+import { App }     from "@octokit/app";
+import { Octokit } from "@octokit/rest";
+import { request } from "@octokit/request";
+import { retry }   from "@octokit/plugin-retry";
+
+
+import fetch  from "node-fetch";
+import dotenv from "dotenv";
+import assert from 'assert';
+
+// var   fs     = require('fs'), json;
+import fs from 'fs';
+
+import * as ceAuth   from '../ceAuth.js';
+import * as config   from '../../config.js';
+import * as awsUtils from '../../utils/awsUtils.js';
 
 // Hmm.. this is looking very slow.  too bad.
 const OctokitRetry = Octokit.plugin(retry);
-
-const fetch  = require("node-fetch");
-const dotenv = require("dotenv");
-var   fs     = require('fs'), json;
-const assert = require('assert');
-
-const ceAuth   = require( '../ceAuth' );
-const config   = require( '../../config' );
-const awsUtils = require( '../../utils/awsUtils' );
 
 // Auths
 var octokitClients = {};
@@ -205,7 +209,8 @@ async function getAuths( authData, pms, org, actor ) {
 }
 
 
-exports.getInstallationAccessToken = getInstallationAccessToken;
-exports.getInstallationClient      = getInstallationClient;
-exports.getPAT                     = getPAT;
-exports.getAuths                   = getAuths;
+export {getInstallationAccessToken};
+export {getInstallationClient};
+export {getPAT};
+export {getAuths};
+

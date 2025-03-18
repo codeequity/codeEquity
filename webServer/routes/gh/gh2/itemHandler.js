@@ -1,14 +1,12 @@
-const rootLoc = "../../../";
+import assert    from 'assert';
 
-const assert    = require( 'assert' );
-const config    = require( rootLoc + 'config' );
+import * as config    from '../../../config.js';
+import * as utils     from '../../../utils/ceUtils.js';
+import * as ghUtils   from '../../../utils/gh/ghUtils.js';
 
-const utils     = require( rootLoc + 'utils/ceUtils' );
-const ghUtils   = require( rootLoc + 'utils/gh/ghUtils' );
+import * as ghV2      from '../../../utils/gh/gh2/ghV2Utils.js';
 
-const ghV2      = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
-
-const cardHandler = require( './cardHandler' );
+import * as cardHandler from './cardHandler.js';
 
 
 // Guarantee: For every repo that is part of a ceProject:
@@ -136,4 +134,4 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
     return;
 }
 
-exports.handler    = handler;
+export {handler};

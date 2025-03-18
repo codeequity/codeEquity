@@ -1,14 +1,15 @@
-const assert = require( 'assert' );
-const config = require( '../../../config' );
+import assert   from 'assert';
 
-const utils    = require( '../../../utils/ceUtils' );
-const awsUtils = require( '../../../utils/awsUtils' );
-const ghUtils  = require( '../../../utils/gh/ghUtils' );
+import * as config   from '../../../config.js';
+import * as utils    from '../../../utils/ceUtils.js';
+import * as awsUtils from '../../../utils/awsUtils.js';
 
-const tu       = require( '../../ceTestUtils' );
+import * as tu       from '../../ceTestUtils.js';
+import * as ghUtils  from '../../../utils/gh/ghUtils.js';
+import * as gh2tu    from './gh2TestUtils.js';
 
-const testData = require( '../testData' );
-const gh2tu    = require( './gh2TestUtils' );
+import testData from '../testData.js';
+
 
 const ISS_FLOW = "Snow melt";
 const ISS_RACE = "Ice skating";
@@ -495,4 +496,4 @@ async function runTests( authData, testLinks, td ) {
 }
 
 
-exports.runTests = runTests;
+export default runTests;

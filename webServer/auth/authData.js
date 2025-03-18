@@ -22,4 +22,4 @@ class AuthData {
     }
 }
 
-exports.AuthData = AuthData;
+export default AuthData;

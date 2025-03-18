@@ -1,15 +1,13 @@
-const rootLoc = "../../../";
+import assert    from 'assert' ;
 
-const assert    = require( 'assert' );
+import * as config    from "../../../config.js" ;
+import * as ceAuth    from "../../../auth/ceAuth.js" ;
 
-const config    = require( rootLoc + 'config' );
-const ceAuth    = require( rootLoc + 'auth/ceAuth' );
+import * as utils     from "../../../utils/ceUtils.js" ;
+import * as awsUtils  from "../../../utils/awsUtils.js" ;
 
-const utils     = require( rootLoc + 'utils/ceUtils' );
-const awsUtils  = require( rootLoc + 'utils/awsUtils' );
-
-const ghV2        = require( './ghV2Utils' );
-const ingestUtils = require( './ingestUtils' );
+import * as ghV2      from './ghV2Utils.js' ;
+import * as ingestUtils from './ingestUtils.js' ;
 
 
 // If project has peq in CEP, then get all links, locs, then filter links out for those that are from repos associated with cep.
@@ -247,7 +245,7 @@ async function linkRepo( authData, ghLinks, ceProjects, ceProjId, repoId, repoNa
     return await awsUtils.updateCEPHostParts( authData, cep );
 }
 
-exports.buildHostLinks  = buildHostLinks; 
-exports.linkProject     = linkProject;
-exports.unlinkProject   = unlinkProject;
-exports.linkRepo        = linkRepo;
+export {buildHostLinks};
+export {linkProject};
+export {unlinkProject};
+export {linkRepo};

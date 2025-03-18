@@ -1,5 +1,5 @@
-const utils   = require( '../utils/ceUtils' );
-var config    = require('../config');
+import * as utils   from '../utils/ceUtils.js';
+import * as config  from '../config.js';
 
 class JobData {
     constructor( ) {
@@ -29,4 +29,5 @@ class JobData {
     }
 }
 
-exports.JobData = JobData;
+// exports.JobData = JobData;
+export default JobData;

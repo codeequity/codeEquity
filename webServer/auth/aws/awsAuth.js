@@ -1,13 +1,13 @@
-var assert = require( 'assert' );
+import assert from 'assert' ;
 
-var awsUtils = require( '../../utils/awsUtils' );
+import * as awsUtils from '../../utils/awsUtils.js';
 
 // https://medium.com/@prasadjay/amazon-cognito-user-pools-in-nodejs-as-fast-as-possible-22d586c5c8ec
 
-const AmazonCognitoIdentity = require('amazon-cognito-identity-js');
+import AmazonCognitoIdentity from 'amazon-cognito-identity-js';
 const CognitoUserPool = AmazonCognitoIdentity.CognitoUserPool;
 
-global.fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 
 
@@ -52,5 +52,4 @@ async function getCogIDToken( ) {
 }
 
 
-
-exports.getCogIDToken = getCogIDToken;
+export {getCogIDToken};

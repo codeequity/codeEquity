@@ -1,4 +1,4 @@
-var config    = require('../../config');
+import * as config from '../../config.js';
 
 class TestData {
     constructor( ) {
@@ -181,4 +181,4 @@ class TestData {
     }
 }
 
-exports.TestData = TestData;
+export default TestData;
