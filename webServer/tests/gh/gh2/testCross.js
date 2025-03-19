@@ -173,7 +173,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
 
 // NOTE, this is sensitive.  Add more interleave cards in unclaimed before testCross runs, and this will fail.
 async function getCardsHelp( authData, rid, pid, cid, desiredCount ) {
-    allCards = await gh2tu.getCards( authData, rid, pid, cid );
+    let allCards = await gh2tu.getCards( authData, rid, pid, cid );
     let ret = false;
     let interleaveCards = allCards.filter( card => card.title.includes( "Interleave" ) && card.repoId == rid );
     if( interleaveCards.length == desiredCount ) { ret = interleaveCards; }

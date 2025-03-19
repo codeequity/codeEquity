@@ -6,9 +6,9 @@ import * as config    from '../../config.js';
 
 import * as utils     from '../../utils/ceUtils.js';
 import * as awsUtils  from '../../utils/awsUtils.js';
-import * as authDataC from '../../auth/authData.js';
+import authDataC      from '../../auth/authData.js';
 
-import links     from '../../utils/linkage.js.js';
+import links     from '../../utils/linkage.js';
 import testData  from './testData.js';
 
 // var   fs       from'fs'), json;
@@ -212,7 +212,7 @@ async function loadLinkage( authData, td ) {
 	
 	if( ceProjId == td.ceProjectId ) {
 	    let locs    = locSummary.Locations.L;
-	    let ghLinks = new links.Linkage();
+	    let ghLinks = new links();
 	    for( let i = 0; i < locs.length; i++  ) {
 		let loc = locs[i].M;
 
@@ -289,7 +289,7 @@ async function runTests() {
     console.log( "Clean and recreate ceFlutter testing environment in AWS" );
 
     // TEST_REPO auth
-    let td          = new testData.TestData();
+    let td          = new testData();
 
     td.ghOwner      = config.TEST_OWNER;
     td.actor        = config.TEST_ACTOR;
@@ -297,7 +297,7 @@ async function runTests() {
     td.ghRepo       = config.FLUTTER_TEST_REPO;
     td.ghFullName   = td.ghOwner + "/" + td.ghRepo;
 
-    let authData     = new authDataC.AuthData();
+    let authData     = new authDataC();
     authData.who     = "<TEST: Main> ";
     // authData.ic      = await auth.getInstallationClient( td.actor, td.ghRepo, td.ghOwner );
     authData.api     = awsUtils.getAPIPath() + "/find";

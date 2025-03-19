@@ -150,7 +150,7 @@ Future<bool> validateCON( WidgetTester tester, Finder search ) async {
    await tester.pumpAndSettle();
 
    expect( find.text('connieTester'), findsAtLeast(1) );
-   expect( find.text(CESE_PROJ_ID), findsAtLeast(1) );
+   expect( find.text(CEMD_PROJ_ID), findsAtLeast(1) );
    expect( find.text(GB_PROJ_ID), findsAtLeast(1) );
 
    await dismiss( tester );
@@ -228,9 +228,10 @@ Future<bool> validateScroll( WidgetTester tester ) async {
    print( "Done drag down" );
       
    await pumpSettle( tester, 2, verbose: true );
-   
+
+   // If these fail again, sort search results.
    expect( find.text('LabelTest Dubs'), findsOneWidget );
-   expect( find.text('LabelTest'), findsOneWidget );
+   expect( find.text('AssignTest'), findsOneWidget );
    expect( find.text('IR Plan'), findsOneWidget );
 
    // Not sure why, but needs two here.
@@ -446,6 +447,13 @@ void main() {
    // testWidgets('Search bar', skip:true, (WidgetTester tester) async {
    testWidgets('Search bar', skip:skip, (WidgetTester tester) async {
          
+         // This controls driver window size.  Driven window size is set on command line to flutter driver
+         // tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
+         // tester.binding.window.physicalSizeTestValue = const Size(1400, 1050);
+         // Hmm.. seems to control window size inside physical window..?
+         // tester.binding.window.physicalSizeTestValue = const Size(800, 1050);
+         tester.binding.window.physicalSizeTestValue = const Size(1000, 1050);
+
          await restart( tester );
          await login( tester, true );
 

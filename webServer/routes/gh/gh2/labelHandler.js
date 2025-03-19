@@ -115,7 +115,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			// let newPD = Object.assign( pd );               // just provides a reference
 			// let newPD = { ...pd };                         // no functions, no reqBody
 			// let newPD = JSON.parse( JSON.stringify( pd )); // no functions
-			let newPD = gh2Data.GH2Data.from( pd );           // sheesh
+			let newPD = gh2Data.from( pd );                   // sheesh
 
 			// Bring more over
 			newPD.ceProjectId   = pd.ceProjectId;
