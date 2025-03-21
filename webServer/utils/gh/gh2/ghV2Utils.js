@@ -1588,20 +1588,17 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
     assert( pid !== -1 );
 
-    // XXX XXX XXX
-    // console.log( "XXX FPR", pid, repoId, name );
+
+    // Could see if linked or not, but then average cost is higher (check & link + link vs always link).
     // let rp = await findProjectByRepo( authData, repoId, name );
-    let rp = -1;
-    if( rp === -1 ) {
-	console.log( authData.who, "GH-linkProject", name, repoId );
-	
-	let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
-	let variables = {"pid": pid, "rid": repoId };
-	query         = JSON.stringify({ query, variables });
-	
-	try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "linkProject" ) }
-	catch( e ) { return await ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, repoId, repoName, name ); }
-    }
+    console.log( authData.who, "GH-linkProject", name, repoId );
+    
+    let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
+    let variables = {"pid": pid, "rid": repoId };
+    query         = JSON.stringify({ query, variables });
+    
+    try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "linkProject" ) }
+    catch( e ) { return await ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, repoId, repoName, name ); }
     
     return pid;
 }

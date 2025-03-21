@@ -86,18 +86,17 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
      await pumpSettle( tester, 2, verbose: true );
    */
    
+   expect( find.text('builderCE'), findsOneWidget );
    expect( find.text('ceServer'), findsOneWidget );
    expect( find.text('connieTester'), findsOneWidget );
-   expect( find.text('builderCE'), findsOneWidget );
    expect( find.text('rmusick2000'), findsOneWidget );
-   expect( find.text(CESE_PROJ_ID), findsNWidgets(1) );
+   expect( find.text(BS_PROJ_ID), findsOneWidget );
    expect( find.text(CEAL_PROJ_ID), findsNWidgets(1) );
-   expect( find.text(GB_PROJ_ID), findsOneWidget );
-   expect( find.text(CE_PROJ_ID), findsNWidgets(1) );
    expect( find.text(CEMD_PROJ_ID), findsNWidgets(1) );
+   expect( find.text(CESE_PROJ_ID), findsNWidgets(1) );
    // Don't get here with detail
-   // expect( find.text('BookShare_kd8fb.fl9s'), findsOneWidget );
-   // expect( find.text('Interleave 3'), findsOneWidget );
+   // expect( find.text(GB_PROJ_ID), findsOneWidget );
+   // expect( find.text(CE_PROJ_ID), findsNWidgets(1) );
 
    await dismiss( tester );
    return true;
@@ -130,11 +129,12 @@ Future<bool> validateCO( WidgetTester tester, Finder search ) async {
    // sometimes integration test gets 1, sometimes 2.. never 2 on screen
    // if findsatleast 1, then all were found given screen length limits
    expect( find.text('connieTester'), findsAtLeast(1) );  
-   expect( find.text(CESE_PROJ_ID), findsAtLeast(1) );
-   expect( find.text(CEAL_PROJ_ID), findsAtLeast(1) );
-   expect( find.text(GB_PROJ_ID), findsAtLeast(1) );
+   expect( find.text(BS_PROJ_ID), findsOneWidget );
+   expect( find.text(CEAL_PROJ_ID), findsNWidgets(1) );
+   expect( find.text(CEMD_PROJ_ID), findsNWidgets(1) );
+   expect( find.text(CESE_PROJ_ID), findsNWidgets(1) );
    expect( find.text(CE_PROJ_ID), findsAtLeast(1) );
-   expect( find.text(CEMD_PROJ_ID), findsAtLeast(1) );
+   expect( find.text(GB_PROJ_ID), findsAtLeast(1) );
    expect( find.text('CT Blast X'), findsAtLeast(1) );
 
    await dismiss( tester );
@@ -229,10 +229,9 @@ Future<bool> validateScroll( WidgetTester tester ) async {
       
    await pumpSettle( tester, 2, verbose: true );
 
-   // If these fail again, sort search results.
    expect( find.text('LabelTest Dubs'), findsOneWidget );
-   expect( find.text('AssignTest'), findsOneWidget );
-   expect( find.text('IR Plan'), findsOneWidget );
+   expect( find.text('LM Pending'), findsOneWidget );
+   expect( find.text('Snow melt'), findsOneWidget );
 
    // Not sure why, but needs two here.
    await dismiss( tester );

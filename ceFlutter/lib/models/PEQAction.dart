@@ -29,7 +29,7 @@ Map<String,String> PActNotes = Map.unmodifiable( {
       'transfer':    "Transferred",
       'recreate':    "recreate",
       'colRename':   "Column rename",
-      'transOut':    "Transfered out",  // XXX erm spelling
+      'transOut':    "Transferred out",
       'projRename':  "Project rename", 
       'remAssignee': "remove assignee", 
       'titRename':   "Change title", 

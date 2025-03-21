@@ -26,8 +26,12 @@ void _vPrint( appState, v, String astring ) {
    if( v + 2 >= appState.verbose ) { print( astring ); }
 }
 
-// XXX With move from Allocations stored with hostUserId, to ceUserId, uses of this go away once GH restrictions done (pact.subject assignees are names, currently)
+// XXX With move from Allocations stored with hostUserId, to ceUserId, uses of this go away once GH sends next_global_id
+//     pact.subject assignees are names, currently.  The payload for assignees still reports the node_id in the legacy form.
+//     The next globalId is not available without a specific query, or more state in ceServer.
+//     Stay with this until new_global_id is actually sent in payload.
 String _convertNameToId( appState, String aname ) {
+
    String hostUserId = appState.idMapHost.keys.firstWhere( (k) => appState.idMapHost[k]['hostUserName'] == aname, orElse: () => aname );
    // if( hostUserId == aname ) { print( "XXX Convert is no-op " + aname ); }
    // else { print( "YYY Convert converted " + aname + " " + hostUserId ); }
@@ -565,7 +569,7 @@ void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
    }
 }
 
-// Note: there is no transfer in.  transfered peq issues arrive as uncarded newborns, and so are untracked.
+// Note: there is no transfer in.  transferred peq issues arrive as uncarded newborns, and so are untracked.
 // Note: some early peq states may be unexpected during add.  For example, LabelTest.
 //       When performing a sequence of add/delete/move, an issue can be created correctly, then bounced out of reserved into "In Prog",
 //       then unlabeled (untracked), then re-tracked.  In this case, the PEQ is re-created, with the correct column of "In Prog".
@@ -1069,6 +1073,7 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
    assert( ka == null || ka.sourcePeq![peq.id] != null );
 
    // subBase is subjectBase, or project:column.  Useful to split this out since can have multiple assignees (then, allocs) per subBase.
+   // NOTE: If assignee share includes a fraction of a PEQ, it will be floor'd.  This means a peq label may mismatch the total summary allocation value by 1 peq.
    List<String> subBase = ka == null ? peq.hostProjectSub                      : ka.categoryBase!; 
    // int assigneeShare    = ka == null ? (peq.amount / assignees.length).floor() : ka.sourcePeq![ peq.id ]!;
    double assigneeShare    = ( ka == null ? (peq.amount / assignees.length) : ka.sourcePeq![ peq.id ]! ).toDouble();

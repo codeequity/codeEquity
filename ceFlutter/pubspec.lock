@@ -102,6 +102,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.19.0"
+  comparators:
+    dependency: "direct main"
+    description:
+      name: comparators
+      sha256: "314eaea23c0c028484eb28113ec2d5c4133f46d64025c2738e906a36a0c41801"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   convert:
     dependency: transitive
     description:

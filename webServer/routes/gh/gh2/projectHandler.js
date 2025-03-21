@@ -107,8 +107,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 		// don't wait
 		awsUtils.recordPEQAction( authData, config.EMPTY, pd,
-				       config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.projectId.toString(), oldName, newName], "Project rename",
-				       utils.getToday());
+					  config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.projectId.toString(), oldName, newName], config.PACTNOTE_PREN,
+					  utils.getToday());
 
 		const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projId": pd.projectId } );
 		for( const loc of locs ) {
@@ -128,11 +128,10 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    const projLink = links.find( link => link.hostColumnName != config.EMPTY );
 
 	    if( typeof projLink !== 'undefined' ) {
-		const note = "Project " + action;
 		console.log( "Notice.", action,  "project with active PEQs.  Notifying server."  );
 		awsUtils.recordPEQAction( authData, config.EMPTY, pd,
-				       config.PACTVERB_CONF, config.PACTACT_NOTE, [pd.projectId], note,
-				       utils.getToday());
+					  config.PACTVERB_CONF, config.PACTACT_NOTE, [pd.projectId], config.PACTNOTE_PCLO,
+					  utils.getToday());
 	    }
 	    
 	}

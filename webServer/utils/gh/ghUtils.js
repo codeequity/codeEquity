@@ -44,6 +44,7 @@ async function postGH( PAT, url, postData, name, check422 ) {
     const params = {
 	method: "POST",
         headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json", 'X-Github-Next-Global-ID': 1 },
+        // headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json", 'X-Github-Next-Global-ID': "1" },
 	body: postData 
     };
 

@@ -265,15 +265,15 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
    // SelectedUser will be adjusted if user clicks on an alloc (summaryFrame) or unassigned
    if( !getAll ) {
       // NOTE this is in terms of host user name, initially
-      String uname = appState.selectedHostUID;
-      if( uname == appState.UNASSIGN_USER ) { uname = ""; }
+      String huid = appState.selectedHostUID;
+      if( huid == appState.UNASSIGN_USER ) { huid = ""; }
       
       String cep   = appState.selectedCEProject;
-      print( "Building peq data for " + uname + ":" + cep );
+      print( "Building peq data for " + huid + ":" + cep );
 
       String ceUID = ceUIDFromHost( appState, appState.selectedHostUID );      
       appState.userPeqs[ceUID] =
-         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "allAccrued": "true" }' );
+         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserId": "$huid", "CEProjectId": "$cep", "allAccrued": "true" }' );
    }
    else {
       // Collect CEPs by host
