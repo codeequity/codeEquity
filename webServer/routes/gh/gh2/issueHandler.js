@@ -283,7 +283,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    ghLinks.rebaseLinkage( authData, pd.ceProjectId, pd.issueId );   // setting various to EMPTY, as it is now untracked
 	    awsUtils.removePEQ( authData, peq.PEQId );
 	    awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
-				      config.PACTVERB_CONF, config.PACTACT_DEL,	[ peq.PEQId ], "unlabel",
+				      config.PACTVERB_CONF, config.PACTACT_DEL,	[ peq.PEQId ], config.PACTNOTE_UNLB,
 				      utils.getToday() ); 
 	}
 	break;
@@ -365,10 +365,10 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    let assignee   = pd.reqBody.assignee.login;
-	    let assigneeId = pd.reqBody.assignee.node_id;
+	    let assigneeId = pd.reqBody.assignee.node_id;  // NOTE: as of 3/2025 this is still the deprecated user id, not the new global id.  don't use it.
 	    let verb = config.PACTVERB_CONF;
 	    let paction = config.PACTACT_CHAN;
-	    let note = ( action == "assigned" ? "add" : "remove" ) + " assignee";
+	    let note = ( action == "assigned" ? config.PACTNOTE_ADDA : config.PACTNOTE_REMA );
 
 	    // Not if ACCR
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId });
@@ -496,7 +496,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		pdCopy.reqBody     = pd.reqBody;
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, xferIssue.id, oldRepoId, oldCEP ];
 		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
-					  config.PACTVERB_CONF, config.PACTACT_NOTE, subject, "Bad transfer attempted",
+					  config.PACTVERB_CONF, config.PACTACT_NOTE, subject, config.PACTNOTE_BXFR,
 					  utils.getToday() );
 		
 		return;
@@ -548,13 +548,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		pdCopy.reqBody     = pd.reqBody;
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, newIssueId, newRepoId, newCEP ];
 		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
-					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer",
+					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, config.PACTNOTE_GXFR,
 					  utils.getToday() );
 
 		// Deactivate old peq, can't do much with old ID.
 		awsUtils.removePEQ( authData, peq.PEQId );
 		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
-					  config.PACTVERB_CONF, config.PACTACT_DEL, [peq.PEQId], "Transferred",  // XXX formalize
+					  config.PACTVERB_CONF, config.PACTACT_DEL, [peq.PEQId], config.PACTNOTE_XFRD,
 					  utils.getToday() );
 		
 		// add new peq so we can operate on it normally in case of server restart before ingest

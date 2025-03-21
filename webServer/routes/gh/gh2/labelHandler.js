@@ -115,7 +115,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			// let newPD = Object.assign( pd );               // just provides a reference
 			// let newPD = { ...pd };                         // no functions, no reqBody
 			// let newPD = JSON.parse( JSON.stringify( pd )); // no functions
-			let newPD = gh2Data.GH2Data.from( pd );           // sheesh
+			let newPD = gh2Data.from( pd );                   // sheesh
 
 			// Bring more over
 			newPD.ceProjectId   = pd.ceProjectId;
@@ -154,8 +154,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		else               { ghV2.createLabel( authData, pd.repoId, newName, pd.reqBody.label.color, descr ); }
 	    }
 	    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
-				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label edit attempt",
-				   utils.getToday() );
+				      config.PACTVERB_CONF, config.PACTACT_NOTE, [], config.PACTNOTE_BLEA,
+				      utils.getToday() );
 	}
 	break;
     case 'deleted':
@@ -256,8 +256,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    }
 	    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
-				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label delete attempt",
-				   utils.getToday() );
+				      config.PACTVERB_CONF, config.PACTACT_NOTE, [], config.PACTNOTE_BLDA,
+				      utils.getToday() );
 	}
 	break;
     case 'created':  // do nothing

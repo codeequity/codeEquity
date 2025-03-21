@@ -144,10 +144,10 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
 
     // PAct is found from oldCEP
     sub         = [peqX.PEQId, oldIdX, tdX.ghRepoId, tdX.ceProjectId, issDatX[0], td.ghRepoId, td.ceProjectId ];
-    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer", testStatus, {sub: sub, depth: 4} );
+    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_RELO, config.PACTNOTE_GXFR, testStatus, {sub: sub, depth: 4} );
 
     sub         = [peq.PEQId, oldId, td.ghRepoId, td.ceProjectId, issDat[0], tdX.ghRepoId, tdX.ceProjectId ];
-    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer", testStatus, {sub: sub, depth: 4} );
+    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_RELO, config.PACTNOTE_GXFR, testStatus, {sub: sub, depth: 4} );
 
     // New Peqs were validated above.  Check delete/add pacts.  
     newPeqs      = await newPeqs;
@@ -162,9 +162,9 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     // console.log( "newPeq", newPeq );
     // console.log( "newPeqX", newPeqX );
     
-    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_DEL, "Transferred", testStatus, {sub: [oldPeq.PEQId], depth: 4} );
+    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_DEL, config.PACTNOTE_XFRD, testStatus, {sub: [oldPeq.PEQId], depth: 4} );
     testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_ADD, "", testStatus, {sub: [newPeq.PEQId], depth: 4} );
-    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_DEL, "Transferred", testStatus, {sub: [oldPeqX.PEQId], depth: 4} );
+    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_DEL, config.PACTNOTE_XFRD, testStatus, {sub: [oldPeqX.PEQId], depth: 4} );
     testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_ADD, "", testStatus, {sub: [newPeqX.PEQId], depth: 4} );
 
     tu.testReport( testStatus, "Test " + testName );
@@ -173,7 +173,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
 
 // NOTE, this is sensitive.  Add more interleave cards in unclaimed before testCross runs, and this will fail.
 async function getCardsHelp( authData, rid, pid, cid, desiredCount ) {
-    allCards = await gh2tu.getCards( authData, rid, pid, cid );
+    let allCards = await gh2tu.getCards( authData, rid, pid, cid );
     let ret = false;
     let interleaveCards = allCards.filter( card => card.title.includes( "Interleave" ) && card.repoId == rid );
     if( interleaveCards.length == desiredCount ) { ret = interleaveCards; }

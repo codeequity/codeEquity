@@ -103,14 +103,22 @@ export const PACTACT_DEL  = "delete";
 export const PACTACT_NOTE = "notice";
 export const PACTACT_ACCR = "accrue";
 export const PACTACT_RELO = "relocate";   // For moving cards.  Use "Transfer out" if moving out of repo
-export const PACTACT_CHAN = "change";     // Notes for change will be one of
+export const PACTACT_CHAN = "change";     // Note below will further disambiguate change
 
 export const PACTNOTE_PREN = "Project rename";
+export const PACTNOTE_PCLO = "Project closed";
 export const PACTNOTE_CREN = "Column rename";
 export const PACTNOTE_ADDA = "add assignee";
+export const PACTNOTE_REMA = "remove assignee";
 export const PACTNOTE_PVU  = "peq val update";
 export const PACTNOTE_RECR = "recreate";
 export const PACTNOTE_CTIT = "Change title";
+export const PACTNOTE_UNLB = "unlabel";
+export const PACTNOTE_BXFR = "Bad transfer attempted";
+export const PACTNOTE_GXFR = "Transferred";
+export const PACTNOTE_XFRD = "Transferred out";
+export const PACTNOTE_BLEA = "PEQ label edit attempt";
+export const PACTNOTE_BLDA = "PEQ label delete attempt";
 
 // server job queue operation
 export const MAX_DELAYS = 30;          // how many times can a single job be pushed further back into queue waiting for pre-req job to complete
@@ -149,119 +157,3 @@ export const PEQ_COLOR  = 'ffcc80';   // github color for PEQ labels   alternati
 export const GH_TEMPLATE = "CodeEquity Project Template";                                   // Contains default view for CodeEquity projects for GitHub
 export const GH_VIEW     = "CE View";                                                       // Name of custom CE view for Github projects
 export const GH_VIEWCOL  = "CE Cols";                                                       // Name of custom GitHub field CE uses to display columns
-
-
-/*
-// export  CE_ACTOR;
-export CE_BOT    = CE_BOT;
-export TESTER_BOT = TESTER_BOT;
-export PROJ_COLS = PROJ_COLS;
-export PROJ_PLAN = PROJ_PLAN;
-export PROJ_PROG = PROJ_PROG;
-export PROJ_PEND = PROJ_PEND;
-export PROJ_ACCR = PROJ_ACCR;
-
-export PEQ_COLOR   = PEQ_COLOR;
-export GH_TEMPLATE = GH_TEMPLATE;
-export GH_VIEW     = GH_VIEW;
-export GH_VIEWCOL  = GH_VIEWCOL;
-
-export PEQ      = PEQ;
-export PDESC    = PDESC;
-
-export EMPTY     = EMPTY;
-export UNCLAIMED = UNCLAIMED;
-
-export HOST_GH      = HOST_GH;
-export PMS_GHC      = PMS_GHC;
-export PMS_GH2      = PMS_GH2;
-
-export APIPATH_CONFIG_LOC  = APIPATH_CONFIG_LOC;
-export COGNITO_CONFIG_LOC  = COGNITO_CONFIG_LOC;
-export CESERVER_CONFIG_LOC = CESERVER_CONFIG_LOC;
-
-export GQL_ENDPOINT     = GQL_ENDPOINT;
-export TESTING_ENDPOINT = TESTING_ENDPOINT;
-
-export CREDS_PATH       = CREDS_PATH;
-export CREDS_TPATH      = CREDS_TPATH;
-export SERVER_PAT_PATH  = SERVER_PAT_PATH
-export SERVER_NOREPO    = SERVER_NOREPO
-export TEST_PAT_PATH    = TEST_PAT_PATH
-export CROSS_PAT_PATH   = CROSS_PAT_PATH
-export MULTI_PAT_PATH   = MULTI_PAT_PATH
-export TEST_OWNER       = TEST_OWNER;
-export TEST_ACTOR       = TEST_ACTOR;
-export TEST_REPO        = TEST_REPO;
-export TEST_CEPID       = TEST_CEPID;
-export TEST_CEVID       = TEST_CEVID;
-export TEST_NAME        = TEST_NAME;
-export TEST_DESC        = TEST_DESC;
-export FLUTTER_TEST_CEPID = FLUTTER_TEST_CEPID;
-export FLUTTER_TEST_CEVID = FLUTTER_TEST_CEVID;
-export FLUTTER_TEST_NAME  = FLUTTER_TEST_NAME;
-export FLUTTER_TEST_DESC  = FLUTTER_TEST_DESC;
-export FLUTTER_TEST_REPO  = FLUTTER_TEST_REPO;
-export CROSS_TEST_OWNER = CROSS_TEST_OWNER;
-export CROSS_TEST_ACTOR  = CROSS_TEST_ACTOR;
-export CROSS_TEST_REPO  = CROSS_TEST_REPO;
-export CROSS_TEST_CEPID = CROSS_TEST_CEPID;
-export CROSS_TEST_CEVID = CROSS_TEST_CEVID;
-export CROSS_TEST_NAME  = CROSS_TEST_NAME;
-export CROSS_TEST_DESC  = CROSS_TEST_DESC;
-export MULTI_TEST_OWNER = MULTI_TEST_OWNER;
-export MULTI_TEST_ACTOR  = MULTI_TEST_ACTOR;
-export MULTI_TEST_REPO  = MULTI_TEST_REPO;
-export MULTI_TEST_CEPID = MULTI_TEST_CEPID;
-export MULTI_TEST_CEVID = MULTI_TEST_CEVID;
-export MULTI_TEST_NAME  = MULTI_TEST_NAME;
-export MULTI_TEST_DESC  = MULTI_TEST_DESC;
-export FLUTTER_MULTI_TEST_REPO  = FLUTTER_MULTI_TEST_REPO;
-export FLUTTER_MULTI_TEST_CEPID = FLUTTER_MULTI_TEST_CEPID;
-export FLUTTER_MULTI_TEST_CEVID = FLUTTER_MULTI_TEST_CEVID;
-export FLUTTER_MULTI_TEST_NAME  = FLUTTER_MULTI_TEST_NAME;
-export FLUTTER_MULTI_TEST_DESC  = FLUTTER_MULTI_TEST_DESC;
-
-export PEQ_LABEL   = PEQ_LABEL;
-
-export PEQTYPE_PLAN  = PEQTYPE_PLAN;
-export PEQTYPE_PEND  = PEQTYPE_PEND;
-export PEQTYPE_GRANT = PEQTYPE_GRANT;
-export PEQTYPE_END   = PEQTYPE_END;
-             
-export PACTVERB_CONF = PACTVERB_CONF;
-export PACTVERB_PROP = PACTVERB_PROP;
-export PACTVERB_REJ  = PACTVERB_REJ;
-             
-export PACTACT_ADD  = PACTACT_ADD;
-export PACTACT_DEL  = PACTACT_DEL;
-export PACTACT_NOTE = PACTACT_NOTE;
-export PACTACT_ACCR = PACTACT_ACCR;
-export PACTACT_RELO = PACTACT_RELO;
-export PACTACT_CHAN = PACTACT_CHAN;
-
-export PACTNOTE_PREN = PACTNOTE_PREN;
-export PACTNOTE_CREN = PACTNOTE_CREN;
-export PACTNOTE_ADDA = PACTNOTE_ADDA;
-export PACTNOTE_PVU  = PACTNOTE_PVU;
-export PACTNOTE_RECR = PACTNOTE_RECR;
-export PACTNOTE_CTIT = PACTNOTE_CTIT;
-
-export MAX_DELAYS = MAX_DELAYS;
-export STEP_COST  = STEP_COST;
-export NOQ_DELAY  = NOQ_DELAY;
-export MIN_DIFF   = MIN_DIFF;
-
-export GH_MAX_RETRIES  = GH_MAX_RETRIES;
-export GH_GHOST        = GH_GHOST;
-export GH_NO_STATUS    = GH_NO_STATUS;
-export GH_BOT          = GH_BOT;
-export GH_ISSUE_OPEN   = GH_ISSUE_OPEN;
-export GH_ISSUE_CLOSED = GH_ISSUE_CLOSED;
-export GH_ISSUE_DRAFT  = GH_ISSUE_DRAFT;
-export GH_ISSUE        = GH_ISSUE;
-export GH_COL_FIELD    = GH_COL_FIELD;
-
-export NOTICE_BUFFER_SIZE = NOTICE_BUFFER_SIZE;
-
-*/

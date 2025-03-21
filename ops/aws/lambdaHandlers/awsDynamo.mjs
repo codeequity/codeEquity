@@ -83,7 +83,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "CheckHostPop")   { resultPromise = checkHostPop( rb.CEProjectId, rb.RepoId ); }
     else if( endPoint == "GetPerson")      { resultPromise = getPerson( username ); }
-    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.HostUserName, rb.CEProjectId, rb.isAlloc, rb.allAccrued ); }
+    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.HostUserId, rb.CEProjectId, rb.isAlloc, rb.allAccrued ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.HostUserName, rb.CEProjectId ); }
     else if( endPoint == "GetPActsById")   { resultPromise = getPActsById( rb.CEProjectId, rb.PeqIds ); }

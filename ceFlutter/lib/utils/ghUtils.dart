@@ -160,7 +160,6 @@ Future<void> updateGHRepos( context, container ) async {
 }
 
 
-// XXX rewrite any ceUID or ceHolderId in PEQ, PEQAction that look like: "HOSTUSER: $hostUserName"  
 Future<bool> associateGithub( context, container, PAT ) async {
 
    final appState  = container.state;

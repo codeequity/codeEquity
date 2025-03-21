@@ -1042,6 +1042,9 @@ void main() {
    //testWidgets('Project contents, ingest', skip:true, (WidgetTester tester) async {
    testWidgets('Project contents, ingest', skip:skip, (WidgetTester tester) async {
 
+         // This controls driver window size.  Driven window size is set on command line to flutter driver
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
+
          await restart( tester );
          await login( tester, true );
 
@@ -1078,6 +1081,9 @@ void main() {
 
    // testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
    testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
+
+         // This controls driver window size.  Driven window size is set on command line to flutter driver
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
 
          await restart( tester );
          await login( tester, true );
@@ -1182,6 +1188,9 @@ void main() {
    // testWidgets('Project Detail Page', skip:false, (WidgetTester tester) async {
    testWidgets('Project Detail Page', skip:detailSkip, (WidgetTester tester) async {
          
+         // This controls driver window size.  Driven window size is set on command line to flutter driver
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
+
          await restart( tester );
          await login( tester, true );
 

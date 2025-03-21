@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:comparators/comparators.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/models/PEQ.dart';
@@ -252,9 +253,24 @@ class _CancelException implements Exception {
 }
 
 
+
 // XXX minor - search only guarantees finding things that were in place before logging in.
 class _getPossibilities {
 
+   static List<dynamic> sortFilter( List<dynamic> objs ) {
+      final aset  = { ...objs };
+      final alist = aset.toList();
+
+      if( alist.length == 0 ) { return []; }
+
+      if(      alist[0] is PEQ )       { alist.sort( compare((p) => p.hostIssueTitle ) ); }
+      else if( alist[0] is Person )    { alist.sort( compare((p) => p.userName ) ); }
+      else if( alist[0] is CEProject ) { alist.sort( compare((p) => p.ceProjectId ) ); }
+      else                             { print( "Error.  Search object is not recognized. " ); assert( false ); }
+      
+      return alist;
+   }
+   
    static Future<List<dynamic>> search(String query, container, context, appState )  async
    {
       if (query == '') { return List<dynamic>.empty(); }
@@ -287,6 +303,13 @@ class _getPossibilities {
       // Collate
       List<dynamic> res = [];
 
+      // There are many many better ways to do this.  For now, prioritize people, then projects.
+      // Alphabetical to support testing until a better preference metric is available.
+      res.addAll( sortFilter( filteredCEPeeps ?? [] ) );
+      res.addAll( sortFilter( filteredCEProjs ?? []) );
+      res.addAll( sortFilter( filteredPeqs ?? []) );
+
+      /*
       res.addAll( (filteredCEPeeps ?? []) );
       res.addAll( (filteredCEProjs ?? []) );
 
@@ -294,6 +317,7 @@ class _getPossibilities {
       // search term may grab same peq from multiple users.. remove repeats.
       final _set = {...filteredPeqs};
       res.addAll( _set.toList() );
+      */
       
       return res;
    }

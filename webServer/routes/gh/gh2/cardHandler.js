@@ -205,6 +205,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    // Do not allow move into ACCR if trying to split in.
 		    if( newCard.columnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			let msg = "WARNING. " + newLinks[0].hostColumnName + " is reserved, can not create cards here. Leaving card in " + config.PROJ_COLS[config.PROJ_PLAN];
+			// MUST await here to avoid race condition identified by test: IR Prog split reject.
 			await ingestUtils.rejectCard( authData, ghLinks, pd, newCard, rejectLoc, msg, true );
 		    }
 
@@ -215,8 +216,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 			ingestUtils.rejectCard( authData, ghLinks, pd, newCard, rejectLoc, msg, false );
 		    }
 
-		    // XXX race condition for ir prog split reject.. why need delay?
-		    // await ghV2.getFullIssue( authData, newLinks[0].hostIssueId );
 		}
 		else {
 		    console.log( authData.who, "No such card, ignoring move request." );
