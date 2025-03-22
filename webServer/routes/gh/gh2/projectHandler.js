@@ -44,12 +44,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    let link = links.find( (l) => l.hostIssueId == peq.HostIssueId )
 		    assert( typeof link !== 'undefined' );
 
-
-    		    // XXX accr was always false, starting a broken chain.  Verify correct now.
 		    let accr  = peq.PeqType == config.PEQTYPE_GRANT;
 		    let card  = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, link.issueId, accr );
 
-		    // XXX this was backwards.  verify correct now
 		    // Move to unclaimed:unclaimed or unclaimed:accrued col
 		    const loc = accr ?
 			  locs.find( (l) => l.ceProjectId == link.ceProjectId && l.hostProjectName == config.UNCLAIMED && l.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) :
@@ -57,6 +54,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    
 		    assert( typeof loc !== 'undefined' );
 
+		    // XXX Card was created in correct unclaimed location.  Why the move?
 		    // XXX need to wait here?
 		    await ghV2.moveCard( authData, card.pid, card.cardId, loc.hostUtility, loc.hostColumnId );
 
@@ -76,9 +74,12 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 					      config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], config.PACTNOTE_RECR,
 					      utils.getToday() );
+		    /*
+   		    // XXX ingest is ignoring this
 		    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 					      config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
 					      utils.getToday() );
+		    */
 		    pd.ceProjectId = tmp;
 		    
 		}

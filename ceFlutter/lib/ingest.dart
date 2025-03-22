@@ -20,7 +20,8 @@ Function listEq = const ListEquality().equals;
 
 final CEUID_PLACEHOLDER = "HostUSER";
 
-// So lower values harder to print
+// Allow separate _vPrints. It is handy when debugging to turn entire module verbosity up or down in 1 spot.
+// lower values harder to print
 void _vPrint( appState, v, String astring ) {
    // XXX
    if( v + 2 >= appState.verbose ) { print( astring ); }
@@ -201,8 +202,7 @@ void _swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 // Case 1: "add assignee" arrives before the peq issue is added.
 //         PPA has strict guidelines from ceServer for when info in peq is valid - typically first 'confirm' 'add'.  assert protected.
 // Case 2: "add" arrives before a deleted accrued issue is recreated.
-//         recreate already handles the add - need to tamp down on this one, which is automatic if it follows.
-//         NOTE: this should not longer occur
+//         NOTE: this case is no longer possible.  There is 1 recreate pact, no subsequent add pact.  delete is old peqId, add is new peqId.
 // Case 3: "add" will arrive twice in many cases, one addRelo for no status (when peq label an issue), then the second when situating the issue
 //          ignore the second add, it is irrelevant
 // Case 4: "relo" can arrive after "delete" is received, during transfer.
@@ -212,7 +212,6 @@ void _swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 // This will either occur in current ingest batch, or is already present in mySummary from a previous update.
 // Remember, all peqs are already in aws, either active or inactive, so no point to look there.
 // NOTE: Could speed this up somewhat - save some work, hashmap, etc.  but most of time is in communication with host, aws.
-// XXX minor - in theory recreate.source peq could come from myPEQSummary while recreate is in ingest batch.  vastly improbable...
 Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) async {
 
    final appState            = container.state;
@@ -232,9 +231,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 
    _vPrint( appState, 4, "Initial known peq-allocs: " + kp.toString() );
 
-   // XXX verify no longer seeing note:recreate
    // Case 1.  Fairly generic - if operation depends on peq, but haven't added it yet, swap the operation with the following confirm.add
-   // Case 2.  Very specific  - if confirm.add matches subsequent recreate target, swap
    // look through current ingest batch for issues to resolve.
    for( int i = 0; i < todos.length; i++ ) {
       PEQAction pact = todos[i].item1;
@@ -249,7 +246,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
       // print( pact );
       // print( peq );
       
-      // update known peqs and recreate targets with current todo.
+      // update known peqs with current todo.
       if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {
          if( kp.contains( peq.id ) ) {
             it.add( i );
@@ -274,24 +271,6 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
          _vPrint( appState, 2, "   Ignoring delete for relocated peq" + peq.hostIssueTitle + " " + peq.id + " " + peq.active.toString());
          it.add( i );
          ignored = true;
-      }
-      else if ( pact.note == PActNotes['recreate'] ) {
-         assert( pact.subject.length == 2 );   // pact.subject[0] --> pact.subject[1]
-         if( kp.contains( pact.subject[1] )) {
-            _vPrint( appState, 2, "Add occured before recreate - swapping." );
-            int kpIndex = -1;
-            for( int j = 0; j < i; j++ ) {
-               if( todos[j].item1.verb == PActVerb.confirm && todos[j].item1.action == PActAction.add ) {
-                  kpIndex = j;
-                  continue;
-               }
-            }
-            assert( kpIndex >= 0 );  // XXX if this fails, see vastly improbable above.
-            _swap( todos, kpIndex, i );
-            // At this point, todo at position i is the faulty add, which will be ignored.
-            // XXX it is possible that there is an earlier assignment.  check for this and warn, or treat recreate as official kp in swap below.
-            continue;
-         }
       }
 
       // print( "    KP: " + kp.toString() );
@@ -585,12 +564,17 @@ Future _add( context, container, pact, peq, peqMods, assignees, assigneeShare, s
    if( peq.peqType == PeqType.plan || peq.peqType == PeqType.pending ) {  // plan == prog in peqtype, aws
       _vPrint( appState, 1, "Normal PEQ" );
       
-      // XXX Speed this up.  This is relevant 1/1000 times, but runs always.
+      // XXX Speed this up.  This is relevant 1/1000 times, but runs always.  But not yet..
       //     Don't convert to preprocessing which depends on both recreate and add showing up in same ingest chunk - can fail.
       // Generated as part of 'recreate'?  If so, check location then ignore it.
       for( Allocation anAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
          assert( listEq( subBase, [appState.UNCLAIMED, appState.ACCRUED ] ));
          _vPrint( appState, 2, "Skipping Add, which was generated as part of Recreate, which was already handled." );
+
+         // XXX 1) if does not fire by 3/25, /**/ out.  
+         // XXX 2) This should not occur.  Remove this chunk once projectHandler:delete test is running.
+         assert( false );
+         
          return;
       }
 
@@ -844,16 +828,18 @@ double _pvUpdate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) 
    return newShareAmount;
 }
 
+
+// This is only issued when user deletes a peq issue by directly deleting a host project.
+// Host GH on deleted project now sends only 1 notification: 'deleted', leaving issues in place in repo, 'secretly' deleting cards.
+// ceServer will send a recreate pact, no other.  It deletes old peq in aws, rebuilds new one with new peq id, link.
+// If the PEQ is not ACCR, ceServer puts it in unclaimed:unclaimed, otherwise unclaimed:accrued.
+//
+// Note. After 8/2021, Github sends only partial issues in request body during issue delete.  Thanks GQL.
+//       Assignees may be removed.. safest place to transfer them is here.
 void _recreate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    final sourceType = ka == null ? "" : ka.allocType;
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
 
-   // XXX revisit
-   assert( false );
-   // This is only issued when user deletes an accrued issue (for example, by deleting project), which ceServer then recreates in unclaimed.
-   // Note. After 8/2021, Github sends only partial issues in request body during issue delete.  Thanks GQL.
-   //       Assignees may be removed.. safest place to transfer them is here.
-   // This should be a rare event, seen after deleting an accrued issue.  ceServer rebuilds and saves a copy if the issue was removed first
    assert( pact.subject.length == 2 );
    _vPrint( appState, 4, "Recreate PEQ: " + pact.subject[0] + " --> " + pact.subject[1] );
    
@@ -866,9 +852,6 @@ void _recreate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
       adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
    }
    
-   // Do NOT Add for new peq, there is a follow-on 'add' pact that does the job
-   // The new peq is added in unclaimed:accrued with unassigned, as is correct.
-   // No.
    // We need assignees for accrued, and in particular need to retain assignees for accrued issues.
    // Add back here, then ignore subsequent add.
    for( var assign in assignees ) {

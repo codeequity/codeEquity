@@ -1675,7 +1675,7 @@ async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, 
     assert( loc !== -1  );
     assert( loc.hostColumnId !== config.EMPTY  );
 
-    // create card in unclaimed:unclaimed
+    // create card in unclaimed:unclaimed or unclaimed:accr
     let ploc = {"ceProjId": pd.ceProjectId, "pid": unClaimedProjId, "colId": loc.hostColumnId} ;
     let card = await createProjectCard( authData, ghLinks, ploc, issueId, loc.hostUtility, false );
     return card;

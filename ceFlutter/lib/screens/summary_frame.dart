@@ -19,6 +19,7 @@ import 'package:ceFlutter/components/leaf.dart';
 import 'package:ceFlutter/screens/detail_page.dart';
 
 
+// Allow separate _vPrints. It is handy when debugging to turn entire module verbosity up or down in 1 spot.
 void _vPrint( appState, v, String astring ) {
    if( v >= appState.verbose ) { print( astring ); }
 }

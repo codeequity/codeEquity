@@ -1519,7 +1519,7 @@ async function checkUnclaimedAccr( authData, testLinks, td, loc, issDatOld, issD
 	let pact = pacts[ pacts.length - 1];
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
 	subTest = tu.checkEq( pact.Action, config.PACTACT_CHAN,    subTest, "PAct Action"); 
-	subTest = tu.checkEq( pact.Note, config.PACTNOTE_RECR,               subTest, "PAct Note"); 
+	subTest = tu.checkEq( pact.Note, config.PACTNOTE_RECR,     subTest, "PAct Note"); 
     }
 
     return await tu.settle( subTest, testStatus, checkUnclaimedAccr, authData, testLinks, td, loc, issDatOld, issDatNew, cardNew, testStatus, source );
