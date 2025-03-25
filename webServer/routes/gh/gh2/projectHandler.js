@@ -17,12 +17,16 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	// Can't just send delete issue, that will record as bot, and skip processing.  and it's slower. do processing here.
 	// Need to handle peqs, links, locs.
 	{
-	    const links = ghLinks.getLinks( authData, { pid: pd.projectId } );
-	    const locs  = ghLinks.getLocs( authData, { pid: pd.projectId } );	    
+	    let links = ghLinks.getLinks( authData, { ceProjId: pd.ceProjectId, pid: pd.projectId } );
+	    const locs  = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: pd.projectId } );	    
 
+	    console.log( "Del", pd.projectId, pd.projectName );
+	    // console.log( "Del", pd.reqBody );
+	    
 	    // get unique hostRepoIds that hostProject touches
 
 	    let hostRepoIds = [];
+	    links = links === -1 ? [] : links;
 	    for( const link of links ) {
 		if( !hostRepoIds.includes( link.hostRepoId ) ) { hostRepoIds.push( link.hostRepoId ); }
 	    }
@@ -37,10 +41,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    if( peqs !== -1 ) {
 
-		console.log( authData.who, "Deleted project", pd.projectId, pd.projectName, "had PEQ issues. Reforming them in", config.UNCLAIMED );
+		console.log( authData.who, "Deleted project", pd.projectId, pd.projectName, "had PEQ issues. Reforming them in", config.UNCLAIMED, peqs.length.toString() );
 
 		// XXX promise.all?  This is very expensive for larger project.  Redoing some work here as well
 		for( const peq of peqs ) {
+		    console.log( "PEQ: ", peq.toString() );
 		    let link = links.find( (l) => l.hostIssueId == peq.HostIssueId )
 		    assert( typeof link !== 'undefined' );
 
@@ -85,10 +90,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		}
 	    }
 
-	    ghLinks.removeLocs(  { authData: authData, pid: pd.projectId } );
+	    ghLinks.removeLocs(  { authData: authData, ceProjId: pd.ceProjectId, pid: pd.projectId } );
 
 	    // peq links were rewritten above.  Eliminate any remaining links that were for carded issues for the project.
-	    const delLinks = ghLinks.getLinks( authData, { pid: pd.projectId } );
+	    let delLinks = ghLinks.getLinks( authData, { ceProjId: pd.ceProjectId, pid: pd.projectId } );
+	    delLinks = delLinks === -1 ? [] : delLinks;
 	    for( const link of delLinks ) {
 		ghLinks.removeLinkage( { authData: authData, ceProjId: link.ceProjectId, issueId: link.hostIssueId } );
 	    }

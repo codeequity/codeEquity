@@ -279,6 +279,12 @@ class Linkage {
 	    assert( false );
 	}
 
+	// ceProj is undefined, but below relies on being config.EMPTY.  Could fix, but best practice is to set it.
+	if( typeof query.ceProjId === 'undefined' ) {
+	    console.log( authData.who, "Error.  ceProjectId was  not specified in Links query." );
+	    assert( false );
+	}
+
 	// NOTE: hostColumnIds may not be unique.  Don't query them directly.
 
 	const ceProjId    = query.ceProjId;

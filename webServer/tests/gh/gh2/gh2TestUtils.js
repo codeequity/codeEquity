@@ -562,27 +562,21 @@ async function createProjectWorkaround( authData, td, name, body ) {
     return pid;
 }
 
-// XXX This is not working.. but without ability to create columns yet, this may not get used.  wait.
+// XXX This creates a simple default pv2 project.. can not yet (3/2025) create custom columns.
+async function createDefaultProject(  authData, td, name, body ) {
+    let pid = await ghV2.createProject( authData, td.ghOwnerId, td.ghRepoId, name );
+
+    // force linking in ceServer:ghLinks, not local ghLinks
+    await tu.linkProject( authData, td.ceProjectId, pid, td.ghRepoId, name ); 
+
+    return pid;
+}
+
 async function remProject( authData, pid ) {
-
-    assert( false, "Delete project  NYI." );
-    /* 
-       // Can't find id.. because classic only?  or because pvt is closed?
-       mutation {
-       deleteProject(input: {projectId: "PVT_kwDOA8JELs4AGXxl"}) {
-       clientMutationId
-       }
-       }
-       
-       // first error here is your token has insufficient scopes
-       mutation {
-       deleteProjectV2Item(input: {itemId: "PVT_kwDOA8JELs4AGXxl", projectId: "PVT_kwDOA8JELs4AGXxl"}) {
-       clientMutationId
-       }
-    */
-
+    await ghV2.deleteProject( authData, pid );
     await utils.sleep( tu.MIN_DELAY );
 }
+
 
 // do NOT move to ghV2 - this is used during testing only.  handlers are oblivious to this view-centric action.
 async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
@@ -2064,12 +2058,12 @@ export {forcedRefreshUnclaimed};
 export {getQuad};
 
 export {createProjectWorkaround};
+export {createDefaultProject};
+export {remProject};
 
 export {cloneFromTemplate};   // XXX speculative.  useful?
 export {createCustomField};   // XXX speculative.  useful?
 
-// export {makeProject};        // XXX NYI
-export {remProject};
 export {unlinkProject};
 export {linkRepo};
 export {unlinkRepo};

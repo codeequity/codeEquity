@@ -83,6 +83,7 @@ class GH2Data extends ceData{
 	    retVal = await ceProjects.cacheFind( authData, config.HOST_GH, jd.org, issueId, ghUtils.getIssueRepo );
 	}
 
+	// console.log( "gh2Data: setting cepId", retVal );
 	this.ceProjectId = retVal;
     }
     

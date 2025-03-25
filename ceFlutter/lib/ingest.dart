@@ -314,11 +314,12 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 
 
 // ingest may contain edits to HOST projects or columns.
+// Update any existing state in peq summary, and equity plan before process new ingest.
 // For renaming, will update peqSummary from dynamo, and build the list of current names for the next ingest
 // Example: ingest todos contains renames of project: aProj -> bProj, and bProj -> cProj
-//    aws dynamo peqs          will contain aproj, or earlier.  these will probably stay put
-//    myPEQSummary allocations will contain aProj
-//    myHostLinks hostLocs       will contain cProj
+//    aws dynamo peqs          will contain aproj, exactly.
+//    myPEQSummary allocations will contain aProj, exactly.
+//    myHostLinks hostLocs     will contain cProj (ceServer provided)
 //    ingest todos             will contain aProj, bProj and cProj
 
 // Todo list processing for relo and reject-to uses IDs, so names will be up to date based on myHostLinks.
@@ -332,7 +333,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    List<HostLoc> projRenames = [];
    
    List<Allocation> appAllocs = [];
-   List<HostLoc>      appLocs   = appState.myHostLinks.locations;
+   List<HostLoc>      appLoc  = appState.myHostLinks.locations;
    if( appState.myPEQSummary != null ) { appAllocs = appState.myPEQSummary.getAllAllocs(); }
 
    print( appLocs );
@@ -365,13 +366,16 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
       }
    }
 
+   // AppAllocs is blank if starting from cleanFlutter.
    // Note: this could be sped up, but any value?
    // XXX Untested
    // Update allocations.
-   _vPrint( appState, 4, "... allocations size: " + appAllocs.length.toString() + " " + colRenames.length.toString() + " " + projRenames.length.toString() );
+   _vPrint( appState, 2, "... allocations size: " + appAllocs.length.toString() + " " + colRenames.length.toString() + " " + projRenames.length.toString() );
    for( Allocation alloc in appAllocs ) {
       assert( alloc.categoryBase != null );
+      
       assert( false ); // XXX need to rebuild PEQSummary:catIndex
+      
       for( HostLoc proj in projRenames ) {
          if( alloc.hostProjectId == proj.hostProjectId ) {
             HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostProjectId == proj.hostProjectId );
@@ -885,6 +889,7 @@ Future _colRename( context, container, pact ) async {
    return; 
 }
 
+// Possible out of order here
 Future _projRename( context, container, pact ) async {
    final appState = container.state;
    // XXX REVISIT once this is possible again

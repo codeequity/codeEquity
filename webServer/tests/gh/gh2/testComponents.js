@@ -1043,6 +1043,97 @@ async function testProjColMods( authData, testLinks, td ) {
 }
 
 
+// XXX Can not get ghv2:deleteProject to work, so actual delete must be by hand.
+// XXX Can not create custom columns, so auto-create limits testing to non-PEND/ACCR peqs.
+// NOTE this is not an onboarding test.  Requires testSetup to push ceProj into aws ceProject table
+// simplified project delete test until can create columns.
+// So.. 1) comment out delete section, run.  2) comment out create section, delete by hand.  3) uncomment delete section, run
+async function testProjDel( authData, testLinks, td ) {
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    console.log( "Test ProjDel" );
+    authData.who = "<TEST: ProjDel>";
+    
+    const ISS_PLAN = "PD Open";
+    const ISS_PROG = "PD Prog";
+    const PROJ_NAME = "ProjDel Proj";
+
+    const todoName = "Todo";
+    const progName = "In Progress";
+
+    const kp = "1000 " + config.PEQ_LABEL;
+
+    const assignee1 = await gh2tu.getAssignee( authData, ASSIGNEE1 );
+    const assignee2 = await gh2tu.getAssignee( authData, ASSIGNEE2 );
+
+    
+    {
+	// 1. Setup.  New project. default cols. 1 peq issue each.
+	const projId    = await gh2tu.createDefaultProject( authData, td, PROJ_NAME, "" );
+	const planColId = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, projId, todoName );
+	const progColId = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, projId, progName );
+
+	const planLoc = await gh2tu.getFlatLoc( authData, projId, PROJ_NAME, todoName );
+	const progLoc = await gh2tu.getFlatLoc( authData, projId, PROJ_NAME, progName );
+
+	let label1k  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, kp, 1000 );	
+
+	const issPlanDat = await gh2tu.makeIssue( authData, td, ISS_PLAN, [ label1k ] );
+	const issProgDat = await gh2tu.makeIssue( authData, td, ISS_PROG, [ label1k ] );
+
+	// First unclaimed creation takes a sec
+	await utils.sleep( 1000 );
+	
+	await gh2tu.addAssignee( authData, issPlanDat, assignee2 );	
+	await gh2tu.addAssignee( authData, issProgDat, assignee1 );
+
+	// Set up cards
+	const cardPlan = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, projId, planLoc.colId, issPlanDat[0] );
+	const cardProg = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, projId, progLoc.colId, issProgDat[0] );
+
+	// can NOT Close & accrue without creating columns.
+	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
+	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, progLoc, issProgDat, cardProg, testStatus );
+
+	tu.testReport( testStatus, "ProjDel mods A" );
+
+    
+	// XXX Can't get delete to work yet, so this step must occur by hand.
+	// gh2tu.remProject( authData, "PVT_kwDOA8JELs4A0-_Z" );
+	await gh2tu.refreshUnclaimed( authData, td );
+	/*
+	  const unclLoc = await gh2tu.getFlatLoc( authData, td.unclaimPID, td.unclaimTitle, td.unclaimTitle );
+	  // Cards are now in unclaimed.  remake proj/col id.
+	  assert( cardPlan.length == cardProg.length );
+	  assert( cardPlan.length == 5 );
+	  
+	  let query = { ceProjId: td.ceProjectId, pid: td.unclaimPID, colId: td.unclaimCID };  
+	  const locs = testLinks.getLocs( authData, query );    
+	  assert( locs !== -1 );
+	  let statusId = locs[0].hostUtility;
+	  cardPlan[2] = statusId;
+	  cardPlan[3] = td.unclaimCID;
+	  cardPlan[4] = td.unclaimTitle;
+	  cardProg[2] = statusId;
+	  cardProg[3] = td.unclaimCID;
+	  cardProg[4] = td.unclaimTitle;
+
+	  testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, unclLoc, issPlanDat, cardPlan, testStatus );
+	  testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, unclLoc, issProgDat, cardProg, testStatus );
+
+	  tu.testReport( testStatus, "ProjDel mods B" );
+	  
+	 */
+    }
+
+    
+    tu.testReport( testStatus, "Test ProjCol Mod" );
+
+    return testStatus;
+}
+
+
 
 
 async function runTests( authData, testLinks, td ) {
@@ -1052,6 +1143,13 @@ async function runTests( authData, testLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
+    /*
+    let t0 = await testProjDel( authData, testLinks, td );
+    console.log( "\n\nProjDel test complete." );
+    // ghUtils.show( true );    
+    await utils.sleep( 5000 );
+    */
+    
     let t1 = await testAssignment( authData, testLinks, td );
     console.log( "\n\nAssignment test complete." );
     // ghUtils.show( true );    
@@ -1090,14 +1188,17 @@ async function runTests( authData, testLinks, td ) {
     // await utils.sleep( 5000 );
     */
 
+    // testStatus = tu.mergeTests( testStatus, t0 );
+
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );
     testStatus = tu.mergeTests( testStatus, t4 );
     testStatus = tu.mergeTests( testStatus, t5 );
     testStatus = tu.mergeTests( testStatus, t6 );
+
     // testStatus = tu.mergeTests( testStatus, t7 );
-    
+
     return testStatus
 }
 
