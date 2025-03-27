@@ -60,13 +60,13 @@ class GH2Data extends ceData{
 
 	let retVal = config.EMPTY; 
 	if( Object.keys(ceProjects).length == 0 ) { return retVal; }
-	
+
 	// If this is content notice, get from repo.  If projects_v2, just give up.
+	// projects_v2 does not carry repo information, just view data.  no good way to get CEPID here.
 	if( utils.validField( jd.reqBody, "projects_v2" ) ) {
 	    console.log( authData.who, "skip setting ceProjectId for project_v2 notifications." );
-	    return;
 	}
-	if( !utils.validField( jd.reqBody, "projects_v2_item" ) || !utils.validField( jd.reqBody.projects_v2_item, "project_node_id" ) ) {
+	else if( !utils.validField( jd.reqBody, "projects_v2_item" ) || !utils.validField( jd.reqBody.projects_v2_item, "project_node_id" ) ) {
 	    assert( utils.validField( jd.reqBody, "repository" ));
 	    console.log( "Find by repo", jd.org, jd.reqBody.repository.full_name );
 	    retVal = ceProjects.findByRepo( config.HOST_GH, jd.org, jd.reqBody.repository.full_name ); 
@@ -83,6 +83,7 @@ class GH2Data extends ceData{
 	    retVal = await ceProjects.cacheFind( authData, config.HOST_GH, jd.org, issueId, ghUtils.getIssueRepo );
 	}
 
+	// console.log( "gh2Data: setting cepId", retVal );
 	this.ceProjectId = retVal;
     }
     

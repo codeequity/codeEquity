@@ -263,6 +263,8 @@ void main() {
    // testWidgets('Profile', skip:true, (WidgetTester tester) async {
    testWidgets('Profile', skip:skip, (WidgetTester tester) async {
          
+         tester.binding.window.physicalSizeTestValue = const Size(1000, 1050);
+
          await restart( tester );
          await login( tester, true );
 

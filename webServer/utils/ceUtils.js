@@ -163,6 +163,17 @@ function arrayEquals(a, b) {
         a.every((val, index) => val === b[index]);
 }
 
+// thanks web
+function printNestedDict(dict, indent = 0) {
+    for (const key in dict) {
+	if (typeof dict[key] === 'object' && dict[key] !== null) {
+	    console.log('  '.repeat(indent) + key + ':');
+	    printNestedDict(dict[key], indent + 3);
+	} else {
+	    console.log('  '.repeat(indent) + key + ': ' + dict[key]);
+	}
+    }
+}
 
 
 /* Not in use
@@ -201,6 +212,7 @@ export {millisDiff};
 export {getToday};
 export {settleWithVal};
 export {arrayEquals};
+export {printNestedDict};
 
 export {getProjectSubs};
 

@@ -1012,6 +1012,8 @@ void main() {
    //testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
    testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
 
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
+
          await restart( tester );
          await login( tester, true );
 

@@ -1,6 +1,10 @@
+import assert   from 'assert';
+
 import * as config  from  '../../../config.js';
 import * as utils    from '../../../utils/ceUtils.js';
 import * as awsUtils from '../../../utils/awsUtils.js';
+
+import * as ghV2        from '../../../utils/gh/gh2/ghV2Utils.js';
 
 // Actions: created, edited, closed, reopened, or deleted
 async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
@@ -12,17 +16,24 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     switch( action ) {
     case 'deleted':
 	// Deleting a project now sends only 1 notification, this 'deleted' one.  Leaves issues in place, 'secretly' deletes cards.
-	// Projects are cross-repo, and therefore cross-CodeEquity projects.
+	// Projects are cross-repo, and therefore cross-CodeEquity projects.  All deleted peqs move to host's unclaimed, for any cePID tied to host. repo does not change.
 	// Work from links, which hold hostProjectIds
 	// Can't just send delete issue, that will record as bot, and skip processing.  and it's slower. do processing here.
 	// Need to handle peqs, links, locs.
+	// NOTE: pd.ceProjectId is not yet known - notification does not carry any useful identifying information. 
 	{
-	    const links = ghLinks.getLinks( authData, { pid: pd.projectId } );
-	    const locs  = ghLinks.getLocs( authData, { pid: pd.projectId } );	    
 
+	    // ceProjectId is not known here.
+	    let  links = ghLinks.getLinks( authData, { pid: pd.projectId } );
+
+	    console.log( "---------- Del (first arg is ---)", pd.ceProjectId, pd.projectId, pd.projectName );
+	    // console.log( pd.reqBody );
+	    
 	    // get unique hostRepoIds that hostProject touches
 
 	    let hostRepoIds = [];
+	    links = links === -1 ? [] : links;
+	    console.log( "Links for", pd.projectId, links.toString() );
 	    for( const link of links ) {
 		if( !hostRepoIds.includes( link.hostRepoId ) ) { hostRepoIds.push( link.hostRepoId ); }
 	    }
@@ -30,40 +41,35 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let peqs = [];
 	    let promises = [];
 	    for( const rid of hostRepoIds ) {
-		const query = { HostRepoId: rid, Active: "true" };  
+		const query = { HostRepoId: rid, Active: "true" };
+		console.log( "Checking for peqs in repo", rid );
 		promises.push( awsUtils.getPEQs( authData, query ) );
 	    }
-	    Promise.all( promises ).then( function (v) { peqs = v.flat(); });
-	    
-	    if( peqs !== -1 ) {
+	    await Promise.all( promises ).then( function (v) { peqs = v.flat(); });
 
-		console.log( authData.who, "Deleted project", pd.projectId, pd.projectName, "had PEQ issues. Reforming them in", config.UNCLAIMED );
+	    let peqCEProjs = [];
+	    if( peqs.length > 0 ) {
+		console.log( authData.who, "Deleted project", pd.projectId, pd.projectName, "had PEQ issues. Reforming them in", config.UNCLAIMED, peqs.length.toString() );
 
-		// XXX promise.all?  This is very expensive for larger project.  Redoing some work here as well
+		// XXX promise.all?  This is very expensive for larger project... but rare.  Redoing some work here as well
 		for( const peq of peqs ) {
+		    const ceProjId = peq.CEProjectId;
+		    if( !peqCEProjs.includes( ceProjId )) { peqCEProjs.push( ceProjId ); }
+		    
 		    let link = links.find( (l) => l.hostIssueId == peq.HostIssueId )
 		    assert( typeof link !== 'undefined' );
 
-
-    		    // XXX accr was always false, starting a broken chain.  Verify correct now.
 		    let accr  = peq.PeqType == config.PEQTYPE_GRANT;
-		    let card  = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, link.issueId, accr );
 
-		    // XXX this was backwards.  verify correct now
-		    // Move to unclaimed:unclaimed or unclaimed:accrued col
-		    const loc = accr ?
-			  locs.find( (l) => l.ceProjectId == link.ceProjectId && l.hostProjectName == config.UNCLAIMED && l.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) :
-			  locs.find( (l) => l.ceProjectId == link.ceProjectId && l.hostProjectName == config.UNCLAIMED && l.hostColumnName == config.UNCLAIMED );
-		    
-		    assert( typeof loc !== 'undefined' );
-
-		    // XXX need to wait here?
-		    await ghV2.moveCard( authData, card.pid, card.cardId, loc.hostUtility, loc.hostColumnId );
+		    pd.ceProjectId = ceProjId;
+		    pd.repoId      = peq.HostRepoId;
+		    pd.repoName    = link.hostRepoName;
+		    let card  = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, link.hostIssueId, accr );
 
 		    // rewrite link for peq
 		    link.hostCardId      = card.cardId;
 		    link.hostColumnId    = card.columnId;
-		    link.hostColumnName  = loc.hostColumnName;
+		    link.hostColumnName  = card.columnName;
 		    link.hostProjectId   = card.pid;
 		    link.hostProjectName = config.UNCLAIMED;
 
@@ -76,18 +82,18 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 					      config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], config.PACTNOTE_RECR,
 					      utils.getToday() );
-		    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
-					      config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
-					      utils.getToday() );
 		    pd.ceProjectId = tmp;
 		    
 		}
 	    }
 
-	    ghLinks.removeLocs(  { authData: authData, pid: pd.projectId } );
+	    for( const cepid of peqCEProjs ) {
+		ghLinks.removeLocs(  { authData: authData, ceProjId: cepid, pid: pd.projectId } );
+	    }
 
 	    // peq links were rewritten above.  Eliminate any remaining links that were for carded issues for the project.
-	    const delLinks = ghLinks.getLinks( authData, { pid: pd.projectId } );
+	    let delLinks = ghLinks.getLinks( authData, { pid: pd.projectId } );
+	    delLinks = delLinks === -1 ? [] : delLinks;
 	    for( const link of delLinks ) {
 		ghLinks.removeLinkage( { authData: authData, ceProjId: link.ceProjectId, issueId: link.hostIssueId } );
 	    }

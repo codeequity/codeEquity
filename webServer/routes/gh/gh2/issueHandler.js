@@ -1,4 +1,3 @@
-
 import assert   from 'assert';
 
 import * as config   from '../../../config.js';
@@ -115,6 +114,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     // NOTE: occasionally card creation happens a little slowly, so this triggers instead of 'carded issue with status'
     let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
 
+    // console.log( "label cePID", pd.ceProjectId );
     // We have a peq.  Make sure project is linked in ceProj, PNP is dependent on locs existing.
     let projLinks = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: card.pid } );
     if( projLinks === -1 ) { await ghLinks.linkProject( authData, pd.ceProjectId, card.pid ); }

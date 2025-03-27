@@ -562,27 +562,21 @@ async function createProjectWorkaround( authData, td, name, body ) {
     return pid;
 }
 
-// XXX This is not working.. but without ability to create columns yet, this may not get used.  wait.
+// XXX This creates a simple default pv2 project.. can not yet (3/2025) create custom columns.
+async function createDefaultProject(  authData, td, name, body ) {
+    let pid = await ghV2.createProject( authData, td.ghOwnerId, td.ghRepoId, name );
+
+    // force linking in ceServer:ghLinks, not local ghLinks
+    await tu.linkProject( authData, td.ceProjectId, pid, td.ghRepoId, name ); 
+
+    return pid;
+}
+
 async function remProject( authData, pid ) {
-
-    assert( false, "Delete project  NYI." );
-    /* 
-       // Can't find id.. because classic only?  or because pvt is closed?
-       mutation {
-       deleteProject(input: {projectId: "PVT_kwDOA8JELs4AGXxl"}) {
-       clientMutationId
-       }
-       }
-       
-       // first error here is your token has insufficient scopes
-       mutation {
-       deleteProjectV2Item(input: {itemId: "PVT_kwDOA8JELs4AGXxl", projectId: "PVT_kwDOA8JELs4AGXxl"}) {
-       clientMutationId
-       }
-    */
-
+    await ghV2.deleteProject( authData, pid );
     await utils.sleep( tu.MIN_DELAY );
 }
+
 
 // do NOT move to ghV2 - this is used during testing only.  handlers are oblivious to this view-centric action.
 async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
@@ -1519,7 +1513,7 @@ async function checkUnclaimedAccr( authData, testLinks, td, loc, issDatOld, issD
 	let pact = pacts[ pacts.length - 1];
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
 	subTest = tu.checkEq( pact.Action, config.PACTACT_CHAN,    subTest, "PAct Action"); 
-	subTest = tu.checkEq( pact.Note, config.PACTNOTE_RECR,               subTest, "PAct Note"); 
+	subTest = tu.checkEq( pact.Note, config.PACTNOTE_RECR,     subTest, "PAct Note"); 
     }
 
     return await tu.settle( subTest, testStatus, checkUnclaimedAccr, authData, testLinks, td, loc, issDatOld, issDatNew, cardNew, testStatus, source );
@@ -1537,22 +1531,27 @@ async function checkNewbornCard( authData, testLinks, td, loc, cardId, title, te
     // CHECK github card
     let cards  = await getCards( authData, td.ghRepoId, loc.pid, loc.colId );
     let card   = cards.find( card => card.cardId == cardId );
-    const cardTitle = card.title.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-    let goodCard = utils.validField( card, "issueNum" ) && card.issueNum != -1;
-    subTest = tu.checkEq( goodCard, false,                             subTest, "Newbie has content" );
-    subTest = tu.checkEq( cardTitle, title,                            subTest, "Newbie title" );
-
-    // CHECK linkage
-    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
-    let link   = links.find( l => l.hostCardId == cardId );
-    subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
-
-    // CHECK dynamo Peq.  inactive, if it exists
-    // Risky test - will fail if unrelated peqs with same title exist
-    let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
-    subTest = tu.checkEq( peqs, -1,                                    subTest, "Newbie peq exists" );
-
-    // CHECK dynamo Pact.. nothing to do here for newborn
+    let foundCard = ( typeof card !== 'undefined' );
+    subTest = tu.checkEq( foundCard, true,                             subTest, "no card yet" );
+    
+    if( foundCard ) {
+	const cardTitle = card.title.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+	let goodCard = utils.validField( card, "issueNum" ) && card.issueNum != -1;
+	subTest = tu.checkEq( goodCard, false,                             subTest, "Newbie has content" );
+	subTest = tu.checkEq( cardTitle, title,                            subTest, "Newbie title" );
+	
+	// CHECK linkage
+	let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
+	let link   = links.find( l => l.hostCardId == cardId );
+	subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
+	
+	// CHECK dynamo Peq.  inactive, if it exists
+	// Risky test - will fail if unrelated peqs with same title exist
+	let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
+	subTest = tu.checkEq( peqs, -1,                                    subTest, "Newbie peq exists" );
+	
+	// CHECK dynamo Pact.. nothing to do here for newborn
+    }
 
     return await tu.settle( subTest, testStatus, checkNewbornCard, authData, testLinks, td, loc, cardId, title, testStatus );
 }
@@ -2064,12 +2063,12 @@ export {forcedRefreshUnclaimed};
 export {getQuad};
 
 export {createProjectWorkaround};
+export {createDefaultProject};
+export {remProject};
 
 export {cloneFromTemplate};   // XXX speculative.  useful?
 export {createCustomField};   // XXX speculative.  useful?
 
-// export {makeProject};        // XXX NYI
-export {remProject};
 export {unlinkProject};
 export {linkRepo};
 export {unlinkRepo};

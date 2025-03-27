@@ -67,6 +67,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     // TESTS
 
     let subTest = "";
+
     await gh2TestDelete( authData, authDataX, authDataM, testLinks, td, tdX, tdM );
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
@@ -80,7 +81,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nFlat test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-/*
+
     subTest = await gh2TestBasicFlow( authData, testLinks, td );
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 5000 );
@@ -95,7 +96,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-*/
+
     subTest = await gh2TestCross( flutterTest, authData, authDataX, authDataM, testLinks, td, tdX, tdM );
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );

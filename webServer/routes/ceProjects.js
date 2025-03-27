@@ -71,6 +71,7 @@ class CEProjects {
 	}
 
 	retVal = projFRepo.length == 1? projFRepo[0].CEProjectId : retVal;
+	// console.log( "CEP: cePID", retVal );
 	return retVal;
     }
     

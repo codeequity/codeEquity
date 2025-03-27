@@ -758,7 +758,7 @@ async function findOrCreateLabel( authData, repoNode, peqHumanLabelName, peqValu
 
 async function updateLabel( authData, labelNodeId, name, desc, color ) {
 
-    console.log( "Update label", labelNodeId, "to", name, desc, color );
+    console.log( "Update label", labelNodeId, "to", name, desc, "color:", color );
 
     let query     = "";
 
@@ -861,8 +861,8 @@ async function updateProject( authData, pid, title, body ) {
     catch( e ) { await ghUtils.errorHandler( "updateProject", e, updateProject, authData, pid, title, body ); }
 }
 
-/*
-// XXX Can only create a shell without columns.
+
+// XXX Can only create a shell with default host columns.
 // Only repository owner can use this to create a project.  
 async function createProject( authData, ownerNodeId, repoNodeId, title, body ) {
     console.log( "Create project", ownerNodeId, repoNodeId, title );
@@ -883,13 +883,29 @@ async function createProject( authData, ownerNodeId, repoNodeId, title, body ) {
 	    });
     }
     catch( e ) { pid = await ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ); }
-	
+
+    // XXX required?
     // arg GH.. would be nice to do this in 1 query!
     if( pid ) { await updateProject( authData, pid, "", body ); }
     
     return pid == false ? -1 : pid;
 }
-*/
+
+// XXX Can not get this to work. permissions look good, but explorer seems to have different token.
+//     api error is useless: node:internal/process/promises:288 triggerUncaughtException
+async function deleteProject( authData, projNodeId ) {
+    console.log( "Delete project", projNodeId );
+    let query     = `mutation( $projectId:ID! ) 
+                             { deleteProjectV2( input:{ projectId: $projectId }) {clientMutationId}}`;
+    let variables = {"projectId": projNodeId };
+    let queryJ    = JSON.stringify({ query, variables });
+
+    console.log( queryJ );
+    try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "deleteProject" );  }
+    catch( e ) { await ghUtils.errorHandler( "deleteProject", e, deleteProject, authData, projNodeId ); }
+
+    return true;
+}
 
 function getColumnName( authData, ghLinks, ceProjId, colId ) {
     if( colId === -1 ) { return -1; }
@@ -1675,7 +1691,7 @@ async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, 
     assert( loc !== -1  );
     assert( loc.hostColumnId !== config.EMPTY  );
 
-    // create card in unclaimed:unclaimed
+    // create card in unclaimed:unclaimed or unclaimed:accr
     let ploc = {"ceProjId": pd.ceProjectId, "pid": unClaimedProjId, "colId": loc.hostColumnId} ;
     let card = await createProjectCard( authData, ghLinks, ploc, issueId, loc.hostUtility, false );
     return card;
@@ -1879,7 +1895,8 @@ export {cleanUnclaimed};
 
 export {getCEProjectLayout};
 
-// export {createProject};   // XXX NYI
+export {createProject};
+export {deleteProject};
 export {createUnClaimedProject}; // XXX NYI
 export {createUnClaimedColumn};  // XXX NYI
 export {createUnClaimedCard};    

@@ -285,7 +285,7 @@ async function rebuildPEQ( authData, link, oldPeq ) {
     // No.  No special cases, otherwise flat project handling makes things tricky in a useless way.
     // if( config.PROJ_COLS.includes( link.hostColumnName ) ) { postData.HostProjectSub = [ link.hostProjectName ]; }
     
-    newPEQId = await recordPEQ(	authData, postData );
+    let newPEQId = await recordPEQ( authData, postData );
     assert( newPEQId != -1 );
     return newPEQId; 
 }
