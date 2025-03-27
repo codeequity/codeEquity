@@ -1,4 +1,3 @@
-
 import assert   from 'assert';
 
 import * as config   from '../../../config.js';

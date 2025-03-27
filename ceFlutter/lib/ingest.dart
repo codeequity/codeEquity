@@ -333,7 +333,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    List<HostLoc> projRenames = [];
    
    List<Allocation> appAllocs = [];
-   List<HostLoc>      appLoc  = appState.myHostLinks.locations;
+   List<HostLoc>     appLocs  = appState.myHostLinks.locations;
    if( appState.myPEQSummary != null ) { appAllocs = appState.myPEQSummary.getAllAllocs(); }
 
    print( appLocs );

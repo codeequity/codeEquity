@@ -758,7 +758,7 @@ async function findOrCreateLabel( authData, repoNode, peqHumanLabelName, peqValu
 
 async function updateLabel( authData, labelNodeId, name, desc, color ) {
 
-    console.log( "Update label", labelNodeId, "to", name, desc, color );
+    console.log( "Update label", labelNodeId, "to", name, desc, "color:", color );
 
     let query     = "";
 

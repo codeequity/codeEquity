@@ -911,8 +911,12 @@ async function testLabelMods( authData, testLinks, td ) {
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL;
 
-	// XXX 8/23/24
-	// GH has failed to send the following update notice several times.  
+	// XXX 8/23/24, 3/26/25
+	// GH has failed to send the following update notice several times.
+	// Should see:                                  Notification: ariCETester label edited 105 PEQ ipOHTPCgyy for codeequity
+	//        first non-bot-sent notification above Notification: ariCETester label deleted 105 PEQ jXCOOcifMx for codeequity
+	// Next time this fails, settleWait for notification.  Don't see it?  run update again... but this is avoiding a true GH error..
+	//        final fix for this will be proper ceServer data integrity work.
 	await utils.sleep( 1500 );	
 	labNP1 = await tu.settleWithVal( "Label mods newName", getLabHelp, authData, td, "newName" );
 	await gh2tu.updateLabel( authData, labNP1, {name: pl105, description: "newDesc"} );
@@ -1143,13 +1147,13 @@ async function runTests( authData, testLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
-    /*
+
+/*
     let t0 = await testProjDel( authData, testLinks, td );
     console.log( "\n\nProjDel test complete." );
     // ghUtils.show( true );    
     await utils.sleep( 5000 );
-    */
-    
+*/
     let t1 = await testAssignment( authData, testLinks, td );
     console.log( "\n\nAssignment test complete." );
     // ghUtils.show( true );    

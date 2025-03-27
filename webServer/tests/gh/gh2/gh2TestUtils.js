@@ -1531,22 +1531,27 @@ async function checkNewbornCard( authData, testLinks, td, loc, cardId, title, te
     // CHECK github card
     let cards  = await getCards( authData, td.ghRepoId, loc.pid, loc.colId );
     let card   = cards.find( card => card.cardId == cardId );
-    const cardTitle = card.title.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-    let goodCard = utils.validField( card, "issueNum" ) && card.issueNum != -1;
-    subTest = tu.checkEq( goodCard, false,                             subTest, "Newbie has content" );
-    subTest = tu.checkEq( cardTitle, title,                            subTest, "Newbie title" );
-
-    // CHECK linkage
-    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
-    let link   = links.find( l => l.hostCardId == cardId );
-    subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
-
-    // CHECK dynamo Peq.  inactive, if it exists
-    // Risky test - will fail if unrelated peqs with same title exist
-    let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
-    subTest = tu.checkEq( peqs, -1,                                    subTest, "Newbie peq exists" );
-
-    // CHECK dynamo Pact.. nothing to do here for newborn
+    let foundCard = ( typeof card !== 'undefined' );
+    subTest = tu.checkEq( foundCard, true,                             subTest, "no card yet" );
+    
+    if( foundCard ) {
+	const cardTitle = card.title.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+	let goodCard = utils.validField( card, "issueNum" ) && card.issueNum != -1;
+	subTest = tu.checkEq( goodCard, false,                             subTest, "Newbie has content" );
+	subTest = tu.checkEq( cardTitle, title,                            subTest, "Newbie title" );
+	
+	// CHECK linkage
+	let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
+	let link   = links.find( l => l.hostCardId == cardId );
+	subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
+	
+	// CHECK dynamo Peq.  inactive, if it exists
+	// Risky test - will fail if unrelated peqs with same title exist
+	let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
+	subTest = tu.checkEq( peqs, -1,                                    subTest, "Newbie peq exists" );
+	
+	// CHECK dynamo Pact.. nothing to do here for newborn
+    }
 
     return await tu.settle( subTest, testStatus, checkNewbornCard, authData, testLinks, td, loc, cardId, title, testStatus );
 }

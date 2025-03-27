@@ -269,25 +269,19 @@ class Linkage {
 	return retVal;
     }
 
-
     // issueId:cardId 1:m  cardId:issueId 1:1
     // note: id = -1 here is simply used to turn on/off match.  does not grow beyond this func. config.empty signals untracked.
     getLinks( authData, query ) {
 
+	// Some handlers are unable to get ceProjectId soon enough, so they work with more links.
 	if( typeof query.ceProjId === 'undefined' && typeof query.pid === 'undefined' ) {
 	    console.log( authData.who, "Error.  Neither ceProjectId nor host project id were not specified in Locs query." );
 	    assert( false );
 	}
 
-	// ceProj is undefined, but below relies on being config.EMPTY.  Could fix, but best practice is to set it.
-	if( typeof query.ceProjId === 'undefined' ) {
-	    console.log( authData.who, "Error.  ceProjectId was  not specified in Links query." );
-	    assert( false );
-	}
-
 	// NOTE: hostColumnIds may not be unique.  Don't query them directly.
 
-	const ceProjId    = query.ceProjId;
+	const ceProjId    = typeof query.ceProjId !== 'undefined'    ? query.ceProjId           : config.EMPTY;
 	const repo        = utils.validField( query, "repo" )        ? query.repo               : config.EMPTY;
 	const repoId      = utils.validField( query, "repoId" )      ? query.repoId.toString()  : config.EMPTY;
 	const issueId     = utils.validField( query, "issueId" )     ? query.issueId.toString() : -1;
@@ -303,15 +297,24 @@ class Linkage {
 	let links = [];
 
 	let seed = {};
-	if( typeof ceProjId === 'undefined' ) { seed = this.links; }
-	else                                  { seed = this.links[ceProjId]; }
+	if( ceProjId == config.EMPTY ) {
+	    // This works only because ceProjId : issueId: cardId are 1:1:1 (does not work for locs, for example, since hostColId is not unique and hostProj can be shared)
+	    for( const [cpid, clinks] of Object.entries( this.links )) { Object.assign( seed, clinks ); }
+	    // console.log( "UNDEFINED" ); 
+	    // utils.printNestedDict( seed );
+	}
+	else {
+	    seed = this.links[ceProjId];
+	    // console.log( "DEFINED", ceProjId ); 
+	    // utils.printNestedDict( seed );
+	}
 
 	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
 	if( !seed ) { return -1; }
 
-	for( const [cpid, clinks] of Object.entries( seed ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
+	for( const [_, ilinks] of Object.entries( seed ) ) {  // one i(ssue)links is {cardId: { <link>}, cardId2: { <link> }}
 	    // Note, during initial resolve, this may NOT be 1:1 issue:card
-	    for( const [_, link] of Object.entries( clinks ) ) {
+	    for( const [_, link] of Object.entries( ilinks ) ) {
 		let match = true;
 		match = issueId == -1               ? match : match && (link.hostIssueId     == issueId);
 		match = cardId == -1                ? match : match && (link.hostCardId      == cardId);
@@ -332,7 +335,7 @@ class Linkage {
 	if( links.length == 0 ) {
 	    console.log( query );
 	    this.show();
-         }
+        }
 	*/
 	
 	if( links.length == 0 ) { links = -1; }
@@ -340,8 +343,8 @@ class Linkage {
     }
 
     iterateLocs( authData, query, matchFunc ) {
-	if( typeof query.ceProjId === 'undefined' && typeof query.pid === 'undefined' ) {
-	    console.log( authData.who, "Error.  Neither ceProjectId nor host project id were specified in Locs query." );
+	if( typeof query.ceProjId === 'undefined' && query.ceProjId != config.EMPTY ) {
+	    console.log( authData.who, "Error.  ceProjectId must be specified for Locs query." );
 	    assert( false );
 	}
 
@@ -359,22 +362,20 @@ class Linkage {
 
 	let locs = [];
 
-	let seed = {};
-	if( typeof ceProjId === 'undefined' ) { seed = this.locs; }
-	else                                  { seed = this.locs[ceProjId]; }
+	let seed = this.locs[ceProjId];
 
 	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
 	if( !seed ) { return -1; }
 
-	for( const [cpid, clocs] of Object.entries( seed ) ) {  // one clocs is {pid1: { coldata }, pid2: { coldata }}
-	    for( const [_, loc] of Object.entries( clocs ) ) {            
+	for( const [_, hplocs] of Object.entries( seed ) ) {  // one hplocs is {hcolId1: { coldata }, hcolId2: { coldata }}
+	    for( const [_, loc] of Object.entries( hplocs ) ) {            
 		let match = true;
 		
 		match = pid == -1                ? match : match && (loc.hostProjectId    == pid);
 		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
 		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
 		match = projName == config.EMPTY ? match : match && (loc.hostProjectName  == projName);
-		match = colName == config.EMPTY  ? match : match && (loc.hostColumnName   == colName);
+		match = colName  == config.EMPTY ? match : match && (loc.hostColumnName   == colName);
 		match =                                    match && (loc.active           == "true");
 
 		if( match ) { matchFunc( locs, loc ); }
@@ -478,7 +479,7 @@ class Linkage {
 	if( !authData ) { console.log( authData.who, "missing authData" ); return false; }
 
 	let query = { authData: authData };
-	if( typeof ceProjId  !== 'undefined' ) { query.ceProjId = ceProjId; }
+	if( typeof ceProjId  !== 'undefined' && ceProjId != config.EMPTY ) { query.ceProjId = ceProjId; }
 	if( typeof pid       !== 'undefined' ) { query.pid = pid;
 						 console.log( authData.who, "Remove locs for pid:", ceProjId, pid ); }    // many deletes 
 	if( typeof colId     !== 'undefined' ) { query.colId = colId;
