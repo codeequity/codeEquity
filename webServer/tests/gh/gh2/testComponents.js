@@ -1104,7 +1104,7 @@ async function testProjDel( authData, testLinks, td ) {
 
     
 	// XXX Can't get delete to work yet, so this step must occur by hand.
-	// gh2tu.remProject( authData, "PVT_kwDOA8JELs4A0-_Z" );
+	// gh2tu.remProject( authData, projId );
 	await gh2tu.refreshUnclaimed( authData, td );
 	/*
 	  const unclLoc = await gh2tu.getFlatLoc( authData, td.unclaimPID, td.unclaimTitle, td.unclaimTitle );
@@ -1148,12 +1148,14 @@ async function runTests( authData, testLinks, td ) {
     let testStatus = [ 0, 0, []];
 
 
-/*
+    /*
+    // NOTE: MUST leave this test off without manual cleanup - otherwise setup phase will create a bazillion projdel projects.
     let t0 = await testProjDel( authData, testLinks, td );
     console.log( "\n\nProjDel test complete." );
     // ghUtils.show( true );    
     await utils.sleep( 5000 );
-*/
+    */
+    
     let t1 = await testAssignment( authData, testLinks, td );
     console.log( "\n\nAssignment test complete." );
     // ghUtils.show( true );    

@@ -201,12 +201,13 @@ void _swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 // 
 // Case 1: "add assignee" arrives before the peq issue is added.
 //         PPA has strict guidelines from ceServer for when info in peq is valid - typically first 'confirm' 'add'.  assert protected.
-// Case 2: "add" arrives before a deleted accrued issue is recreated.
-//         NOTE: this case is no longer possible.  There is 1 recreate pact, no subsequent add pact.  delete is old peqId, add is new peqId.
+// Case 2: <removed>
 // Case 3: "add" will arrive twice in many cases, one addRelo for no status (when peq label an issue), then the second when situating the issue
 //          ignore the second add, it is irrelevant
 // Case 4: "relo" can arrive after "delete" is received, during transfer.
 //          _relo (used for local and x-proj transfers) handles allocation removal.  ignore delete and let relo manage local kp
+// Case 5: Creating a card during blast can begin with card in 'No Status' column.  Rarely, relo to No Status pact arrives after
+//         relo to actual location.
 // 
 // Need to have seen a 'confirm' 'add' before another action, in order for the allocation to be in a good state.
 // This will either occur in current ingest batch, or is already present in mySummary from a previous update.
@@ -272,6 +273,35 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
          it.add( i );
          ignored = true;
       }
+      else if( pact.verb == PActVerb.confirm && pact.action == PActAction.relocate && pact.subject.last == "No Status" ) {
+         // Case 5
+         // XXX it is remotely possible that incremental ingest boundary sits between a blast 'no status' and '<proper location>'
+         //     it is remotely possible that '<proper location>' pact arrived much earlier.
+         //     in both cases, currently relying on nightly sanity check to repair.
+         // XXX Next time this fails to recover, add check to GH
+         assert( pact.subject.length == 3 );
+         print( "Case 5 check " + pact.subject[0] );
+         for( int j = i-1; j >= 0; j-- ) {
+            PEQAction pactEarlier = todos[j].item1;
+
+            print( "Checking " + j.toString() );
+
+            // Stop if pass 1s (only failure known as of 3/2025 was 4ms off)
+            if( pact.timeStamp - pactEarlier.timeStamp > 1000 ) { print( "Looks like a valid No Status location" );  break; }
+
+            // Pact in range.. check if relocate same PEQ.  If so, direct swap, no other interactions
+            if( pactEarlier.verb == PActVerb.confirm && pactEarlier.action == PActAction.relocate ) {
+               assert( pactEarlier.subject.length == 3 );
+               if( pact.subject[0] == pactEarlier.subject[0] ) {
+                  print( "  .. got a winner.  Swap " + i.toString() + " " + j.toString() + " " + (pact.timeStamp - pactEarlier.timeStamp).toString() + "ms" );
+                  print( pactEarlier );
+                  print( pact );
+                  _swap( todos, i, j );
+                  break;
+               }
+            }
+         }
+      }
 
       // print( "    KP: " + kp.toString() );
       
@@ -331,14 +361,16 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
 
    List<HostLoc> colRenames  = [];
    List<HostLoc> projRenames = [];
-   
+
+   // ceServer has already updated appLocs to be consistent with renaming.
+   List<HostLoc>    appLocs   = appState.myHostLinks.locations;
    List<Allocation> appAllocs = [];
-   List<HostLoc>     appLocs  = appState.myHostLinks.locations;
    if( appState.myPEQSummary != null ) { appAllocs = appState.myPEQSummary.getAllAllocs(); }
 
    print( appLocs );
 
    // look through current ingest batch renaming events.  Save old here, look up new later.
+   // subject is [ pid, oldName, newName ]
    for( var i = 0; i < todos.length; i++ ) {
       PEQAction pact = todos[i].item1;
       PEQ       peq  = todos[i].item2;
@@ -357,7 +389,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
          }
          else if( pact.note == PActNotes['projRename'] ) {
             assert( pact.subject.length == 3 );
-            HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == pact.subject[0] );
+            HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostProjectId == pact.subject[0] );
             assert( loc != null );
             projRenames.add( new HostLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: pact.subject[0], hostColumnId: "-1", hostProjectName: pact.subject[1],
                                         hostColumnName: loc!.hostColumnName, active: loc.active ) );
@@ -366,15 +398,17 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
       }
    }
 
-   // AppAllocs is blank if starting from cleanFlutter.
+   if( colRenames.length == 0 && projRenames.length == 0 ) { return; }
+   
+   // AppAllocs is blank if starting from cleanFlutter, but most often will be populated.
    // Note: this could be sped up, but any value?
-   // XXX Untested
    // Update allocations.
    _vPrint( appState, 2, "... allocations size: " + appAllocs.length.toString() + " " + colRenames.length.toString() + " " + projRenames.length.toString() );
    for( Allocation alloc in appAllocs ) {
       assert( alloc.categoryBase != null );
       
-      assert( false ); // XXX need to rebuild PEQSummary:catIndex
+      // NOTE can't rename equity plan lines - not derived from host projects locs.  Renaming can break how host projects are situated.. that's correct.
+      //      so renaming here does not need to be concerned with interaction between host locs and how they tie into equity plan items.
       
       for( HostLoc proj in projRenames ) {
          if( alloc.hostProjectId == proj.hostProjectId ) {
@@ -383,6 +417,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             _vPrint( appState, 4, " .. found project name update: " + proj.hostProjectName  + " => " + loc!.hostProjectName );
 
             // pindex can be -1 when there are multiple renames in this ingest stream.  myHostLinks will skip to the final.
+            //        i.e. a->b, b->c.. first set here will move from a->c, skipping b.
             int pindex = alloc.category.indexOf( proj.hostProjectName );
             if( pindex >= 0 ) { alloc.category[pindex] = loc.hostProjectName; }
 
@@ -404,6 +439,9 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.hostColumnName; }
          }
       }
+
+      // No need (and can't anyway, not stateful).  If updatePeqAllocations does anything, allocTree is rebuilt.
+      // setState(() => appState.updateAllocTree = true );
    }
 }
 
@@ -970,6 +1008,21 @@ void _notice( appState ) {
 }
 
 
+void _summarizeTodos( appState, todos, pactionLength, foundPeqs ) {
+
+   _vPrint( appState, 4, "Will now process " + pactionLength.toString() + " pactions for " + foundPeqs.toString() + " non-unique peqs." );
+   var i = 0;
+   for( var tup in todos ) {
+      final pa = tup.item1;
+      final pp = tup.item2;
+      String tmpStr = i.toString() + "   " + pa.timeStamp.toString() + " <pact,peq> " + pa.id + " " + pp.id;
+      tmpStr       += " " + enumToStr(pa.verb) + " " + enumToStr(pa.action) + " " + pa.note + " " + pa.subject.toString();
+      _vPrint( appState, 1, tmpStr );
+      i++;
+   }
+}
+
+
 /* -----------------------
 Ingest process
 The incoming PAct is all current information.
@@ -1182,17 +1235,8 @@ Future<void> updatePEQAllocations( context, container ) async {
    // todos.sort((a, b) => a.item2.hostProjectSub.length.compareTo(b.item2.hostProjectSub.length));
    todos.sort((a, b) => a.item1.timeStamp.compareTo(b.item1.timeStamp));
    print( "TIME Sorted " + DateTime.now().difference(startUPA).inSeconds.toString() );
-   
-   _vPrint( appState, 4, "Will now process " + todoPActions.length.toString() + " pactions for " + foundPeqs.toString() + " non-unique peqs." );
-   var i = 0;
-   for( var tup in todos ) {
-      final pa = tup.item1;
-      final pp = tup.item2;
-      String tmpStr = i.toString() + "   " + pa.timeStamp.toString() + " <pact,peq> " + pa.id + " " + pp.id;
-      tmpStr       += " " + enumToStr(pa.verb) + " " + enumToStr(pa.action) + " " + pa.note + " " + pa.subject.toString();
-      _vPrint( appState, 1, tmpStr );
-      i++;
-   }
+
+   _summarizeTodos( appState, todos, todoPActions.length, foundPeqs );
 
    _vPrint( appState, 4, "Pre order fix " + todos.length.toString());
    await fixOutOfOrder( todos, context, container );
