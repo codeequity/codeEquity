@@ -6,6 +6,9 @@ import * as awsUtils from '../../../utils/awsUtils.js';
 
 import * as ghV2        from '../../../utils/gh/gh2/ghV2Utils.js';
 
+
+// Project_v2 notifications do not include repo or CEP.  Can collect ceProjectIds from links.
+
 // Actions: created, edited, closed, reopened, or deleted
 async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
@@ -105,22 +108,33 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // update ghlinks
 	    let oldName = -1;
 	    let newName = pd.projectName;
-	    if( typeof pd.reqBody.changes.name !== 'undefined' ) { oldName = pd.reqBody.changes.name.from; }
-
+	    // console.log( pd.reqBody );
+	    if( typeof pd.reqBody.changes.title !== 'undefined' ) { oldName = pd.reqBody.changes.title.from; }
+	    
 	    if( oldName != -1 ) {
-		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projName": oldName } );
+		console.log( pd.ceProjectId, pd.repoName, pd.projectId, oldName, newName );
+		
+		let links = ghLinks.getLinks( authData, { pid: pd.projectId } );
 		links.forEach( link => link.hostProjectName = newName );
-
-		// don't wait
-		awsUtils.recordPEQAction( authData, config.EMPTY, pd,
-					  config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.projectId.toString(), oldName, newName], config.PACTNOTE_PREN,
-					  utils.getToday());
-
-		const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projId": pd.projectId } );
-		for( const loc of locs ) {
-		    loc.hostProjectName = newName;
+		
+		let cePIDs = [];
+		for( const link of links ) {
+		    if( !cePIDs.includes( link.ceProjectId )) {
+			cePIDs.push( link.ceProjectId );
+			pd.ceProjectId = link.ceProjectId;
+			
+			// don't wait
+			awsUtils.recordPEQAction( authData, config.EMPTY, pd,
+						  config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.projectId, oldName, newName], config.PACTNOTE_PREN,
+						  utils.getToday());
+			const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId } );
+			for( const loc of locs ) {
+			    loc.hostProjectName = newName;
+			}
+			
+			await ghLinks.addLocs( authData, locs );
+		    }
 		}
-		await ghLinks.addLocs( authData, locs, true );
 	    }
 	}
 	break;

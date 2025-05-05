@@ -206,7 +206,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res ) {
 	case 'projects_v2' :
 	    {
 		retVal = await gh2Project.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
-		    .catch( e => console.log( "Error.  Label Handler failed.", e ));
+		    .catch( e => console.log( "Error.  Project Handler failed.", e ));
 	    }
 	    break;
 	default:
