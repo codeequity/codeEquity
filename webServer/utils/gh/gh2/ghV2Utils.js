@@ -1397,6 +1397,7 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
     let rp = repoFullName.split('/');
     assert( rp.length == 2 );
 
+    /*  classic projects sunsetted 4/1/25
     const query1 = `query($owner: String!, $name: String!) {
 	repository(owner: $owner, name: $name) {
            id
@@ -1414,17 +1415,37 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
               edges{node{title id}}}
            projects(first:100) {edges{node{name id}}}
 		}}`;
+    */
 
+    const query1 = `query($owner: String!, $name: String!) {
+	repository(owner: $owner, name: $name) {
+           id
+           projectsV2(first:100) {
+             pageInfo{hasNextPage, endCursor}
+             edges{node{title id}}}        
+		}}`;
+    
+    const queryN = `query($owner: String!, $name: String!, $cursor: String!) {
+	repository(owner: $owner, name: $name) {
+           id
+           projectsV2(first:100 after: $cursor) {
+              pageInfo{hasNextPage, endCursor }
+              edges{node{title id}}}
+		}}`;
+    
     let query     = cursor === -1 ? query1 : queryN;
     let variables = cursor === -1 ? {"owner": rp[0], "name": rp[1] } : {"owner": rp[0], "name": rp[1], "cursor": cursor };
     query = JSON.stringify({ query, variables });
 
+    console.log( query );
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "getProjectIds" )
 	.then( async (raw) => {
 
+	    console.log( raw );
 	    let repoId = raw.data.repository.id; 
 	    // Run this once only
+	    /*
 	    if( cursor === -1 )
 	    {
 		let classics = raw.data.repository.projects;
@@ -1439,7 +1460,7 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 		    data.push( datum );
 		}
 	    }
-	    
+	    */
 	    let projs = raw.data.repository.projectsV2;
 	    for( const p of projs.edges ) {
 		console.log( authData.who, "   - pushing", p.node.title, p.node.id, repoFullName, repoId );
