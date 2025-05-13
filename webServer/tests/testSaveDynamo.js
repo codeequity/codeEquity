@@ -94,7 +94,7 @@ async function runTests( flutterTest ) {
     return testStatus
 }
 
-// Switch to runTests rather than exports if npm run testSave
-// runTests();
-
+// Switch to runTests rather than exports if npm run testSave  (true version for flutter)
+//runTests(true);
+//runTests();
 export default runTests;

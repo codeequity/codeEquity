@@ -209,6 +209,8 @@ async function cardIssue( authData, pid, issDat ) {
     let variables = {"proj": pid, "contentId": issDat[0]};
     let queryJ    = JSON.stringify({ query, variables });
 
+    console.log( authData.pat, config.GQL_ENDPOINT, queryJ );
+
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "cardIssue" )
 	    .then( ret => {
@@ -1113,6 +1115,8 @@ async function getCardFromIssue( authData, issueId ) {
     let variables = {"id": issueId, "fName": config.GH_COL_FIELD };
     let queryJ    = JSON.stringify({ query, variables });
 
+    console.log( authData.pat, config.GQL_ENDPOINT, queryJ );
+    
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "getCardFromIssue" )
 	    .then( raw => {
