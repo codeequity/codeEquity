@@ -921,8 +921,9 @@ async function testLabelMods( authData, testLinks, td ) {
 	labNP1 = await tu.settleWithVal( "Label mods newName", getLabHelp, authData, td, "newName" );
 	await gh2tu.updateLabel( authData, labNP1, {name: pl105, description: "newDesc"} );
 
-	//  After 4/5/25 failure: 
-	let curFailCount = testStatus[1];
+	//  After 4/5/25 failure:
+	let copyTS       = testStatus.slice();
+	let curFailCount = copyTS[1];
 	testStatus = await labHelp( authData, td, pl105, pl105, "PEQ value: 105", testStatus );
 	if( testStatus[1] != curFailCount ) {
 	    console.log( "XXX LM Pending: update label to 105Peq failed to send notification.  Trying again." );

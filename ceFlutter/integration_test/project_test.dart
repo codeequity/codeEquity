@@ -784,6 +784,7 @@ Future<bool> validateBuilder25( WidgetTester tester ) async {
 // Starts with initial expansion
 // NOTE!  key name is constructed as: peqCount + pactCount + action + verb.    detail_page:_makePAct
 Future<bool> validateAri22( WidgetTester tester ) async {
+   print( "Validate ari 22" );
    await expandAllocs( tester, 3, 3 ); // soft cont
    await expandAllocs( tester, 5, 5 ); // gho
    await expandAllocs( tester, 6, 6 ); // accr
@@ -801,6 +802,7 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    // Most recent first
 
    String issue = "Situated Accrued iss1st";  // peq 0
+   print( issue );
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
 
    expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "0 0 confirm add" ),      true );
@@ -812,6 +814,7 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    expect( await validateConfirmAccrue( tester, repo,                   "6 0 confirm accrue" ),   true );
    expect( await validateConfirmDelete( tester, repo, issue,            "7 0 confirm delete", issue: true ),   true );
 
+   print( issue );
    issue = "Situated Accrued card1st";   // peq 1
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "0 1 confirm add" ),      true );
@@ -826,6 +829,7 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
    await tester.drag( listFinder, Offset(0.0, -50.0) );
    
+   print( issue );
    issue = "Close Open test";           // peq 2
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(        tester, repo, issue, "1k PEQ",  "0 2 confirm add" ),      true );
@@ -845,6 +849,7 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    await tester.drag( listFinder, Offset(0.0, -300.0) );
    await pumpSettle( tester, 2 );
    
+   print( issue );
    issue  = "IR Accrued";              // peq 3
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(        tester, repo, issue, "1k PEQ",      "0 3 confirm add" ),      true );
