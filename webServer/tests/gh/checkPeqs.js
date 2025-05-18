@@ -1,46 +1,37 @@
-var assert = require( 'assert' );
+import assert from 'assert';
 
-const awsAuth        = require( '../../auth/aws/awsAuth' );
-const auth           = require( '../../auth/gh/ghAuth' );
-const config         = require( '../../config' );
+import * as awsAuth   from '../../auth/aws/awsAuth.js';
+import * as auth      from '../../auth/gh/ghAuth.js';
+import * as config    from '../../config.js';
 
-const utils    = require( '../../utils/ceUtils' );
-const awsUtils = require( '../../utils/awsUtils' );
-
-const authDataC = require( '../../auth/authData' );
+import * as utils     from '../../utils/ceUtils.js';
+import * as awsUtils  from '../../utils/awsUtils.js';
+import authDataC      from '../../auth/authData.js';
 
 // ACTIVE PEQS
 // --------------------------------
-// Modules
-const _p1 = { title: "Unallocated", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceHolderId: [], hostHolderId:[], ceGrantorId:"---",
-              peqType: "allocation", amount: 1000000, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Business Operations" ], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
-
-const _p2 = { title: "Github Operations Flut", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceHolderId: [], hostHolderId:[], ceGrantorId:"---",
-              peqType: "allocation", amount: 1500000, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions" ], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 // Data Sec
 const _p3 = { title: "Snow melt", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
 	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
               peqType: "grant", amount: 1000, accrualDate: -1, vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Data Security Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Data Security Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 const _p4 = { title: "AssignTest", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
 	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
               peqType: "grant", amount: 1000, accrualDate: -1, vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Data Security Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Data Security Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 // no ceGrantor - this peq has not been granted.  In fact, no splits will ever be 'granted' in this test since can't touch a peq once it has been set in stone
 const _p5 = { title: "IR Plan split", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
               peqType: "pending", amount: 250, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Data Security Flut", "Pending PEQ Approval"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Data Security Flut", "Pending PEQ Approval"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 const _p6 = { title: "IR Prog split", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["yxsklawdpc"], hostHolderId:["U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 500, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Data Security Flut", "Planned"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Data Security Flut", "Planned"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 // A Pre-existing Project
 
@@ -59,22 +50,12 @@ const _p9 = { title: "IR Plan split", id: "-1", ceProjectId: "CE_FlutTest_ks8asd
               peqType: "plan", amount: 500, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["A Pre-Existing Project Flut", "Bacon"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
-const _p10 = { title: "IR Alloc split", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
-	      ceHolderId: [], hostHolderId:[], 
-              peqType: "allocation", amount: 125000, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["A Pre-Existing Project Flut", "Bacon"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
-
 const _p11 = { title: "LabelTest Carded", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: [], hostHolderId:[], 
               peqType: "plan", amount: 1000, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["A Pre-Existing Project Flut", "Bacon"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 // Github Operations
-
-const _p12 = { title: "Component Alloc", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
-	      ceHolderId: [], hostHolderId:[], 
-              peqType: "allocation", amount: 1000000, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 // this shows up in inactive as well.  this is a transferred peq, note the different cepid, psub, repo
 // note this one is in a different ceproj.  it has not been ingested, so no ceholderids
@@ -84,52 +65,39 @@ const _p13 = { title: "CT Blast", id: "-1", ceProjectId: "CE_AltTest_hakeld80a2"
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOH8VRDg", hostIssueId: "-1", active: "true" };
 
-const _p14 = { title: "IR Alloc", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
-	      ceHolderId: [], hostHolderId:[], 
-              peqType: "allocation", amount: 125000, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Stars"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
-
 const _p15 = { title: "IR Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
 	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
               peqType: "grant", amount: 1000, accrualDate: -1, vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 // Note close open also exists in pre-existing
 const _p16 = { title: "Close Open test", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
 	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
               peqType: "grant", amount: 1000, accrualDate: -1, vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 const _p17 = { title: "LM Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
 	      ceHolderId: ["yxsklawdpc"], hostHolderId:["U_kgDOBqJgmQ"], 
               peqType: "grant", amount: 501, accrualDate: -1, vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 const _p18 = { title: "IR Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
               peqType: "pending", amount: 1000, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Pending PEQ Approval"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations Flut", "Pending PEQ Approval"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 // Note, ceServer version of this has 501 peq not 105.  Ingest is not run for ceServer testing.
 const _p19 = { title: "LM Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
               peqType: "pending", amount: 105, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Pending PEQ Approval"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations Flut", "Pending PEQ Approval"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 const _p20 = { title: "IR Plan", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
               peqType: "plan", amount: 250, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Planned"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
-const _p21 = { title: "Alloc prog", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
-	      ceHolderId: [], hostHolderId:[], 
-              peqType: "allocation", amount: 1000000, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Planned"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
-const _p22 = { title: "Alloc accr", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
-	      ceHolderId: [], hostHolderId:[], 
-              peqType: "allocation", amount: 1000000, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Planned"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations Flut", "Planned"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 const _p29 = { title: "Situated Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: [], hostHolderId:[], 
               peqType: "plan", amount: 1000, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Planned"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations Flut", "Planned"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 
 // CROSS PROJ
@@ -172,20 +140,20 @@ const _p28 = { title: "Interleave 3", id: "-1", ceProjectId: "CE_FlutTest_ks8asd
 const _ip1 = { title: "Situated Flat", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	       ceHolderId: [], hostHolderId:[], 
                peqType: "plan", amount: 1000, accrualDate: "---", vestedPerc: 0,
-               hostProjectSub:[ "Software Contributions", "Github Operations Flut", "Stars"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "false" };
+               hostProjectSub:[ "Github Operations Flut", "Stars"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "false" };
 
 const _ip2 = { title: "CT Blast", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "false" };
+              hostProjectSub:["Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "false" };
 
 const _ip3 = { title: "Situated Accrued card1st", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
 	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
               peqType: "grant", amount: 1000, accrualDate: -1, vestedPerc: 0,
-              hostProjectSub:["Software Contributions", "Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "false" };
+              hostProjectSub:["Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "false" };
 
 
-const PEQS_GOLD = [ _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11, _p12, _p13, _p14, _p15, _p16, _p17, _p18, _p19, _p20, _p21, _p22, _p23, _p24,
+const PEQS_GOLD = [ _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p11, _p13, _p15, _p16, _p17, _p18, _p19, _p20, _p23, _p24,
 		    _p25, _p26, _p27, _p28, _p29,
 		    _ip1, _ip2, _ip3 ];
 
@@ -293,7 +261,7 @@ async function runTests() {
     console.log( "Don't forget to run ingest first!" );
 
 
-    let authData     = new authDataC.AuthData();
+    let authData     = new authDataC();
     authData.who     = "<TEST: Main> ";
     authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
