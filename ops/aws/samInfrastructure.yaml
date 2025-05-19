@@ -186,7 +186,7 @@ Resources:
     Properties:
       CodeUri: ./lambdaHandlers/
       Handler: awsDynamo.handler
-      Runtime: nodejs18.x
+      Runtime: nodejs22.x
       Timeout: 180
       Description: AWS Handler
       Events:

@@ -116,6 +116,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    else {
       suba   = source.category;
       subCat = source.category.last;
+      if( pid == "" ) { pid = ( source.hostProjectId ?? "" ); }
    }
 
    String ceUID = ( appState.idMapHost[subCat] == null || appState.idMapHost[subCat]["ceUID"] == null )
@@ -411,6 +412,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
       //      so renaming here does not need to be concerned with interaction between host locs and how they tie into equity plan items.
       
       for( HostLoc proj in projRenames ) {
+         _vPrint( appState, 4, " .. checking " + (alloc.hostProjectId ?? "" ) + " " + alloc.category.toString() + " " + alloc.sourcePeq.toString() + " vs " + proj.hostProjectId );
          if( alloc.hostProjectId == proj.hostProjectId ) {
             HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostProjectId == proj.hostProjectId );
             assert( loc != null );
@@ -443,6 +445,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
       // No need (and can't anyway, not stateful).  If updatePeqAllocations does anything, allocTree is rebuilt.
       // setState(() => appState.updateAllocTree = true );
    }
+   _vPrint( appState, 4, "Done with updateHostName" );
 }
 
 /*
@@ -486,6 +489,7 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
    
    List<String> subProp = new List<String>.from( subBase ); subProp.last = appState.PEND; 
    List<String> subAccr = new List<String>.from( subBase ); subAccr.last = appState.ACCRUED;
+   String hpid = sourceAlloc == null ? "" : (sourceAlloc.hostProjectId ?? "");
    
    // iterate over assignees
    String       newType = "";
@@ -495,8 +499,8 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
       
       if( pact.verb == PActVerb.propose ) {
          // add propose, rem plan
-         adjustSummaryAlloc( appState, peq.id, subBase, assignee, -1 * assigneeShare, PeqType.plan );
-         adjustSummaryAlloc( appState, peq.id, subProp, assignee, assigneeShare, PeqType.pending ); 
+         adjustSummaryAlloc( appState, peq.id, subBase, assignee, -1 * assigneeShare, PeqType.plan, pid: hpid );
+         adjustSummaryAlloc( appState, peq.id, subProp, assignee, assigneeShare, PeqType.pending, pid: hpid );
          newType = enumToStr( PeqType.pending );
          peqLoc  = subProp;
       }
@@ -506,16 +510,16 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
          assert( loc != null );
          List<String> subDest = new List<String>.from( subBase ); subDest.last = loc.hostColumnName;
          
-         adjustSummaryAlloc( appState, peq.id, subProp, assignee, -1 * assigneeShare, PeqType.pending );
-         adjustSummaryAlloc( appState, peq.id, subDest, assignee, assigneeShare, PeqType.plan); 
+         adjustSummaryAlloc( appState, peq.id, subProp, assignee, -1 * assigneeShare, PeqType.pending, pid: hpid );
+         adjustSummaryAlloc( appState, peq.id, subDest, assignee, assigneeShare, PeqType.plan, pid: hpid );
          newType = enumToStr( PeqType.plan );
          peqLoc  = subDest;
       }
       else if( pact.verb == PActVerb.confirm ) {
          // remove any source alloc
          assert( sourceAlloc != null );
-         adjustSummaryAlloc( appState, peq.id, subBase, assignee, -1 * assigneeShare, sourceAlloc!.allocType );
-         adjustSummaryAlloc( appState, peq.id, subAccr, assignee,  assigneeShare, PeqType.grant );
+         adjustSummaryAlloc( appState, peq.id, subBase, assignee, -1 * assigneeShare, sourceAlloc!.allocType, pid: hpid );
+         adjustSummaryAlloc( appState, peq.id, subAccr, assignee,  assigneeShare, PeqType.grant, pid: hpid );
 
          for( Allocation alloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
             print( "Confirm accrue, set in stone activated, type 1 " );
@@ -791,6 +795,7 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
 List<dynamic> _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    final sourceType = ka == null ? "" : ka.allocType;
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
+   String hpid      = ka == null ? "" : (ka.hostProjectId ?? "");
    
    assert( ka.allocType != PeqType.allocation );
    _vPrint( appState, 1, "Add assignee: " + pact.subject.last + " " + pactLast );
@@ -806,11 +811,11 @@ List<dynamic> _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
    // Remove all old, add all current with new assigneeShares
    for( var assign in assignees ) {
       _vPrint( appState, 1, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
-      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType, pid: hpid );
    }
    for( var assign in curAssign ) {
       _vPrint( appState, 1, "Add " + assign + " " + newShareAmount.floor().toString() );
-      adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType, pid: hpid );
    }
 
    return [newShareAmount, curAssign];
@@ -820,7 +825,8 @@ List<dynamic> _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
 List<dynamic> _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    final sourceType = ka == null ? "" : ka.allocType;
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
-
+   String hpid      = ka == null ? "" : (ka.hostProjectId ?? "");
+   
    assert( ka.allocType != PeqType.allocation );
    _vPrint( appState, 1, "Remove assignee: " + pact.subject.last );
    
@@ -831,7 +837,7 @@ List<dynamic> _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
    // Remove all old allocs
    for( var assign in assignees ) {
       _vPrint( appState, 1, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
-      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType, pid: hpid );
    }
    
    // Remove, then readjust assigneeShare
@@ -842,7 +848,7 @@ List<dynamic> _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
    
    for( var assign in assignees ) {
       _vPrint( appState, 1, "Add " + assign + " " + newShareAmount.floor().toString() );
-      adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType, pid: hpid );
    }
 
    return [newShareAmount, assignees];
@@ -851,20 +857,21 @@ List<dynamic> _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
 double _pvUpdate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    final sourceType = ka == null ? "" : ka.allocType;
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
-
+   String hpid      = ka == null ? "" : (ka.hostProjectId ?? "");
+   
    _vPrint( appState, 1, "Peq val update, new val: " + pact.subject.last );
    
    // Remove all old allocs
    for( var assign in assignees ) {
       _vPrint( appState, 1, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
-      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType, pid: hpid );
    }
    
    final newShareAmount = int.parse( pact.subject.last ) / assignees.length;
    
    for( var assign in assignees ) {
       _vPrint( appState, 1, "Add " + assign + " " + newShareAmount.floor().toString() );
-      adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType, pid: hpid );
    }
 
    return newShareAmount;
@@ -881,7 +888,8 @@ double _pvUpdate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) 
 void _recreate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    final sourceType = ka == null ? "" : ka.allocType;
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
-
+   String hpid      = ka == null ? "" : (ka.hostProjectId ?? "");
+   
    assert( pact.subject.length == 2 );
    _vPrint( appState, 4, "Recreate PEQ: " + pact.subject[0] + " --> " + pact.subject[1] );
    
@@ -891,14 +899,14 @@ void _recreate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    // Remove old allocs for peq
    for( var assign in assignees ) {
       _vPrint( appState, 4, "Remove " + peq.id + " in " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
-      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType, pid: hpid );
    }
    
    // We need assignees for accrued, and in particular need to retain assignees for accrued issues.
    // Add back here, then ignore subsequent add.
    for( var assign in assignees ) {
       _vPrint( appState, 4, "Add " + pact.subject[1] + " for " + assign + " " + assigneeShare.floor().toString() );
-      adjustSummaryAlloc( appState, pact.subject[1], [appState.UNCLAIMED, appState.ACCRUED ], assign, assigneeShare, sourceType );
+      adjustSummaryAlloc( appState, pact.subject[1], [appState.UNCLAIMED, appState.ACCRUED ], assign, assigneeShare, sourceType, pid: hpid );
    }
    
    // In this case, active flag is managed by ceServer, as is new peq creation.
@@ -1171,7 +1179,6 @@ Future<void> updatePEQAllocations( context, container ) async {
    _vPrint( appState, 4, "Start myLoc update" );
    var pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }};
    Future myLocs = fetchHostLinkage( context, container, json.encode( pd ) );
-   print( "TIME FetchHostLink " + DateTime.now().difference(startUPA).inSeconds.toString() );
    
    List<String> pactIds = [];
    List<String> peqIds = [];
@@ -1187,7 +1194,7 @@ Future<void> updatePEQAllocations( context, container ) async {
       pact.subject.length > 0 ? peqIds.add( pact.subject[0] ) : peqIds.add( "-1" );  
    }
    print( "TIME PeqPactPair " + DateTime.now().difference(startUPA).inSeconds.toString() );
-   
+
    List<String> cleanPIDs  = [];
    List<int>    peqToClean = [];
    for( var pid in peqIds ) {
