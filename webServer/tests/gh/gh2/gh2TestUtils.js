@@ -779,7 +779,8 @@ async function remLabel( authData, label, issDat ) {
 // NOTE - this ignores color... 
 async function updateLabel( authData, label, updates ) {
     console.log( "Updating", label.name );
-
+    let subTest = [ 0, 0, []];
+    
     let newName = updates.hasOwnProperty( "name" )        ? updates.name : label.name;
     let newDesc = updates.hasOwnProperty( "description" ) ? updates.description : label.description;
     
@@ -788,9 +789,11 @@ async function updateLabel( authData, label, updates ) {
     // XXX
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
     let query = "label edited " + newName + locator;
-    await tu.settleWithVal( "update label", tu.findNotice, query );
+    let res = await tu.settleWithVal( "update label", tu.findNotice, query );
 
+    subTest = tu.checkEq( res !== 'undefined' && res, true, subTest, "Label update notification not sent" );
     await utils.sleep( tu.MIN_DELAY );
+    return subTest;
 }
 
 async function delLabel( authData, label ) {
@@ -1542,8 +1545,11 @@ async function checkNewbornCard( authData, testLinks, td, loc, cardId, title, te
 	
 	// CHECK linkage
 	let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
-	let link   = links.find( l => l.hostCardId == cardId );
-	subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
+	subTest = tu.checkEq( links != -1, true,                          subTest, "Links fail for " + td.ghFullName );
+	if( links != -1 ) {
+	    let link   = links.find( l => l.hostCardId == cardId );
+	    subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
+	}
 	
 	// CHECK dynamo Peq.  inactive, if it exists
 	// Risky test - will fail if unrelated peqs with same title exist
@@ -2038,6 +2044,7 @@ function convertName( name ) {
 
 async function checkLabel( authData, label, name, desc, testStatus ) {
 
+    console.log( "Checking ", name, desc );
     if( name === -1 || desc === -1 ) {
 	testStatus = tu.checkEq( typeof label, 'undefined',  testStatus, "Label should not exist" );
 	return testStatus;

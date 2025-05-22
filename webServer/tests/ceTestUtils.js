@@ -65,6 +65,7 @@ async function findNotice( query ) {
     CE_Notes.fromJson( notes );
     console.log( "NOTICES.  Looking for", query );
     if( CETestDelayCounts["findNotice"] > 3 ) { CE_Notes.show(); }
+
     return CE_Notes.find( query );
 }
 
@@ -271,6 +272,7 @@ async function settleWithVal( fname, func, ...params ) {
 	}  
     }
     CETestDelayCounts[func.name] = 0;
+
     return retVal;
 }
 
