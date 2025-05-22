@@ -183,8 +183,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		for( const p of pacts ) {
 		    if( p.Subject.length != 2 ) { console.log( "Oi???", p ); }
 		    assert( p.Subject.length == 2 );
-		    // Case 1: pvu to lval
-		    if( lVal == parseInt( p.Subject[1] )) {  addPeqs.push( p.Subject[0] ); }
+		    // Case 1: pvu to lval.  Add back, because can't delete this label.
+		    if( lVal == parseInt( p.Subject[1] )) { addPeqs.push( p.Subject[0] ); }
 		    
 		    // Case 2: pvu for lval-peq away from lval
 		    if( peqs !== -1 ) {
@@ -196,7 +196,15 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		
 		// Add
 		if( addPeqs.length > 0 ) {
+		    // Peq may have already been deleted, in which case do not count against label.
 		    let newPeqs = await awsUtils.getPEQsById( authData, addPeqs );
+		    for( let i = newPeqs.length - 1; i >= 0; i-- ) {
+			if( newPeqs[i].hasOwnProperty( "Active" ) && newPeqs[i].Active == "false" ) {
+			    console.log( authData.who, "Peq", newPeqs[i].PEQId, "was deleted earlier, do not re-add" );
+			    newPeqs.splice( i, 1 );
+			}
+		    }
+		    newPeqs = newPeqs.length == 0 ? -1 : newPeqs;
 		    peqs = peqs == -1 ? newPeqs : peqs.concat( newPeqs );
 		}
 		

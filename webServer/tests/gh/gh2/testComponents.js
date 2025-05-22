@@ -797,7 +797,7 @@ async function testLabelMods( authData, testLinks, td ) {
 
     console.log( "Test Label Mods" );
     authData.who = "<TEST: Label Mods>";
-    
+
     const ISS_NEWB = "LM Newborn";
     const ISS_PLAN = "LM Open";
     const ISS_PEND = "LM Pending";
@@ -909,31 +909,14 @@ async function testLabelMods( authData, testLinks, td ) {
 
 	// 8. Make partial peq label.  Three will be unlabeled (can't have 2 peq labels), one will remain.  Changed labNP1 from newName to 105P
 	console.log( "Make partial peq label" );
-	const pl105 = "105 " + config.PEQ_LABEL;
+	const pl105 = "105 " + config.PEQ_LABEL; 
 
-	// XXX 8/23/24, 3/26/25
-	// GH has failed to send the following update notice several times.
-	// Should see:                                  Notification: ariCETester label edited 105 PEQ ipOHTPCgyy for codeequity
-	//        first non-bot-sent notification above Notification: ariCETester label deleted 105 PEQ jXCOOcifMx for codeequity
-	// Next time this fails, settleWait for notification.  Don't see it?  run update again... but this is avoiding a true GH error..
-	//        final fix for this will be proper ceServer data integrity work.
 	await utils.sleep( 1500 );	
 	labNP1 = await tu.settleWithVal( "Label mods newName", getLabHelp, authData, td, "newName" );
 	await gh2tu.updateLabel( authData, labNP1, {name: pl105, description: "newDesc"} );
 
-	//  After 4/5/25 failure:
-	let copyTS       = testStatus.slice();
-	let curFailCount = copyTS[1];
 	testStatus = await labHelp( authData, td, pl105, pl105, "PEQ value: 105", testStatus );
-	if( testStatus[1] != curFailCount ) {
-	    console.log( "XXX LM Pending: update label to 105Peq failed to send notification.  Trying again." );
-	    testStatus[1] = testStatus[1] - 1;
-	    testStatus[2] = testStatus[2].slice(0,-1);
-	    await gh2tu.updateLabel( authData, labNP1, {name: pl105, description: "newDesc"} );
-	    testStatus = await labHelp( authData, td, pl105, pl105, "PEQ value: 105", testStatus );	    
-	}
 	tu.testReport( testStatus, "Label mods H" );
-
 
 	// Clean
 	// NOTE: if delete before update-driven LM Accrued remove label is complete, will see server error 404.
@@ -942,9 +925,7 @@ async function testLabelMods( authData, testLinks, td ) {
 	// updateLabel has changed values - get new stuff
 	labNP1 = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, pl105, -1 );		
 	await gh2tu.delLabel( authData, labNP1 );
-	
     }
-    
     
     tu.testReport( testStatus, "Label Mod" );
 
@@ -1165,7 +1146,7 @@ async function runTests( authData, testLinks, td ) {
     // ghUtils.show( true );    
     await utils.sleep( 5000 );
     */
-    
+
     let t1 = await testAssignment( authData, testLinks, td );
     console.log( "\n\nAssignment test complete." );
     // ghUtils.show( true );    

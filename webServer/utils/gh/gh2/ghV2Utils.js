@@ -777,7 +777,11 @@ async function updateLabel( authData, labelNodeId, name, desc, color ) {
     }
     let queryJ    = JSON.stringify({ query, variables });
 
-    try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "updateLabel" ); }
+    try        {
+	let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "updateLabel" );
+	// Would need to update query for label.  see cardIssue
+	// console.log( "UPDATE", res, res.label, res.label.id, res.label.name );
+    }
     catch( e ) { await ghUtils.errorHandler( "updateLabel", e, updateLabel, authData, labelNodeId, name, desc, color ); }
 
     return true;

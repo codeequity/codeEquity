@@ -127,7 +127,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 						  config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.projectId, oldName, newName], config.PACTNOTE_PREN,
 						  utils.getToday());
-			const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId } );
+			const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId } );
 			for( const loc of locs ) {
 			    loc.hostProjectName = newName;
 			}
