@@ -342,7 +342,6 @@ Future<bool> expandAll( WidgetTester tester ) async {
    }
    await pumpSettle( tester, 2 );
    
-   
    return true;
 }
 
@@ -444,7 +443,7 @@ Future<bool> checkAllocs( WidgetTester tester, int min, int max, {int offset = 0
    // print( "offset " + offset.toString() + "\n" );
    for( int i = min; i <= max; i++ ) {
 
-      // print( "checking allocsTable " + getAllocIndex( i ).toString());  
+      //print( "checking allocsTable " + getAllocIndex( i ).toString());  
       final Finder generatedAllocRow = find.byKey( getAllocKey( i ) );
       expect( generatedAllocRow, findsOneWidget );
 

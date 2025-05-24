@@ -151,6 +151,10 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
         # 9 1/8th on screen, crons now work with title.  1075 works by hand.. 1065?
         # cmd = "flutter drive -d chrome --browser-dimension=1200,1065 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
+    if( testName == "project_test.dart" ) :
+        #cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        
     if optimized :
         cmd = cmd + " --release"
 
@@ -183,6 +187,7 @@ def runTests( test = "focus" ):
     resultsSum = ""
 
     if( test == "projectMain" ):
+
         tsum = runTest( "launch_test.dart", False, False, False )
         resultsSum  += tsum
 
