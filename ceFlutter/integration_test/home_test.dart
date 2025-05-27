@@ -101,6 +101,9 @@ void main() {
    
    testWidgets('Homepage Basics', skip:skip, (WidgetTester tester) async {
          
+         // This controls driver window size.  Driven window size is set on command line to flutter driver
+         tester.binding.window.physicalSizeTestValue = const Size(1100, 1000);
+
          await restart( tester );
          
          bool known = true;
@@ -119,6 +122,9 @@ void main() {
    // Check that GHAccounts match what should show up for different testers when login/logout/login/relogin
    testWidgets('Homepage GHAccount Consistency', skip:skip, (WidgetTester tester) async {
          
+         // This controls driver window size.  Driven window size is set on command line to flutter driver
+         tester.binding.window.physicalSizeTestValue = const Size(1100, 1000);
+
          await restart( tester );
          bool known = true;
 

@@ -319,7 +319,8 @@ Future<bool> expandAll( WidgetTester tester ) async {
    await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
    await tester.drag( listFinder, Offset(0.0, -50.0) );
 
-   // now expand 2 at a time 
+   // now expand 2 at a time
+   print( "two at a time" );
    var min = 11;
    for( var i = 12; i <= 30; i = i+2 ) {
       await expandAllocs( tester, min, i );
@@ -331,17 +332,18 @@ Future<bool> expandAll( WidgetTester tester ) async {
    }
    await pumpSettle( tester, 2 );
 
+   print( "one at a time" );
    // finally just 1
    for( var i = min; i <= 41; i++ ) {
       await expandAllocs( tester, i, i );
-      // print( "drag visible? expanded " + " " + i.toString() );
+      print( "drag visible? expanded " + " " + i.toString() );
       // unclaimed text shows up twice, angering the finder.  unclaimed key is not found.. 
       // await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
       await tester.drag( listFinder, Offset(0.0, -100.0) );
+      await tester.drag( listFinder, Offset(0.0, -100.0) );  // each cell is 50.. some expansions have 3 or 4 cells
       await tester.pumpAndSettle();
    }
    await pumpSettle( tester, 2 );
-   
    
    return true;
 }
@@ -444,7 +446,7 @@ Future<bool> checkAllocs( WidgetTester tester, int min, int max, {int offset = 0
    // print( "offset " + offset.toString() + "\n" );
    for( int i = min; i <= max; i++ ) {
 
-      // print( "checking allocsTable " + getAllocIndex( i ).toString());  
+      //print( "checking allocsTable " + getAllocIndex( i ).toString());  
       final Finder generatedAllocRow = find.byKey( getAllocKey( i ) );
       expect( generatedAllocRow, findsOneWidget );
 
@@ -499,7 +501,11 @@ Future<bool> checkAll( WidgetTester tester ) async {
    await tester.pumpAndSettle();
    await checkAllocs( tester, 21, 30 );
 
-   await tester.drag( listFinder, Offset(0.0, -500.0) );
+   // minimize bouncing near the end
+   await tester.drag( listFinder, Offset(0.0, -200.0) );
+   await tester.drag( listFinder, Offset(0.0, -100.0) );
+   await tester.drag( listFinder, Offset(0.0, -100.0) );
+   await tester.drag( listFinder, Offset(0.0, -100.0) );
    await tester.pumpAndSettle();
    await checkAllocs( tester, 31, 40 );
 
@@ -996,6 +1002,11 @@ Future<bool> _checkHelper( tester ) async {
    return true;
 }
 
+
+// One long-standing mystery solved.
+//   browser-dimension here: "flutter drive -d chrome --browser-dimension=1200,1050 <>"  controls dims of 'physical' browser screen
+//   physicalTestSize here:  "tester.binding.window.physicalSizeTestValue " controls dims of window being painted into browser screen.
+//   if PTS is bigger than BD, icons will not be visible nor detectable during integration test.
 void main() {
 
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
@@ -1014,10 +1025,11 @@ void main() {
    
    report( 'Project', group:true );
 
-   //testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
-   testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
+   testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
+         //testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
 
-         tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
+         //tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
+         tester.binding.window.physicalSizeTestValue = const Size(1100, 1000);
 
          await restart( tester );
          await login( tester, true );
@@ -1050,7 +1062,8 @@ void main() {
    testWidgets('Project contents, ingest', skip:skip, (WidgetTester tester) async {
 
          // This controls driver window size.  Driven window size is set on command line to flutter driver
-         tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
+         tester.binding.window.physicalSizeTestValue = const Size(1100, 1000);
+         // tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
 
          await restart( tester );
          await login( tester, true );
@@ -1069,11 +1082,11 @@ void main() {
          final Finder updateButton = find.byKey( const Key( 'Update PEQ Summary?' ));
          expect( updateButton, findsOneWidget );
          await tester.tap( updateButton );
-         print( 'Waiting 70s');
-         await pumpSettle( tester, 70, verbose: true );
-         print( 'Done waiting 70s');
-         await pumpSettle( tester, 4, verbose: true );
+         print( 'Waiting 50s');
+         await pumpSettle( tester, 50, verbose: true );
+         print( 'Done waiting 50s');
          await pumpSettle( tester, 2, verbose: true );
+         await pumpSettle( tester, 1, verbose: true );
          print( "Update PEQ Summary Done" );
          
          // Make sure it all shows up
@@ -1086,12 +1099,13 @@ void main() {
          report( 'Project contents, ingest' );
       });
 
-   // testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
-   testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
+   testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
+         //testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
 
          // This controls driver window size.  Driven window size is set on command line to flutter driver
-         tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
-
+         //tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
+         tester.binding.window.physicalSizeTestValue = const Size(1100, 1000);
+         
          await restart( tester );
          await login( tester, true );
 

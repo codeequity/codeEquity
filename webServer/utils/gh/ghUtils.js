@@ -9,6 +9,14 @@ import * as awsUtils from '../awsUtils.js';
 var handlerRetries = {}; 
 var postRecord = {}; 
 
+function errorResponse(status, errorMessage) {
+    return {
+	statusCode: status, 
+	body: JSON.stringify({
+	    Error: errorMessage
+	})
+    };
+}
 
 function show( full ) {
     full =  typeof full === 'undefined' ? false : full;
@@ -33,9 +41,6 @@ function show( full ) {
 async function postGH( PAT, url, postData, name, check422 ) {
     if( typeof check422 === 'undefined' ) { check422 = false; }
 
-    // if( typeof name === 'undefined' ) { console.log( "uh oh", postData ); }
-    // assert( typeof name !== 'undefined' );
-
     if( typeof postRecord[name] === 'undefined' ) { postRecord[name] = 0; }
     postRecord[name] = postRecord[name] + 1;
 
@@ -44,7 +49,6 @@ async function postGH( PAT, url, postData, name, check422 ) {
     const params = {
 	method: "POST",
         headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json", 'X-Github-Next-Global-ID': 1 },
-        // headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json", 'X-Github-Next-Global-ID': "1" },
 	body: postData 
     };
 
@@ -58,18 +62,24 @@ async function postGH( PAT, url, postData, name, check422 ) {
     else {
 	ret = await fetch( url, params )
 	    .then( response => {
-		if( !response.ok) { throw new Error('HTTP error.  Status ${response.status}'); }
+		if( !response.ok) {
+		    console.log( params );
+		    console.log( response );
+		    throw new Error('HTTP error.  Status ${response.status}');
+		}
 		return response.arrayBuffer();
 	    })
 	    .catch( e => {
 		console.log( "Error fetching.", e );
+		ret = errorResponse( "500", e );
 	    })
 	    .then( arrayBuffer => {
 		const buffer = Buffer.from( arrayBuffer );
 		return buffer;
 	    })
 	    .catch( e => {
-		console.log( "Error fetching.", e );
+		console.log( "Error converting buffer.", e );
+		ret = errorResponse( "500", e );
 	    });
 	const decoder = new TextDecoder('utf-8');
 	ret = decoder.decode(ret);
@@ -82,21 +92,6 @@ async function postGH( PAT, url, postData, name, check422 ) {
 	}
 	// console.log( ret );
     }
-    /*
-    else {
-	ret = await fetch( url, params )
-	    .catch( e => { console.log("Fetch failed.", e); throw e; });
-
-	// console.log( "XXX ret", params );
-
-	ret = await ret.json()
-	    .catch( e => {
-		console.log("Failure Response1", e.message)
-		throw e;
-		});
-
-    }
-    */
     // Oddly, some GQl queries/mutations return with a status, some do not.
     if( typeof ret !== 'undefined' ) {
 	// can not do this, as many valid gql queries will ask for, say, orgId and userId, fully expecting one to fail.

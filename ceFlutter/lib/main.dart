@@ -43,8 +43,10 @@ class CEApp extends StatelessWidget {
 	      // titleTextStyle: Theme.of(context).textTheme.headline6?.copyWith( color: Colors.black ),
 	      titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith( color: Colors.black ),
               iconTheme: IconThemeData( color: Colors.black ) ),
-	   bottomAppBarTheme: BottomAppBarTheme(
-	      color: Colors.grey[200] ) ),
+           // This began compile-failing as of 5/2025.  Not using it, so ...
+	   //bottomAppBarTheme: BottomAppBarTheme(
+           //color: Colors.grey[200] )
+           ),
         home:  CESplashPage( title: 'CodeEquity'),
         );
   }

@@ -8,6 +8,8 @@
 .buildlog/
 .history
 .svn/
+chromedriver*
+ios/Flutter/ephemeral
 
 # IntelliJ related
 *.iml

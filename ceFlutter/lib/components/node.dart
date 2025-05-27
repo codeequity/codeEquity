@@ -303,7 +303,9 @@ class Node extends StatelessWidget implements Tree {
               onExpansionChanged: ((expanded) {
                     if( appState!.verbose >= 2 ) { print( "*** $title expanded? $expanded" ); }
                     leaves.forEach( (child) => child.setVis( expanded ) );
-                    expansion( expanded, path );
+                    WidgetsBinding.instance.addPostFrameCallback((_){
+                          expansion( expanded, path );
+                       });
                  })
               )));
 

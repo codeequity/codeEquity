@@ -129,6 +129,10 @@ def runCmd( cmd, filterExp ):
 # NOTE to control driven window size, use command line arg here for browser-dimension.  Driver window is controlled in each test app with window.physicalSize*
 # NOTE using --no-build causes consequtive runs of flutter driver to connect to the same app, same state(!)
 # Hmm.  Running in release mode does not work well.  Basic entering text fails..
+# One long-standing mystery solved.
+#     browser-dimension here: "flutter drive -d chrome --browser-dimension=1200,1050 <>"  controls dims of 'physical' browser screen
+#     physicalTestSize here:  "tester.binding.window.physicalSizeTestValue " controls dims of window being painted into browser screen.
+#     if PTS is bigger than BD, icons will not be visible nor detectable during integration test.
 def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     logging.info( "" )
 
@@ -151,6 +155,10 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
         # 9 1/8th on screen, crons now work with title.  1075 works by hand.. 1065?
         # cmd = "flutter drive -d chrome --browser-dimension=1200,1065 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
+    if( testName == "project_test.dart" ) :
+        cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        #cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        
     if optimized :
         cmd = cmd + " --release"
 
@@ -183,6 +191,7 @@ def runTests( test = "focus" ):
     resultsSum = ""
 
     if( test == "projectMain" ):
+
         tsum = runTest( "launch_test.dart", False, False, False )
         resultsSum  += tsum
 
