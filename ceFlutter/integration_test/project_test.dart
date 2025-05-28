@@ -446,7 +446,7 @@ Future<bool> checkAllocs( WidgetTester tester, int min, int max, {int offset = 0
    // print( "offset " + offset.toString() + "\n" );
    for( int i = min; i <= max; i++ ) {
 
-      //print( "checking allocsTable " + getAllocIndex( i ).toString());  
+      print( "checking allocsTable " + getAllocIndex( i ).toString());  
       final Finder generatedAllocRow = find.byKey( getAllocKey( i ) );
       expect( generatedAllocRow, findsOneWidget );
 
@@ -492,7 +492,7 @@ Future<bool> checkAll( WidgetTester tester ) async {
    await tester.pumpAndSettle();
    await checkAllocs( tester, 1, 10 );
 
-   // cell height is 50
+   // cell height is 50. 
    await tester.drag( listFinder, Offset(0.0, -500.0) );
    await tester.pumpAndSettle();
    await checkAllocs( tester, 11, 20 );
@@ -502,10 +502,18 @@ Future<bool> checkAll( WidgetTester tester ) async {
    await checkAllocs( tester, 21, 30 );
 
    // minimize bouncing near the end
-   await tester.drag( listFinder, Offset(0.0, -200.0) );
+   await pumpSettle( tester, 2);
    await tester.drag( listFinder, Offset(0.0, -100.0) );
+   await pumpSettle( tester, 1);
    await tester.drag( listFinder, Offset(0.0, -100.0) );
-   await tester.drag( listFinder, Offset(0.0, -100.0) );
+   await pumpSettle( tester, 1);
+   await tester.drag( listFinder, Offset(0.0, -50.0) );
+   await pumpSettle( tester, 1);
+   await tester.drag( listFinder, Offset(0.0, -50.0) );
+   await pumpSettle( tester, 1);
+   await tester.drag( listFinder, Offset(0.0, -50.0) );
+   await pumpSettle( tester, 1);
+   await tester.drag( listFinder, Offset(0.0, -50.0) );
    await tester.pumpAndSettle();
    await checkAllocs( tester, 31, 40 );
 
@@ -820,8 +828,8 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    expect( await validateConfirmAccrue( tester, repo,                   "6 0 confirm accrue" ),   true );
    expect( await validateConfirmDelete( tester, repo, issue,            "7 0 confirm delete", issue: true ),   true );
 
-   print( issue );
    issue = "Situated Accrued card1st";   // peq 1
+   print( issue );
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "0 1 confirm add" ),      true );
    expect( await validatePass(          tester,                         "1 1 confirm relocate" ), true );
@@ -835,11 +843,13 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
    await tester.drag( listFinder, Offset(0.0, -50.0) );
    
-   print( issue );
    issue = "Close Open test";           // peq 2
+   print( issue );
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(        tester, repo, issue, "1k PEQ",  "0 2 confirm add" ),      true );
    expect( await validatePass(       tester,                         "1 2 confirm relocate" ), true );
+   // The next two often not present.  Not needed after first add/relo.. cardHandler will avoid sending
+   /*
    expect( await validateCreateCard( tester,                         "2 2 confirm add" ),      true );
    expect( await validatePass(       tester,                         "3 2 confirm relocate" ), true );
    expect( await validateMove(       tester,                         "4 2 confirm relocate" ), true );
@@ -851,12 +861,24 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    expect( await validateRejectAccrue(  tester, repo, issue,         "10 2 reject accrue" ),    true );   // 210 is peq 2 + pact 10
    expect( await validateProposeAccrue( tester, repo, issue,         "11 2 propose accrue" ),   true );
    expect( await validateConfirmAccrue( tester, repo,                "12 2 confirm accrue" ),   true );
+   */
+   // expect( await validateCreateCard( tester,                         "2 2 confirm add" ),      true );
+   // expect( await validatePass(       tester,                         "3 2 confirm relocate" ), true );
+   expect( await validateMove(       tester,                         "2 2 confirm relocate" ), true );
+   expect( await validateAssign(     tester, repo, issue, "ariCETester", "3 2 confirm change" ),   true );
+   expect( await validateProposeAccrue( tester, repo, issue,         "4 2 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,         "5 2 reject accrue" ),    true );
+   expect( await validateMove(       tester,                         "6 2 confirm relocate" ), true );
+   expect( await validateProposeAccrue( tester, repo, issue,         "7 2 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,         "8 2 reject accrue" ),    true );   // 210 is peq 2 + pact 10
+   expect( await validateProposeAccrue( tester, repo, issue,         "9 2 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                "10 2 confirm accrue" ),   true );
 
    await tester.drag( listFinder, Offset(0.0, -300.0) );
    await pumpSettle( tester, 2 );
    
-   print( issue );
    issue  = "IR Accrued";              // peq 3
+   print( issue );
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(        tester, repo, issue, "1k PEQ",      "0 3 confirm add" ),      true );
    expect( await validatePass(       tester,                             "1 3 confirm relocate" ), true );
@@ -1025,8 +1047,8 @@ void main() {
    
    report( 'Project', group:true );
 
-   testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
-         //testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
+   //testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
+   testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
 
          //tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
          tester.binding.window.physicalSizeTestValue = const Size(1100, 1000);
@@ -1099,8 +1121,8 @@ void main() {
          report( 'Project contents, ingest' );
       });
 
-   testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
-         //testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
+   //testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
+   testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
 
          // This controls driver window size.  Driven window size is set on command line to flutter driver
          //tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
