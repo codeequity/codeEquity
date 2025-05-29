@@ -624,6 +624,8 @@ Future<bool> validateCreateCard( WidgetTester tester, String detailName ) async 
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
+   if( detailName == "Element Not Found." ) { return false; }
+      
    expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
@@ -848,31 +850,26 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(        tester, repo, issue, "1k PEQ",  "0 2 confirm add" ),      true );
    expect( await validatePass(       tester,                         "1 2 confirm relocate" ), true );
-   // The next two often not present.  Not needed after first add/relo.. cardHandler will avoid sending
-   /*
-   expect( await validateCreateCard( tester,                         "2 2 confirm add" ),      true );
-   expect( await validatePass(       tester,                         "3 2 confirm relocate" ), true );
-   expect( await validateMove(       tester,                         "4 2 confirm relocate" ), true );
-   expect( await validateAssign(     tester, repo, issue, "ariCETester", "5 2 confirm change" ),   true );
-   expect( await validateProposeAccrue( tester, repo, issue,         "6 2 propose accrue" ),   true );
-   expect( await validateRejectAccrue(  tester, repo, issue,         "7 2 reject accrue" ),    true );
-   expect( await validateMove(       tester,                         "8 2 confirm relocate" ), true );
-   expect( await validateProposeAccrue( tester, repo, issue,         "9 2 propose accrue" ),   true );
-   expect( await validateRejectAccrue(  tester, repo, issue,         "10 2 reject accrue" ),    true );   // 210 is peq 2 + pact 10
-   expect( await validateProposeAccrue( tester, repo, issue,         "11 2 propose accrue" ),   true );
-   expect( await validateConfirmAccrue( tester, repo,                "12 2 confirm accrue" ),   true );
-   */
-   // expect( await validateCreateCard( tester,                         "2 2 confirm add" ),      true );
-   // expect( await validatePass(       tester,                         "3 2 confirm relocate" ), true );
-   expect( await validateMove(       tester,                         "2 2 confirm relocate" ), true );
-   expect( await validateAssign(     tester, repo, issue, "ariCETester", "3 2 confirm change" ),   true );
-   expect( await validateProposeAccrue( tester, repo, issue,         "4 2 propose accrue" ),   true );
-   expect( await validateRejectAccrue(  tester, repo, issue,         "5 2 reject accrue" ),    true );
-   expect( await validateMove(       tester,                         "6 2 confirm relocate" ), true );
-   expect( await validateProposeAccrue( tester, repo, issue,         "7 2 propose accrue" ),   true );
-   expect( await validateRejectAccrue(  tester, repo, issue,         "8 2 reject accrue" ),    true );   // 210 is peq 2 + pact 10
-   expect( await validateProposeAccrue( tester, repo, issue,         "9 2 propose accrue" ),   true );
-   expect( await validateConfirmAccrue( tester, repo,                "10 2 confirm accrue" ),   true );
+
+   // Depending on timing of notification arrival at ceServer, different tracks are taken through cardHandler.
+   // there may or may not be a createCard-add/relo) here.
+   // Both paths are correct.
+   bool ccExists = await validateCreateCard( tester,                         "2 2 confirm add" );
+   int offset = 0;
+   if( ccExists ) {
+      expect( await validateCreateCard( tester,                         "2 2 confirm add" ),      true );
+      expect( await validatePass(       tester,                         "3 2 confirm relocate" ), true );
+      offset = 2;
+   }
+   expect( await validateMove(       tester,                         (2 + offset).toString() + " 2 confirm relocate" ), true );
+   expect( await validateAssign(     tester, repo, issue, "ariCETester", (3 + offset).toString() + " 2 confirm change" ),   true );
+   expect( await validateProposeAccrue( tester, repo, issue,         (4 + offset).toString() + " 2 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,         (5 + offset).toString() + " 2 reject accrue" ),    true );
+   expect( await validateMove(       tester,                         (6 + offset).toString() + " 2 confirm relocate" ), true );
+   expect( await validateProposeAccrue( tester, repo, issue,         (7 + offset).toString() + " 2 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,         (8 + offset).toString() + " 2 reject accrue" ),    true );   // 210 is peq 2 + pact 10
+   expect( await validateProposeAccrue( tester, repo, issue,         (9 + offset).toString() + " 2 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                (10 +  offset).toString() + " 2 confirm accrue" ),   true );
 
    await tester.drag( listFinder, Offset(0.0, -300.0) );
    await pumpSettle( tester, 2 );

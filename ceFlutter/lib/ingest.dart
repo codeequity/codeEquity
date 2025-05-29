@@ -99,7 +99,13 @@ Future _updateCEUID( appState, todos, context, container, peqMods ) async {
 }
 
 // This is the single location where a source allocation is added to the summary.
-// One allocation per category: project:column:assignee.  
+// One allocation per category: project:column:assignee.
+// HostProjectId:
+//   peqs (correctly) do not hold host information.
+//   every confirm add has a confirm relo.    every relo has an hpid.  propagate from here.
+//   it's possible to come in with propose accrue (i.e. create in PEND), buuut then you get confirm add, confirm relo, no propose.
+//   if propose from existing, should have source alloc.
+
 void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmt, PeqType peqType, {Allocation? source = null, String pid = ""} ) {
    
    assert( appState.myPEQSummary.allocations != null );
