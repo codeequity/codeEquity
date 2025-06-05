@@ -274,6 +274,9 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
       String ceUID = ceUIDFromHost( appState, appState.selectedHostUID );      
       appState.userPeqs[ceUID] =
          await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserId": "$huid", "CEProjectId": "$cep", "allAccrued": "true" }' );
+
+      // print( "Got " + appState.userPeqs[ceUID].length.toString() );
+      // print( appState.userPeqs[ceUID] );
    }
    else {
       // Collect CEPs by host

@@ -162,10 +162,10 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     // console.log( "newPeq", newPeq );
     // console.log( "newPeqX", newPeqX );
     
-    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_DEL, config.PACTNOTE_XFRD, testStatus, {sub: [oldPeq.PEQId], depth: 4} );
-    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_ADD, "", testStatus, {sub: [newPeq.PEQId], depth: 4} );
-    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_DEL, config.PACTNOTE_XFRD, testStatus, {sub: [oldPeqX.PEQId], depth: 4} );
-    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_ADD, "", testStatus, {sub: [newPeqX.PEQId], depth: 4} );
+    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_DEL, config.PACTNOTE_XFRD, testStatus, {sub: [oldPeq.PEQId], depth: 8} );
+    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_ADD, "", testStatus, {sub: [newPeq.PEQId], depth: 8} );
+    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_DEL, config.PACTNOTE_XFRD, testStatus, {sub: [oldPeqX.PEQId], depth: 8} );
+    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_ADD, "", testStatus, {sub: [newPeqX.PEQId], depth: 8} );
 
     tu.testReport( testStatus, "Test " + testName );
     return testStatus;

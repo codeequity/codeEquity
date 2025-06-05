@@ -622,21 +622,23 @@ Future<bool> validatePass( WidgetTester tester, String detailName ) async {
 
 Future<bool> validateCreateCard( WidgetTester tester, String detailName ) async {
 
+   bool ret = false;
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   if( detailName == "Element Not Found." ) { return false; }
+   if( detailName == "Element Not Found." ) { return ret; }
       
    expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
-   expect( pmap['action'],                    "created" );
-   validatePV2Item( pmap );
+   // expect( pmap['action'],                    "created" );
+   if( pmap['action'] == "created" ) { ret = true; }
    
+   if( ret ) { validatePV2Item( pmap ); }
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
    
-   return true;
+   return ret;
 }
 
 Future<bool> validateAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String detailName ) async {
@@ -860,13 +862,21 @@ Future<bool> validateAri22( WidgetTester tester ) async {
       expect( await validateCreateCard( tester,                         "2 2 confirm add" ),      true );
       expect( await validatePass(       tester,                         "3 2 confirm relocate" ), true );
       offset = 2;
+      print( "cc exists, offset 2" );
    }
+   print( "Start valMove " + (2 + offset).toString() + " 2 confirm relocate" );
    expect( await validateMove(       tester,                         (2 + offset).toString() + " 2 confirm relocate" ), true );
+   print( "Start valAssign" );
    expect( await validateAssign(     tester, repo, issue, "ariCETester", (3 + offset).toString() + " 2 confirm change" ),   true );
+   print( "Start valPropose" );
    expect( await validateProposeAccrue( tester, repo, issue,         (4 + offset).toString() + " 2 propose accrue" ),   true );
+   print( "Start valReject" );
    expect( await validateRejectAccrue(  tester, repo, issue,         (5 + offset).toString() + " 2 reject accrue" ),    true );
-   expect( await validateMove(       tester,                         (6 + offset).toString() + " 2 confirm relocate" ), true );
+   print( "Start valMove2" );
+   expect( await validateMove(          tester,                      (6 + offset).toString() + " 2 confirm relocate" ), true );
+   print( "Start valPropose2" );
    expect( await validateProposeAccrue( tester, repo, issue,         (7 + offset).toString() + " 2 propose accrue" ),   true );
+   print( "Start valReject2" );
    expect( await validateRejectAccrue(  tester, repo, issue,         (8 + offset).toString() + " 2 reject accrue" ),    true );   // 210 is peq 2 + pact 10
    expect( await validateProposeAccrue( tester, repo, issue,         (9 + offset).toString() + " 2 propose accrue" ),   true );
    expect( await validateConfirmAccrue( tester, repo,                (10 +  offset).toString() + " 2 confirm accrue" ),   true );

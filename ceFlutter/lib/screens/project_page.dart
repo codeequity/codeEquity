@@ -62,6 +62,13 @@ class _CEProjectState extends State<CEProjectPage> {
       // Reset storage key, otherwise horDiv and colors don't match expansion state
       // print( "Resetting PageStorageKey stamps" );
       pageStamp = DateTime.now().millisecondsSinceEpoch.toString();
+
+      // Force reload of any peqs we look at, otherwise details may be wrong
+      // XXX this is overkill, can do less work by only killing user peqs that actually changed.
+      for( final ceUID in appState.cePeople.keys ) {
+         print("Forced removal of cached PEQs" );
+         appState.userPeqs.remove( ceUID );
+      }
       
       // causes buildAllocTree to fire
       setState(() => appState.updateAllocTree = true );

@@ -363,7 +363,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 // Adds are based on psub, but immediate relos are myHostLinks.
 // The only adds without relos are for unclaimed:unclaimed, which should be name-protected.
 // updateHostNames will update all allocs to cProj, leaving todo's alone as above.
-Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
+Future _updateHostNames( appState, List<Tuple2<PEQAction, PEQ>> todos, context, container, peqMods ) async {
    _vPrint( appState, 4, "Updating Host Names in appAllocs ");
 
    List<HostLoc> colRenames  = [];
@@ -428,9 +428,26 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             //        i.e. a->b, b->c.. first set here will move from a->c, skipping b.
             int pindex = alloc.category.indexOf( proj.hostProjectName );
             if( pindex >= 0 ) { alloc.category[pindex] = loc.hostProjectName; }
+            _vPrint( appState, 4, "first pindex " + pindex.toString() );
 
             pindex = alloc.categoryBase!.indexOf( proj.hostProjectName );
             if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.hostProjectName; }
+            _vPrint( appState, 4, "second pindex " + pindex.toString() );
+
+            // XXX minor.  restructure to minimize aws trips.. but proj rename will be quite rare, and cost is not significant
+            assert( alloc.sourcePeq != null );
+            String peqIds = json.encode( alloc.sourcePeq!.keys.toList() );
+            List<PEQ> peqs = await fetchPEQs( context, container,'{ "Endpoint": "GetPEQsById", "PeqIds": $peqIds }' );
+
+            for( PEQ peq in peqs ) {
+               var peqData = {};
+               peqData['id']             = peq.id;
+               peqData['hostProjectSub'] = alloc.categoryBase;
+               assert( peqData['hostProjectSub'] != peq.hostProjectSub );
+               _vPrint( appState, 4, "updateHostNames changing " + peq.id +"'s psub to " + peqData['hostProjectSub'].toString() );
+               _addMod( context, container, peq, peqData, peqMods );   
+            }
+            
          }
       }
       for( HostLoc col in colRenames ) {
@@ -941,13 +958,13 @@ Future _colRename( context, container, pact ) async {
    return; 
 }
 
+// XXX Remove
 // Possible out of order here
 Future _projRename( context, container, pact ) async {
    final appState = container.state;
-   // XXX REVISIT once this is possible again
    // These arrive as viable pact, and -1 as peq.  Pact subject is [ projId, oldName, newName ]
    // ceServer handles locs in dynamo.  myHostLinks.locations is current.
-   await updateProjectName( context, container, pact.subject );
+   // await updateProjectName( context, container, pact.subject );
    // This has the potential to impact any future operation on peqs. wait.
    _vPrint( appState, 1, "Project rename handled at start of todo processing" );
    _vPrint( appState, 1, "Done waiting on project name update" );
@@ -1259,11 +1276,10 @@ Future<void> updatePEQAllocations( context, container ) async {
    appState.myHostLinks = appState.ceHostLinks[ceProjId];
    if( appState.myHostLinks == null ) { return; }
    
-   await _updateHostNames( todos, appState );
-
+   Map<String, PEQ> peqMods = new Map<String, PEQ>();
    var pending = {};
 
-   Map<String, PEQ> peqMods = new Map<String, PEQ>();
+   await _updateHostNames( appState, todos, context, container, peqMods );
    await _updateCEUID( appState, todos, context, container, peqMods );
    _vPrint( appState, 4, "... done (ceuid)" );
 
