@@ -520,6 +520,15 @@ async function getSummaries( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+async function getEquityPlan( authData, query ) {
+    // console.log( "Get EPs for a given repo:", query);
+
+    let shortName = "GetEntries";
+    let postData  = { "Endpoint": shortName, "tableName": "CEEquityPlan", "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
 async function getLinkage( authData, query ) {
 
     let shortName = "GetEntries";

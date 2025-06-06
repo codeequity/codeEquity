@@ -649,9 +649,11 @@ Future<bool> validateAssign( WidgetTester tester, String repo, String issueTitle
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
-   expect( pmap['action'],                   "assigned" );
-   expect( pmap['repository']['full_name'],  repo );
-   expect( pmap['issue']['title'],           issueTitle );
+   // allow caller to decide if this should fail test
+   bool ret = true;
+   ret = ret && pmap['action']                  == "assigned";
+   ret = ret && pmap['repository']['full_name'] == repo;
+   ret = ret && pmap['issue']['title']          == issueTitle;
    if( assignee != "" ) {
       expect( pmap['assignee']['login'],        assignee );
    }
@@ -659,7 +661,7 @@ Future<bool> validateAssign( WidgetTester tester, String repo, String issueTitle
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
    
-   return true;
+   return ret;
 }
 
 Future<bool> validateUnAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String detailName ) async {
@@ -670,9 +672,11 @@ Future<bool> validateUnAssign( WidgetTester tester, String repo, String issueTit
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
-   expect( pmap['action'],                  "unassigned" );
-   expect( pmap['repository']['full_name'],  repo );
-   expect( pmap['issue']['title'],           issueTitle );
+   // allow caller to decide if this should fail test
+   bool ret = true;
+   ret = ret && pmap['action']                  == "unassigned";
+   ret = ret && pmap['repository']['full_name'] == repo;
+   ret = ret && pmap['issue']['title']          == issueTitle;
    if( assignee != "" ) {
       expect( pmap['assignee']['login'],        assignee );
    }
@@ -680,13 +684,15 @@ Future<bool> validateUnAssign( WidgetTester tester, String repo, String issueTit
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
    
-   return true;
+   return ret;
 }
 
 Future<bool> validateMove( WidgetTester tester, String detailName ) async {
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
+   if( detailName == "Element Not Found." ) { return false; }
+   
    expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
@@ -847,11 +853,17 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
    await tester.drag( listFinder, Offset(0.0, -50.0) );
    
+
+   // 3 possible paths, multiple differences on arrival order.  Remember add/relo are both always both sent on label notification pact in order to protect 
+   //   against no status
+   // 1) single add/relo. raw pact is issue:labeled.  Column is final destination.  then assign, propose/reject  (confirmed)
+   // 2) double add/relo.  first is issue:labeled, move to unclaimed.  second is card:created, move to 'no status' (created without project).  3rd relo move to correct col.
+   // 3) single add/relo, labeled, move to ... ? no status?  then relo move to right spot.
    issue = "Close Open test";           // peq 2
    print( issue );
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
-   expect( await validateAdd(        tester, repo, issue, "1k PEQ",  "0 2 confirm add" ),      true );
-   expect( await validatePass(       tester,                         "1 2 confirm relocate" ), true );
+   expect( await validateAdd(        tester, repo, issue, "1k PEQ",  "0 2 confirm add" ),      true );   // label
+   expect( await validatePass(       tester,                         "1 2 confirm relocate" ), true );   // pass
 
    // Depending on timing of notification arrival at ceServer, different tracks are taken through cardHandler.
    // there may or may not be a createCard-add/relo) here.
@@ -865,18 +877,16 @@ Future<bool> validateAri22( WidgetTester tester ) async {
       print( "cc exists, offset 2" );
    }
    print( "Start valMove " + (2 + offset).toString() + " 2 confirm relocate" );
-   expect( await validateMove(       tester,                         (2 + offset).toString() + " 2 confirm relocate" ), true );
-   print( "Start valAssign" );
+   bool vmExists = await validateMove( tester, (2 + offset).toString() + " 2 confirm relocate" );
+   if( !vmExists ) {
+      offset -= 1;
+      print( "No second relo, decr offset " + offset.toString() );
+   }
    expect( await validateAssign(     tester, repo, issue, "ariCETester", (3 + offset).toString() + " 2 confirm change" ),   true );
-   print( "Start valPropose" );
    expect( await validateProposeAccrue( tester, repo, issue,         (4 + offset).toString() + " 2 propose accrue" ),   true );
-   print( "Start valReject" );
    expect( await validateRejectAccrue(  tester, repo, issue,         (5 + offset).toString() + " 2 reject accrue" ),    true );
-   print( "Start valMove2" );
    expect( await validateMove(          tester,                      (6 + offset).toString() + " 2 confirm relocate" ), true );
-   print( "Start valPropose2" );
    expect( await validateProposeAccrue( tester, repo, issue,         (7 + offset).toString() + " 2 propose accrue" ),   true );
-   print( "Start valReject2" );
    expect( await validateRejectAccrue(  tester, repo, issue,         (8 + offset).toString() + " 2 reject accrue" ),    true );   // 210 is peq 2 + pact 10
    expect( await validateProposeAccrue( tester, repo, issue,         (9 + offset).toString() + " 2 propose accrue" ),   true );
    expect( await validateConfirmAccrue( tester, repo,                (10 +  offset).toString() + " 2 confirm accrue" ),   true );
@@ -982,10 +992,20 @@ Future<bool> validateUnAssign40( WidgetTester tester ) async {
 
    expect( await validateAdd(      tester, repo, issue, "604 PEQ",     "0 0 confirm add" ),      true );
    expect( await validatePass(     tester,                             "1 0 confirm relocate"),  true );
-   expect( await validateAssign(   tester, repo, issue, "",            "2 0 confirm change" ),   true );   
-   expect( await validateAssign(   tester, repo, issue, "",            "3 0 confirm change" ),   true );   
-   expect( await validateUnAssign( tester, repo, issue, "",            "4 0 confirm change" ),   true );   
-   expect( await validateUnAssign( tester, repo, issue, "",            "5 0 confirm change" ),   true );   
+   // want 2 assigns, 2 unassigns.  Since checkNTap will simply look for 'confirm change', will always pass on 1st check in this test.
+   // need assign before unassign
+   int assign = 0;
+   int unassign = 0;
+   if( await validateAssign( tester, repo, issue, "",            "2 0 confirm change" ) ) { assign += 1; }
+   if( await validateAssign( tester, repo, issue, "",            "3 0 confirm change" ) ) { assign += 1; }
+   if( await validateAssign( tester, repo, issue, "",            "4 0 confirm change" ) ) { assign += 1; }
+
+   if( await validateUnAssign( tester, repo, issue, "",          "3 0 confirm change" ) ) { unassign += 1; }
+   if( await validateUnAssign( tester, repo, issue, "",          "4 0 confirm change" ) ) { unassign += 1; }
+   if( await validateUnAssign( tester, repo, issue, "",          "5 0 confirm change" ) ) { unassign += 1; }
+
+   expect( assign,   2 );   
+   expect( unassign, 2 );
    
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 5, "" );

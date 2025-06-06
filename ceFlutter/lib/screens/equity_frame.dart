@@ -94,16 +94,6 @@ class _CEEquityState extends State<CEEquityFrame> {
       appState.updateEquityView = true;
    }
 
-   Future<void> writeEqPlan() async {
-      if( appState.myEquityPlan != null ) {
-         print( "WRITE EP " + appState.myEquityPlan!.totalAllocation.toString() );
-         appState.myEquityPlan!.lastMod = getToday();
-         String eplan = json.encode( appState.myEquityPlan );
-         String postData = '{ "Endpoint": "PutEqPlan", "NewPlan": $eplan }';
-         updateDynamo( context, container, postData, "PutEqPlan" );
-      }
-   }
-   
    
    void _saveEdit( EquityTree t, titleController, amountController, hpNameController) {
       print( "Save edit " + titleController.text + " " + amountController.text + " " + hpNameController.text );
@@ -386,7 +376,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                if( appState.verbose >= 4 ) { print( "_getCategoryWidgets Update equity" ); }
                catList.addAll( _getTiles( context, width ) );
             }
-            if( changed ) { writeEqPlan(); }
+            if( changed ) { writeEqPlan( appState, context, container ); }
          }
 
          // Add

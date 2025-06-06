@@ -532,7 +532,7 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
    }
 }
 
- Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
+Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
    String shortName = "fetchEquityPlan";
    print("FETCH EQPLAN" );
    
@@ -550,6 +550,17 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
       if( didReauth ) { return await fetchEquityPlan( context, container, postData ); }
    }
 }
+
+Future<void> writeEqPlan( appState, context, container ) async {
+   if( appState.myEquityPlan != null ) {
+      print( "WRITE EP " + appState.myEquityPlan!.totalAllocation.toString() );
+      appState.myEquityPlan!.lastMod = getToday();
+      String eplan = json.encode( appState.myEquityPlan );
+      String postData = '{ "Endpoint": "PutEqPlan", "NewPlan": $eplan }';
+      updateDynamo( context, container, postData, "PutEqPlan" );
+   }
+}
+   
 
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
    String shortName = "fetchHostLinkage";

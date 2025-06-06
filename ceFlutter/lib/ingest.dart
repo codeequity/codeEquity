@@ -15,6 +15,7 @@ import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
+import 'package:ceFlutter/models/EquityPlan.dart';
 
 Function listEq = const ListEquality().equals;
 
@@ -349,6 +350,34 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 
 }
 
+Future _updateEquityPlan( appState, context, container, String oldHostPName, String newHostPName ) async {
+   // To get to ingest, must have selected CEP inside CEV, then hit update peq summary button.
+   EquityPlan? ep = appState.myEquityPlan;
+   if( ep == null ) { return; }
+
+   print( "Updating equity plan from " + oldHostPName + " to " + newHostPName);
+
+   // Cleanest way here is update model, write to aws, then reload.
+   for( var i = 0; i < ep.hostNames.length; i++ ) {
+      if( oldHostPName == ep.hostNames[i] ) {
+
+         // cats
+         int pindex = ep.categories[i].indexOf( oldHostPName );
+         assert( pindex >= 0 );
+         ep.categories[i][pindex] = newHostPName;
+
+         // hnames
+         ep.hostNames[i] = newHostPName;
+         break;
+      }
+   }
+   
+   await writeEqPlan( appState, context, container );
+   print( "Reloading Equity plan for " + appState.selectedCEVenture );
+   
+   appState.ceEquityPlans.remove( appState.selectedCEVenture );
+   await reloadCEVentureOnly(context, container);
+}
 
 // ingest may contain edits to HOST projects or columns.
 // Update any existing state in peq summary, and equity plan before process new ingest.
@@ -368,6 +397,7 @@ Future _updateHostNames( appState, List<Tuple2<PEQAction, PEQ>> todos, context, 
 
    List<HostLoc> colRenames  = [];
    List<HostLoc> projRenames = [];
+   List<String>  projRenameTo = [];
 
    // ceServer has already updated appLocs to be consistent with renaming.
    List<HostLoc>    appLocs   = appState.myHostLinks.locations;
@@ -400,7 +430,9 @@ Future _updateHostNames( appState, List<Tuple2<PEQAction, PEQ>> todos, context, 
             assert( loc != null );
             projRenames.add( new HostLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: pact.subject[0], hostColumnId: "-1", hostProjectName: pact.subject[1],
                                         hostColumnName: loc!.hostColumnName, active: loc.active ) );
-            _vPrint( appState, 2, "... proj rename " + pact.subject[1] );            
+            projRenameTo.add( pact.subject[2] );
+               
+            _vPrint( appState, 2, "... proj rename " + pact.subject[1] + " to " + pact.subject[2] );            
          }
       }
    }
@@ -428,11 +460,9 @@ Future _updateHostNames( appState, List<Tuple2<PEQAction, PEQ>> todos, context, 
             //        i.e. a->b, b->c.. first set here will move from a->c, skipping b.
             int pindex = alloc.category.indexOf( proj.hostProjectName );
             if( pindex >= 0 ) { alloc.category[pindex] = loc.hostProjectName; }
-            _vPrint( appState, 4, "first pindex " + pindex.toString() );
 
             pindex = alloc.categoryBase!.indexOf( proj.hostProjectName );
             if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.hostProjectName; }
-            _vPrint( appState, 4, "second pindex " + pindex.toString() );
 
             // XXX minor.  restructure to minimize aws trips.. but proj rename will be quite rare, and cost is not significant
             assert( alloc.sourcePeq != null );
@@ -447,7 +477,7 @@ Future _updateHostNames( appState, List<Tuple2<PEQAction, PEQ>> todos, context, 
                _vPrint( appState, 4, "updateHostNames changing " + peq.id +"'s psub to " + peqData['hostProjectSub'].toString() );
                _addMod( context, container, peq, peqData, peqMods );   
             }
-            
+
          }
       }
       for( HostLoc col in colRenames ) {
@@ -468,6 +498,12 @@ Future _updateHostNames( appState, List<Tuple2<PEQAction, PEQ>> todos, context, 
       // No need (and can't anyway, not stateful).  If updatePeqAllocations does anything, allocTree is rebuilt.
       // setState(() => appState.updateAllocTree = true );
    }
+
+   // Force update, reload to equity plan.  Don't wait.
+   for( var i = 0; i < projRenames.length; i++ ) {
+      _updateEquityPlan( appState, context, container, projRenames[i].hostProjectName, projRenameTo[i] );
+   }
+   
    _vPrint( appState, 4, "Done with updateHostName" );
 }
 

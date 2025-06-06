@@ -68,7 +68,7 @@ class AppState {
    late Map< String, List<HostAccount> > ceHostAccounts;  // ceUser    : HostAccount (list with 1 HA per platform)
    late Map< String, PEQSummary? >       cePEQSummaries;  // ceProject : PEQSummary
    late Map< String, Linkage? >          ceHostLinks;     // ceProject : Linkage
-   late Map< String, EquityPlan? >       ceEquityPlans;   // ceProject : EquityPlan
+   late Map< String, EquityPlan? >       ceEquityPlans;   // ceVenture : EquityPlan
    late Map< String, Image? >            ceImages;        // ceUser or ceProject : image
    
    // Pointers into Core data

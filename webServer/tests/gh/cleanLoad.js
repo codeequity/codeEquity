@@ -41,6 +41,14 @@ async function clearSummary( authData, td ) {
     }
 }
 
+async function clearEquity( authData, td ) {
+    const ep = await awsUtils.getEquityPlan( authData, { "EquityPlanId": td.cepDetails.ceVentureId });
+    if( ep != -1 ) {
+	const epId = ep.map( plan => [plan.EquityPlanId] );    
+	console.log( "Clearing plans for", epId );
+	await awsUtils.cleanDynamo( authData, "CEEquityPlan", epId );
+    }
+}
 
 // Only load items for  TEST_ACTOR, FLUTTER_TEST_REPO.  Need to work through dynamo storage format.
 async function loadPEQ( authData, td ) {
@@ -236,6 +244,48 @@ async function loadLinkage( authData, td ) {
     console.log( "Inserted fresh linkage " );
 }
 
+/*
+async function loadEquityPlan( authData, td ) {
+
+    // load, ingest stored
+    let fname      = baselineLoc + "dynamoCEEquityPlan_latest.json";
+    const dataStr  = getData( fname );
+    const projJson = JSON.parse( dataStr );
+    console.log( "Reading", projJson.CEEquityPlan.length.toString(), "CEEquityPlan from", fname );
+
+    for( let ceEPNum = 0; ceEPNum < projJson.CEEquityPlan.length; ceEPNum++ ) {
+	let ceEP    = projJson.CEEquityPlan[ceEPNum].PutRequest.Item;
+	let ceEPId  = ceEP.EquityPlanId.S;
+	
+	if( ceEPId == td.cepDetails.ceVentureId ) {
+	    let updatedCEP = {};
+	    updatedCEP.EquityPlanId       = ceEPId;
+	    updatedCEP.LastMod            = ceEP.LastMod.S;
+	    updatedCEP.TotalAllocation    = ceEP.TotalAllocation.N;
+	    
+	    if( utils.validField( ceEP, "HostParts" )) {
+		let repos = ceEP.HostParts.M.hostRepositories.L;
+		let hostRepositories = [];
+		for( let i = 0; i < repos.length; i++  ) {
+		    let repo = repos[i].M;
+		    
+		    let nRepo = {};
+		    nRepo.repoId     = repo.repoId.S;
+		    nRepo.repoName   = repo.repoName.S;
+		    hostRepositories.push( nRepo );
+		}
+		updatedCEP.HostParts = {};
+		updatedCEP.HostParts.hostRepositories = hostRepositories;
+	    }
+	    await awsUtils.updateCEPHostParts( authData, updatedCEP );
+	    
+	    console.log( "Refreshed CEEquityPlan entry" );
+	    break;
+	}
+    }
+}
+*/
+
 // Just renewing hostparts
 async function refreshCEProjects( authData, td ) {
     // no need to remove, refresh overwrites
@@ -307,8 +357,8 @@ async function runTests() {
 
     let promises = [];
     promises.push( clearIngested( authData, td ));
-
     promises.push( clearSummary(  authData, td ));
+    // promises.push( clearEquity(   authData, td ));
     await Promise.all( promises );
 
     // Can't just overwrite, new operations will be in aws and be processed.
@@ -320,6 +370,8 @@ async function runTests() {
     // Load Linkage.  This means if last generate run failed, linkage table will be out of date with GH, 
     // but in synch with loaded PEQ/PAct.  Ingest requires linkage.
     await loadLinkage( authData, td );
+
+    // await loadEquityPlan( authData, td );
 
     // CEProject table for ce_flut can be in empty state
     await refreshCEProjects( authData, td );
