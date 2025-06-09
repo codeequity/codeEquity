@@ -51,8 +51,8 @@ class AppState {
    late bool loaded;                           // control expensive aspects of state initialization
    late String ceUserId;                       // set during signup, login, refresh, etc.
 
-   late String                          selectedCEVenture;
-   late String                          selectedCEProject;
+   late String                          selectedCEVenture;  // always set if seeing equity plan
+   late String                          selectedCEProject;  // always set if seeing summary frame or equity plan
    late String                          selectedHostUID;    // Looking at details for this host user, currently
 
    late Map< String, Map<String, String >> idMapHost;       //  {hostUid: {ceUID: , ceUserName: , hostUserName: }}
@@ -68,7 +68,7 @@ class AppState {
    late Map< String, List<HostAccount> > ceHostAccounts;  // ceUser    : HostAccount (list with 1 HA per platform)
    late Map< String, PEQSummary? >       cePEQSummaries;  // ceProject : PEQSummary
    late Map< String, Linkage? >          ceHostLinks;     // ceProject : Linkage
-   late Map< String, EquityPlan? >       ceEquityPlans;   // ceProject : EquityPlan
+   late Map< String, EquityPlan? >       ceEquityPlans;   // ceVenture : EquityPlan
    late Map< String, Image? >            ceImages;        // ceUser or ceProject : image
    
    // Pointers into Core data

@@ -394,7 +394,7 @@ Future<String> checkNTap( WidgetTester tester, String keyName, {callCount = 0} )
       callCount++;
       if     ( callCount == 1 ) { pactCount = pactCount + 1; }
       else if( callCount == 2 ) { pactCount = pactCount - 2; }
-      else                      { print( "CheckNTap " + keyName + " " + callCount.toString() ); assert( false ); }
+      else                      { print( "CheckNTap did NOT find " + keyName + " " + callCount.toString() ); return "Element Not Found."; }
 
       keyParts[0] = pactCount.toString();
       keyName = keyParts.join( ' ' );

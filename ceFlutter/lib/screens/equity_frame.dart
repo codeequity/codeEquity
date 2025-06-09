@@ -11,6 +11,7 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
+import 'package:ceFlutter/models/PEQ.dart';
 
 import 'package:ceFlutter/components/equityTree.dart';
 import 'package:ceFlutter/components/equityNode.dart';
@@ -94,20 +95,36 @@ class _CEEquityState extends State<CEEquityFrame> {
       appState.updateEquityView = true;
    }
 
-   Future<void> writeEqPlan() async {
-      if( appState.myEquityPlan != null ) {
-         print( "WRITE EP " + appState.myEquityPlan!.totalAllocation.toString() );
-         appState.myEquityPlan!.lastMod = getToday();
-         String eplan = json.encode( appState.myEquityPlan );
-         String postData = '{ "Endpoint": "PutEqPlan", "NewPlan": $eplan }';
-         updateDynamo( context, container, postData, "PutEqPlan" );
-      }
-   }
    
-   
-   void _saveEdit( EquityTree t, titleController, amountController, hpNameController) {
+   void _saveEdit( EquityTree t, titleController, amountController, hpNameController) async {
       print( "Save edit " + titleController.text + " " + amountController.text + " " + hpNameController.text );
-      if( titleController.text != t.getTitle() || amountController.text != t.getAmount.toString() || t.getHostName() != hpNameController.text )
+
+      // Do not allow if changing host project name away from a currently active host project.  Such changes should only be driven by the host.
+      // Host project is active if it has peqs.  locs may exist without active peqs.
+      // To see any details in equity plan, selectedCEVenture must be set.. selectedCEProject possibly is not.
+      String cepId = appState.selectedCEProject;
+      bool redFlag = false;
+      bool editHPN = t.getHostName() != hpNameController.text;
+      if( editHPN && cepId == "" ) {
+         showToast( "Please select a Code Equity project for this venture before attempting to edit a host project name" );
+         redFlag = true;
+      }
+      else if( editHPN ) {
+         List<PEQ> peqs = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserId": "", "CEProjectId": "$cepId", "allAccrued": "true" }' );
+         bool found = false;
+         for( final peq in peqs ) {
+            if( peq.hostProjectSub.length > 0 && peq.hostProjectSub[0] == t.getHostName() ) {
+               found = true;
+               break;
+            }
+         }
+         if( found ) {
+            showToast( "This host project contains active PEQs.  Changing the host project name can only be done from the Host." );
+            redFlag = true;
+         }
+      }
+      
+      if( !redFlag && ( titleController.text != t.getTitle() || amountController.text != t.getAmount.toString() || editHPN ) )
       {
          print( "Change detected " );
          String title = titleController.text;
@@ -386,7 +403,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                if( appState.verbose >= 4 ) { print( "_getCategoryWidgets Update equity" ); }
                catList.addAll( _getTiles( context, width ) );
             }
-            if( changed ) { writeEqPlan(); }
+            if( changed ) { writeEqPlan( appState, context, container ); }
          }
 
          // Add

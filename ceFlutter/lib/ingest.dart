@@ -15,6 +15,7 @@ import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
+import 'package:ceFlutter/models/EquityPlan.dart';
 
 Function listEq = const ListEquality().equals;
 
@@ -99,7 +100,13 @@ Future _updateCEUID( appState, todos, context, container, peqMods ) async {
 }
 
 // This is the single location where a source allocation is added to the summary.
-// One allocation per category: project:column:assignee.  
+// One allocation per category: project:column:assignee.
+// HostProjectId:
+//   peqs (correctly) do not hold host information.
+//   every confirm add has a confirm relo.    every relo has an hpid.  propagate from here.
+//   it's possible to come in with propose accrue (i.e. create in PEND), buuut then you get confirm add, confirm relo, no propose.
+//   if propose from existing, should have source alloc.
+
 void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmt, PeqType peqType, {Allocation? source = null, String pid = ""} ) {
    
    assert( appState.myPEQSummary.allocations != null );
@@ -343,6 +350,34 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 
 }
 
+Future _updateEquityPlan( appState, context, container, String oldHostPName, String newHostPName ) async {
+   // To get to ingest, must have selected CEP inside CEV, then hit update peq summary button.
+   EquityPlan? ep = appState.myEquityPlan;
+   if( ep == null ) { return; }
+
+   print( "Updating equity plan from " + oldHostPName + " to " + newHostPName);
+
+   // Cleanest way here is update model, write to aws, then reload.
+   for( var i = 0; i < ep.hostNames.length; i++ ) {
+      if( oldHostPName == ep.hostNames[i] ) {
+
+         // cats
+         int pindex = ep.categories[i].indexOf( oldHostPName );
+         assert( pindex >= 0 );
+         ep.categories[i][pindex] = newHostPName;
+
+         // hnames
+         ep.hostNames[i] = newHostPName;
+         break;
+      }
+   }
+   
+   await writeEqPlan( appState, context, container );
+   print( "Reloading Equity plan for " + appState.selectedCEVenture );
+   
+   appState.ceEquityPlans.remove( appState.selectedCEVenture );
+   await reloadCEVentureOnly(context, container);
+}
 
 // ingest may contain edits to HOST projects or columns.
 // Update any existing state in peq summary, and equity plan before process new ingest.
@@ -357,11 +392,12 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 // Adds are based on psub, but immediate relos are myHostLinks.
 // The only adds without relos are for unclaimed:unclaimed, which should be name-protected.
 // updateHostNames will update all allocs to cProj, leaving todo's alone as above.
-Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
+Future _updateHostNames( appState, List<Tuple2<PEQAction, PEQ>> todos, context, container, peqMods ) async {
    _vPrint( appState, 4, "Updating Host Names in appAllocs ");
 
    List<HostLoc> colRenames  = [];
    List<HostLoc> projRenames = [];
+   List<String>  projRenameTo = [];
 
    // ceServer has already updated appLocs to be consistent with renaming.
    List<HostLoc>    appLocs   = appState.myHostLinks.locations;
@@ -380,6 +416,8 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
       // print( peq );
 
       if( pact.verb == PActVerb.confirm && pact.action == PActAction.change ) {
+         // XXX colRenames are not possible in ghV2, and so are not issued by ceServer.
+         //     Should this change, note that as of 2025, col ids are not unique (yet?) so below loc is bad.
          if( pact.note == PActNotes['colRename'] ) {
             assert( pact.subject.length == 3 );
             HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == pact.subject[0] );
@@ -394,7 +432,9 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             assert( loc != null );
             projRenames.add( new HostLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: pact.subject[0], hostColumnId: "-1", hostProjectName: pact.subject[1],
                                         hostColumnName: loc!.hostColumnName, active: loc.active ) );
-            _vPrint( appState, 2, "... proj rename " + pact.subject[1] );            
+            projRenameTo.add( pact.subject[2] );
+               
+            _vPrint( appState, 2, "... proj rename " + pact.subject[1] + " to " + pact.subject[2] );            
          }
       }
    }
@@ -425,6 +465,21 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
 
             pindex = alloc.categoryBase!.indexOf( proj.hostProjectName );
             if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.hostProjectName; }
+
+            // XXX minor.  restructure to minimize aws trips.. but proj rename will be quite rare, and cost is not significant
+            assert( alloc.sourcePeq != null );
+            String peqIds = json.encode( alloc.sourcePeq!.keys.toList() );
+            List<PEQ> peqs = await fetchPEQs( context, container,'{ "Endpoint": "GetPEQsById", "PeqIds": $peqIds }' );
+
+            for( PEQ peq in peqs ) {
+               var peqData = {};
+               peqData['id']             = peq.id;
+               peqData['hostProjectSub'] = alloc.categoryBase;
+               assert( peqData['hostProjectSub'] != peq.hostProjectSub );
+               _vPrint( appState, 4, "updateHostNames changing " + peq.id +"'s psub to " + peqData['hostProjectSub'].toString() );
+               _addMod( context, container, peq, peqData, peqMods );   
+            }
+
          }
       }
       for( HostLoc col in colRenames ) {
@@ -445,6 +500,12 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
       // No need (and can't anyway, not stateful).  If updatePeqAllocations does anything, allocTree is rebuilt.
       // setState(() => appState.updateAllocTree = true );
    }
+
+   // Force update, reload to equity plan.  Don't wait.
+   for( var i = 0; i < projRenames.length; i++ ) {
+      _updateEquityPlan( appState, context, container, projRenames[i].hostProjectName, projRenameTo[i] );
+   }
+   
    _vPrint( appState, 4, "Done with updateHostName" );
 }
 
@@ -935,13 +996,13 @@ Future _colRename( context, container, pact ) async {
    return; 
 }
 
+// XXX Remove
 // Possible out of order here
 Future _projRename( context, container, pact ) async {
    final appState = container.state;
-   // XXX REVISIT once this is possible again
    // These arrive as viable pact, and -1 as peq.  Pact subject is [ projId, oldName, newName ]
    // ceServer handles locs in dynamo.  myHostLinks.locations is current.
-   await updateProjectName( context, container, pact.subject );
+   // await updateProjectName( context, container, pact.subject );
    // This has the potential to impact any future operation on peqs. wait.
    _vPrint( appState, 1, "Project rename handled at start of todo processing" );
    _vPrint( appState, 1, "Done waiting on project name update" );
@@ -1253,11 +1314,10 @@ Future<void> updatePEQAllocations( context, container ) async {
    appState.myHostLinks = appState.ceHostLinks[ceProjId];
    if( appState.myHostLinks == null ) { return; }
    
-   await _updateHostNames( todos, appState );
-
+   Map<String, PEQ> peqMods = new Map<String, PEQ>();
    var pending = {};
 
-   Map<String, PEQ> peqMods = new Map<String, PEQ>();
+   await _updateHostNames( appState, todos, context, container, peqMods );
    await _updateCEUID( appState, todos, context, container, peqMods );
    _vPrint( appState, 4, "... done (ceuid)" );
 

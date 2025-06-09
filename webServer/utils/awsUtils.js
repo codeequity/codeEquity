@@ -454,6 +454,14 @@ async function updateCEPHostParts( authData, ceProject ) {
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
+async function updateCEEquityPlan( authData, ceEquityPlan ) {
+    console.log( authData.who, "Updating Equity Plan" );
+
+    let shortName = "PutEqPlan"; 
+
+    let pd = { Endpoint: shortName, NewPlan: ceEquityPlan }; 
+    return await wrappedPostAWS( authData, shortName, pd );
+}
 
 async function getRaw( authData, pactId ) {
     // console.log( authData.who, "Get raw PAction", pactId );
@@ -516,6 +524,15 @@ async function getSummaries( authData, query ) {
 
     let shortName = "GetEntries";
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQSummary", "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
+async function getEquityPlan( authData, query ) {
+    // console.log( "Get EPs for a given repo:", query);
+
+    let shortName = "GetEntries";
+    let postData  = { "Endpoint": shortName, "tableName": "CEEquityPlan", "query": query };
 
     return await wrappedPostAWS( authData, shortName, postData );
 }
@@ -589,6 +606,7 @@ export {rewritePAct};
 export {refreshLinkageSummary};
 export {updateLinkageSummary};
 export {updateCEPHostParts};
+export {updateCEEquityPlan};
 
 export {getRaw};
 export {getPRaws};
@@ -597,6 +615,7 @@ export {getPEQs};
 export {getPEQsById};
 export {getHostPEQProjects};
 export {getSummaries};
+export {getEquityPlan};
 export {getLinkage};
 
 export {cleanDynamo};

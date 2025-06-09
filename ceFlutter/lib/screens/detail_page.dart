@@ -201,6 +201,7 @@ class _CEDetailState extends State<CEDetailPage> {
       }
       else {
          List<String> cat = category.sublist(0, category.length - 1 );
+         //print( "Get peqs for " + cat.toString() + " " + appState.userPeqs[ ceUID ].toString() );
          selectedPeqs = (appState.userPeqs[ ceUID ] ?? []).where( (p) => eq( p.hostProjectSub, cat )).toList();
       }
 
