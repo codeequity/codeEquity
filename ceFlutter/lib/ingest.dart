@@ -416,6 +416,8 @@ Future _updateHostNames( appState, List<Tuple2<PEQAction, PEQ>> todos, context, 
       // print( peq );
 
       if( pact.verb == PActVerb.confirm && pact.action == PActAction.change ) {
+         // XXX colRenames are not possible in ghV2, and so are not issued by ceServer.
+         //     Should this change, note that as of 2025, col ids are not unique (yet?) so below loc is bad.
          if( pact.note == PActNotes['colRename'] ) {
             assert( pact.subject.length == 3 );
             HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == pact.subject[0] );

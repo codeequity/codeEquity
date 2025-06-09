@@ -51,8 +51,8 @@ class AppState {
    late bool loaded;                           // control expensive aspects of state initialization
    late String ceUserId;                       // set during signup, login, refresh, etc.
 
-   late String                          selectedCEVenture;
-   late String                          selectedCEProject;
+   late String                          selectedCEVenture;  // always set if seeing equity plan
+   late String                          selectedCEProject;  // always set if seeing summary frame or equity plan
    late String                          selectedHostUID;    // Looking at details for this host user, currently
 
    late Map< String, Map<String, String >> idMapHost;       //  {hostUid: {ceUID: , ceUserName: , hostUserName: }}

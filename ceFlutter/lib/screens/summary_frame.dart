@@ -120,6 +120,7 @@ class _CESummaryState extends State<CESummaryFrame> {
          assert( appState.allocTree != null );
 
          // Re-site each alloc into it's new home.
+         // print( "buildAlloc attempting to resite " + alloc.category.toString() );
          List<dynamic> epRet = appState.myEquityPlan!.site( alloc.category );
          List<String> sitedCat   = new List<String>.from( epRet[0] );
          
@@ -150,7 +151,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   // alloc: [hier ... hier  project column assignee]
                   // alloc  |-may have ---| |-will have -----------|    equity plan has no info on last two.
                   if( i < sitedCat.length - 2 ) {
-                     _vPrint( appState, 1, "... hierarchy - resite " + sitedCat[i] );
+                     _vPrint( appState, 1, "... buildAlloc, hierarchy - resite " + sitedCat[i] );
                      List<dynamic> hier = appState.myEquityPlan!.site( [ sitedCat[i] ] );
                      hAlloc = hier[1];
                   }
@@ -207,10 +208,10 @@ class _CESummaryState extends State<CESummaryFrame> {
    }
    
 
-   // re-build alloc tree if updatePeq button triggers
    List<List<Widget>> _showPAlloc() {
       List<List<Widget>> allocList = [];
       
+      // re-build alloc tree if equity or allocs change
       if( appState.updateAllocTree ) { _buildAllocationTree(); }
       
       // When node expansion changes, callback sets state on allocExpanded, which changes node, which changes here, which causes project_page rebuild

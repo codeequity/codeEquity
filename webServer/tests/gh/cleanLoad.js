@@ -42,7 +42,7 @@ async function clearSummary( authData, td ) {
 }
 
 async function clearEquity( authData, td ) {
-    const ep = await awsUtils.getEquityPlan( authData, { "EquityPlanId": td.cepDetails.ceVentureId });
+    const ep = await awsUtils.getEquityPlan( authData, { "EquityPlanId": td.ceVentureId });
     if( ep != -1 ) {
 	const epId = ep.map( plan => [plan.EquityPlanId] );    
 	console.log( "Clearing plans for", epId );
@@ -244,7 +244,7 @@ async function loadLinkage( authData, td ) {
     console.log( "Inserted fresh linkage " );
 }
 
-/*
+
 async function loadEquityPlan( authData, td ) {
 
     // load, ingest stored
@@ -257,34 +257,51 @@ async function loadEquityPlan( authData, td ) {
 	let ceEP    = projJson.CEEquityPlan[ceEPNum].PutRequest.Item;
 	let ceEPId  = ceEP.EquityPlanId.S;
 	
-	if( ceEPId == td.cepDetails.ceVentureId ) {
+	if( ceEPId == td.ceVentureId ) {
 	    let updatedCEP = {};
-	    updatedCEP.EquityPlanId       = ceEPId;
-	    updatedCEP.LastMod            = ceEP.LastMod.S;
-	    updatedCEP.TotalAllocation    = ceEP.TotalAllocation.N;
+	    updatedCEP.ceVentureId       = ceEPId;
+	    updatedCEP.lastMod            = ceEP.LastMod.S;
+	    updatedCEP.totalAllocation    = parseInt( ceEP.TotalAllocation.N );
 	    
-	    if( utils.validField( ceEP, "HostParts" )) {
-		let repos = ceEP.HostParts.M.hostRepositories.L;
-		let hostRepositories = [];
-		for( let i = 0; i < repos.length; i++  ) {
-		    let repo = repos[i].M;
-		    
-		    let nRepo = {};
-		    nRepo.repoId     = repo.repoId.S;
-		    nRepo.repoName   = repo.repoName.S;
-		    hostRepositories.push( nRepo );
+	    let categories = [];
+	    if( utils.validField( ceEP, "Categories" )) {
+		let cats = ceEP.Categories.L;
+		for( let i = 0; i < cats.length; i++  ) {
+		    let sub = [];
+		    for( let j = 0; j < cats[i].L.length; j++ ) {
+			sub.push( cats[i].L[j].S );
+		    }
+		    categories.push( sub );
 		}
-		updatedCEP.HostParts = {};
-		updatedCEP.HostParts.hostRepositories = hostRepositories;
 	    }
-	    await awsUtils.updateCEPHostParts( authData, updatedCEP );
+	    updatedCEP.categories = categories;
+	    
+	    let amounts = [];
+	    if( utils.validField( ceEP, "Amounts" )) {
+		let amts = ceEP.Amounts.L;
+		for( let i = 0; i < amts.length; i++ ) {
+		    amounts.push( parseInt( amts[i].N ));
+		}
+	    }
+	    updatedCEP.amounts = amounts;
+
+	    let hostNames = [];
+	    if( utils.validField( ceEP, "HostNames" )) {
+		let hns = ceEP.HostNames.L;
+		for( let i = 0; i < hns.length; i++ ) {
+		    hostNames.push( hns[i].S );
+		}
+	    }
+	    updatedCEP.hostNames = hostNames;
+
+	    await awsUtils.updateCEEquityPlan( authData, updatedCEP );
 	    
 	    console.log( "Refreshed CEEquityPlan entry" );
 	    break;
 	}
     }
 }
-*/
+
 
 // Just renewing hostparts
 async function refreshCEProjects( authData, td ) {
@@ -346,7 +363,8 @@ async function runTests() {
     td.ceProjectId  = config.FLUTTER_TEST_CEPID;
     td.ghRepo       = config.FLUTTER_TEST_REPO;
     td.ghFullName   = td.ghOwner + "/" + td.ghRepo;
-
+    td.ceVentureId  = config.FLUTTER_TEST_CEVID;
+    
     let authData     = new authDataC();
     authData.who     = "<TEST: Main> ";
     // authData.ic      = await auth.getInstallationClient( td.actor, td.ghRepo, td.ghOwner );
@@ -358,7 +376,7 @@ async function runTests() {
     let promises = [];
     promises.push( clearIngested( authData, td ));
     promises.push( clearSummary(  authData, td ));
-    // promises.push( clearEquity(   authData, td ));
+    promises.push( clearEquity(   authData, td ));
     await Promise.all( promises );
 
     // Can't just overwrite, new operations will be in aws and be processed.
@@ -371,7 +389,7 @@ async function runTests() {
     // but in synch with loaded PEQ/PAct.  Ingest requires linkage.
     await loadLinkage( authData, td );
 
-    // await loadEquityPlan( authData, td );
+    await loadEquityPlan( authData, td );
 
     // CEProject table for ce_flut can be in empty state
     await refreshCEProjects( authData, td );

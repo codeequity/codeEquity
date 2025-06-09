@@ -282,40 +282,6 @@ Future<bool> updateColumnName( context, container, guide ) async {
    }
 }
 
-// Called from ingest, which has up to date linkage
-// Guide is [projId, oldName, newName]
-Future<bool> updateProjectName( context, container, guide ) async {
-
-   // XXX Host can't do this yet.  Need to provide hostRepoId
-   assert( false ); 
-
-
-   print( "Update Project Name: " + guide.toString() );
-   assert( guide.length == 3 );
-
-   final appState  = container.state;
-   const shortName = "UpdateColProj";
-   
-   // HOST column names are unique within project. 
-   var postData = {};
-   postData['HostRepo']      = appState.myHostLinks.hostRepo;
-   postData['HostProjectId'] = guide[0];
-   postData['OldName']     = guide[1];
-   postData['NewName']     = guide[2];
-   postData['Column']      = "false";
-   var pd = { "Endpoint": shortName, "query": postData }; 
-   
-   final response = await awsPost( shortName, json.encode( pd ), context, container );
-   
-   if (response.statusCode == 201) {
-      return true;
-   } else {
-      bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await updateProjectName( context, container, guide ); }
-      else { return false; }
-   }
-}
-
 Future<List<Person>> fetchCEPeople( context, container ) async {
    String shortName = "fetchCEPeople";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEPeople", "query": { "empty": "" }}';

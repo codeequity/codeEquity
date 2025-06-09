@@ -73,7 +73,11 @@ class EquityPlan {
       assert( newCat.length >= 1 );
       for( int i = 0; i < hostNames.length; i++ ) {
          if( newCat[0] == hostNames[i] ) {
-            newCat = categories[i].sublist(0, categories[i].length - 1 ) + newCat;
+            // How much of this to keep?  All.
+            // categories might be [Software Contributions Flut, Github Operations Flx] or [Software Contributions Flx, Github Operations Flut]
+            // SF cat might be [Github Operations Flut, Accrued, U_kgDOBP2eEw]
+            // In either case, keep entire category and all but first of the old
+            newCat = categories[i] + newCat.sublist( 1, newCat.length);
             newAlloc = amounts[i];
             // print( "  resited " + cat.toString() + " into " + newCat.toString() + " with amount " + newAlloc.toString() );
             break;
@@ -86,7 +90,7 @@ class EquityPlan {
          for( int i = 0; i < categories.length; i++ ) {
             if( newCat[0] == categories[i].last ) {
                newAlloc = amounts[i];
-               // print( "  hierarchical element found, amout:  " + newAlloc.toString() );
+               // print( "  " + newCat[0] + " hierarchical element found, amout:  " + newAlloc.toString() );
                break;
             }
          }
@@ -127,8 +131,11 @@ class EquityPlan {
       
       bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt ) || !listEq( hostNames, oldHN ) || ( oldTA != totalAllocation ) ;
 
-      
-      // print( "updateEquity done.. changed? " + changed.toString() );
+      if( changed ) { 
+         print( "updateEquity done.. changed? " + changed.toString() );
+         print( "   Host names " + hostNames.toString() );
+         print( "   Cats " + categories.toString() );
+      }
       return changed;
    }
 

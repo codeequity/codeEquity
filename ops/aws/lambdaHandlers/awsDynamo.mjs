@@ -390,6 +390,9 @@ async function getEntries( tableName, query ) {
     case "CEPEQSummary": 
 	props = [ "PEQSummaryId" ];
 	break;
+    case "CEEquityPlan": 
+	props = [ "EquityPlanId" ];
+	break;
     default:
 	console.log( "*"+tableName+"*", "not found" );
 	assert( false );
@@ -436,6 +439,9 @@ async function removeEntries( tableName, ids ) {
 	break;
     case "CELinkage":
 	pkey1 = "CELinkageId";
+	break;
+    case "CEEquityPlan":
+	pkey1 = "EquityPlanId";
 	break;
     default:
 	assert( false );
