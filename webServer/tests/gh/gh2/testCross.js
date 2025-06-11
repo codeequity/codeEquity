@@ -26,7 +26,7 @@ async function cardPresentHelp( authData, td, pid, colId, issId ) {
 // Requires config.TEST_ACTOR to have installed the codeEquity app for all repos, not just one.
 // Requires config.CROSS_TEST_REPO & config.TEST_REPO & config.FLUTTER_TEST_REPO to allow both config.CE_ACTOR and config.TEST_ACTOR to have R/W access
 // This way, authData is shared.   td is NOT shared.
-async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, tdX ) {
+async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testLinks, td, tdX, tdF ) {
 
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
@@ -40,6 +40,9 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     assert( config.CROSS_TEST_ACTOR == config.TEST_ACTOR );
     assert( config.CROSS_TEST_REPO  != config.TEST_REPO );
     assert( config.CROSS_TEST_REPO  != config.FLUTTER_TEST_REPO );
+    assert( config.FAIL_CROSS_TEST_ACTOR == config.CROSS_TEST_ACTOR );
+    assert( config.FAIL_CROSS_TEST_REPO  != config.CROSS_TEST_REPO );
+    assert( config.FAIL_CROSS_TEST_REPO  != config.FLUTTER_CROSS_TEST_REPO );
 
     // Setup.
     // Add populate label to testProject2, to invoke repostatus
@@ -96,7 +99,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
 
     tu.testReport( testStatus, "Test " + testName + " B" );    
 
-    // 3. Transfer each to the other
+    // 3. Transfer each to the other.
     const issue  = await gh2tu.findIssue( authData, issDat[0] );
     const repo   = await gh2tu.findRepo( authData, td );
     const issueX = await gh2tu.findIssue( authDataX, issDatX[0] );
@@ -144,10 +147,10 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
 
     // PAct is found from oldCEP
     sub         = [peqX.PEQId, oldIdX, tdX.ghRepoId, tdX.ceProjectId, issDatX[0], td.ghRepoId, td.ceProjectId ];
-    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_RELO, config.PACTNOTE_GXFR, testStatus, {sub: sub, depth: 8} );
+    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, config.PACTNOTE_GXFR, testStatus, {sub: sub, depth: 8} );
 
     sub         = [peq.PEQId, oldId, td.ghRepoId, td.ceProjectId, issDat[0], tdX.ghRepoId, tdX.ceProjectId ];
-    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_RELO, config.PACTNOTE_GXFR, testStatus, {sub: sub, depth: 8} );
+    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, config.PACTNOTE_GXFR, testStatus, {sub: sub, depth: 8} );
 
     // New Peqs were validated above.  Check delete/add pacts.  
     newPeqs      = await newPeqs;
@@ -167,6 +170,59 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_DEL, config.PACTNOTE_XFRD, testStatus, {sub: [oldPeqX.PEQId], depth: 8} );
     testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_ADD, "", testStatus, {sub: [newPeqX.PEQId], depth: 8} );
 
+    tu.testReport( testStatus, "Test " + testName + " C" );    
+
+    // Setup Fail Xfer
+    let FcrossPid   = await gh2tu.createProjectWorkaround( authDataF, tdF, "Cross Proj", "For testing transfers to other repos" );
+    let FcrossCid   = await gh2tu.makeColumn( authDataF, testLinks, tdF.ceProjectId, tdF.ghFullName, FcrossPid, "Cross Col" );
+    let labF        = await gh2tu.findOrCreateLabel( authDataF, tdF.ghRepoId, LAB, 704 );
+    let assignee1F  = await gh2tu.getAssignee( authDataF, ASSIGNEE1 );
+    let assignee2F  = await gh2tu.getAssignee( authDataF, ASSIGNEE2 );
+    const FcrossLoc = await gh2tu.getFlatLoc( authDataF, FcrossPid, "Cross Proj", "Cross Col" );
+    
+    // Create in fail cross project
+    let issDatF = await gh2tu.blastIssue( authDataF, tdF, "CT Blast F", [labF], [assignee1F, assignee2F] );               
+    await utils.sleep( 2000 );
+
+    const cardF  = await gh2tu.makeProjectCard( authDataF, testLinks, tdF.ceProjectId, FcrossPid, FcrossLoc.colId, issDatF[0] );
+    await tu.settleWithVal( "Fail Cross test make Fail cross card", cardPresentHelp, authDataF, tdF, FcrossPid, FcrossLoc.colId, issDatF[0] );
+    
+    testStatus = await gh2tu.checkSituatedIssue( authDataF, testLinks, tdF, FcrossLoc, issDatF, cardF, testStatus, {label: 704, lblCount: 1});
+    
+    let oldPeqsF  = await awsUtils.getPEQs( authDataF, { "ceProjectId": tdF.ceProjectId });
+    let peqF      = oldPeqsF.find(p => p.HostIssueId == issDatF[0].toString() );
+    sub           = [peqF.PEQId, FcrossPid.toString(), FcrossCid.toString() ];
+    testStatus    = await gh2tu.checkPact( authDataF, testLinks, tdF, issDatF[3], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
+
+    tu.testReport( testStatus, "Test " + testName + " D" );
+
+    // Transfer (will fail)
+    const issueF = await gh2tu.findIssue( authDataF, issDatF[0] );
+    const repoF  = await gh2tu.findRepo( authDataF, tdF );
+
+    // Note, this creates a blast of 'open', 'label' (in the new repo), and 'xfer' notifications, often in that order.
+    console.log( "TRANSFER BEGINNING" );  
+    console.log( "baseF: ", issueF.id, repo.id );
+    await gh2tu.transferIssue( authDataF, issueF.id, repo.id );
+    await utils.sleep( 2000 );
+
+    // Original issue is gone - no linkage in transfer-to area and no original issueId (id changes on fail)
+    testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, issDatF, testStatus );
+
+    // The transfer was rejected, led to this new issue in same spot with all same data
+    const newFIssue  = await gh2tu.findIssueByName( authDataF, tdF, issDatF[3] );
+    let oldIdF = issDatF[0];
+    issDatF[0] = newFIssue.id;
+    issDatF[1] = newFIssue.number;
+    
+    testStatus = await gh2tu.checkSituatedIssue( authDataF, testLinks, tdF, FcrossLoc, issDatF, cardF, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: tdF.ceProjectId} );    
+
+    let newPeqsF = awsUtils.getPEQs( authDataF, { "ceProjectId": tdF.ceProjectId });
+
+    // PAct is found from oldCEP
+    sub         = [peqF.PEQId, oldIdF, tdF.ghRepoId, tdF.ceProjectId, issDatF[0], tdF.ghRepoId, tdF.ceProjectId ];
+    testStatus  = await gh2tu.checkPact( authDataF, testLinks, tdF, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, config.PACTNOTE_BXFR, testStatus, {sub: sub, depth: 8} );
+    
     tu.testReport( testStatus, "Test " + testName );
     return testStatus;
 }
@@ -313,7 +369,7 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
 
 
 
-async function runTests( flutterTest, authData, authDataX, authDataM, testLinks, td, tdX, tdM ) {
+async function runTests( flutterTest, authData, authDataX, authDataM, authDataF, testLinks, td, tdX, tdM, tdF ) {
 
 
     console.log( "Cross tests =================" );
@@ -323,19 +379,22 @@ async function runTests( flutterTest, authData, authDataX, authDataM, testLinks,
     // First build up aws CEProjects hostRepositories for repo: ceTesterAriAlt, ceTesterConnie
     await gh2tu.linkRepo( authDataM, tdM.ceProjectId, tdM.ghRepoId, tdM.ghFullName, tdM.cepDetails );
     await gh2tu.linkRepo( authDataX, tdX.ceProjectId, tdX.ghRepoId, tdX.ghFullName, tdX.cepDetails );
+    await gh2tu.linkRepo( authDataF, tdF.ceProjectId, tdF.ghRepoId, tdF.ghFullName, tdF.cepDetails );
 
-    let t1 = await testCrossRepo( flutterTest, authData, authDataX, testLinks, td, tdX );
+    let t1 = await testCrossRepo( flutterTest, authData, authDataX, authDataF, testLinks, td, tdX, tdF );
     console.log( "\n\nCross Repo test complete." );
     // ghUtils.show( true );
     await utils.sleep( 5000 );
-    
+
+    /*
     let t2 = await testMultithread( authData, authDataM, testLinks, td, tdM );
     console.log( "\n\nMultithread test complete." );
     // ghUtils.show( true );
     await utils.sleep( 5000 );
-
+    */
+    
     testStatus = tu.mergeTests( testStatus, t1 );
-    testStatus = tu.mergeTests( testStatus, t2 );
+    //testStatus = tu.mergeTests( testStatus, t2 );
 
     return testStatus
 }

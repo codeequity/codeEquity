@@ -189,7 +189,7 @@ async function getProjectStatus( authData, ceProjId ) {
 	for( const c of cut ) { console.log( "DEPRECATED ceProject", c.CEProjectId, "is being ignored." ); }
 	ceps = ceps.filter((cep) => cep.ProjectMgmtSys != config.PMS_GHC );
     }
-    
+
     return ceps;
 }
 
@@ -446,7 +446,7 @@ async function updateLinkageSummary( authData, ceProjId, locs ) {
 
 async function updateCEPHostParts( authData, ceProject ) {
     console.log( authData.who, "Updating hostparts" );
-
+    
     // assert( typeof ceProject.ceVentureId !== 'undefined' && ceProject.ceVentureId != "" );
     let shortName = "UpdateCEP"; 
 

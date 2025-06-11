@@ -33,7 +33,8 @@ Map<String,String> PActNotes = Map.unmodifiable( {
       'projRename':  "Project rename", 
       'remAssignee': "remove assignee", 
       'titRename':   "Change title", 
-      'pvUpdate':    "peq val update"
+      'pvUpdate':    "peq val update",
+      'badXfer':     "Bad transfer attempted"
    });
 
 class PEQAction {

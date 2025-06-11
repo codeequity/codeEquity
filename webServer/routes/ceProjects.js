@@ -17,11 +17,12 @@ class CEProjects {
 
     remove( ceProjId ) {
 	let idx = this.cep.findIndex( c => c.CEProjectId == ceProjId );
-	assert( idx >= 0 );
-	this.cep.splice( idx, 1 );
-
-	// XXX No need to blow the entire cache here
-	this.hi2cp = {};
+	if( idx >= 0 ) {
+	   this.cep.splice( idx, 1 );
+	    
+	  // XXX No need to blow the entire cache here
+	  this.hi2cp = {};
+	}
     }
 
     async cacheFind( authData, host, org, hostIssueId, getHostRepoFunc ) {
@@ -51,7 +52,10 @@ class CEProjects {
     }
 
     findById( ceProjId ) {
-	return this.cep.find( cep => cep.CEProjectId == ceProjId ); 
+	let retVal = config.EMPTY;
+	if( ceProjId != config.EMPTY )      { retVal = this.cep.find( cep => cep.CEProjectId == ceProjId ) };
+	if( typeof retVal === 'undefined' ) { retVal = config.EMPTY; }
+	return retVal;
     }
 
     // XXX Need better error message here if find that 1 repo is shared between 2 CEPs.
@@ -145,8 +149,10 @@ class CEProjects {
 	for( const cep of this.cep ) {
 	    console.log( cep.CEProjectId, cep.CEVentureId, cep.Name, cep.HostOrganization );
 	    console.log( "... repos:" );
-	    for( const repo of cep.HostParts.hostRepositories ) {
-		console.log( repo.repoName, repo.repoId );
+	    if( utils.validField( cep, "HostParts" ) && utils.validField( cep.HostParts, "hostRepositories" )) {
+		for( const repo of cep.HostParts.hostRepositories ) {
+		    console.log( "    ", repo.repoName, repo.repoId );
+		}
 	    }
 	}
     }

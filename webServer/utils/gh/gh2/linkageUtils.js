@@ -162,6 +162,8 @@ async function linkProject( authData, ghLinks, ceProjId, hostProjectId, pushAWS 
     let rLocs  = [];
     let rLinks = [];
     console.log( authData.who, "linkage:link project", ceProjId, hostProjectId, pushAWS );
+    // XXX 
+    assert( ceProjId != config.EMPTY );
     
     await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	.catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
@@ -208,16 +210,18 @@ async function linkRepo( authData, ghLinks, ceProjects, ceProjId, repoId, repoNa
 	return false;
     }
     
+    // console.log( authData.who, "LU: Link Repo", ceProjId, repoId, repoName );
+    // ceProjects.showX();
+
     let cep = ceProjects.findById( ceProjId );
 
-    // console.log( authData.who, "LU: Link Repo" );
-    // ceProjects.showX();
+    // console.log( cep );
     
     // TESTING ONLY!  Outside testing, ceFlutter controls all access to this, will never need initBlank.
     //                testDelete removes HostParts, then unlinkRepo.  unlinkRepo removes ceProjId from server state: ceProjects
     //                testSetup, testCross then linkRepo.  linkRepo does not find cep, so uses blank.
-    if( typeof cep === 'undefined' ) {
-	let testingRepos = [config.TEST_REPO, config.MULTI_TEST_REPO, config.CROSS_TEST_REPO, config.FLUTTER_TEST_REPO];
+    if( typeof cep === 'undefined' || cep == config.EMPTY ) {
+	let testingRepos = [config.TEST_REPO, config.FLUTTER_TEST_REPO, config.MULTI_TEST_REPO, config.FLUTTER_MULTI_TEST_REPO, config.CROSS_TEST_REPO, config.FLUTTER_CROSS_TEST_REPO, config.FAIL_CROSS_TEST_REPO ];
 	let repoShort    = repoName.split('/');
 	repoShort        = repoShort[ repoShort.length - 1 ]; 
 	assert( testingRepos.includes( repoShort ));

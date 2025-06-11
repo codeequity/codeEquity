@@ -530,7 +530,7 @@ class Linkage {
 	}
 
 	let cep = ceProjects.findById( ceProjId );
-	if( typeof cep === 'undefined' ) { return true; }
+	if( typeof cep === 'undefined' || cep == config.EMPTY ) { return true; }
 
 	// TESTING ONLY!  This will be executed by ceFlutter before issuing unlink.
 	// We do not allow unlink repo if it contains active peqs.

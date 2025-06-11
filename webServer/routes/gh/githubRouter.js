@@ -176,7 +176,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res ) {
 	//       and that something will cause error in server first.
 	let pd = new gh2Data( authData, jd, ceProjects );
 	if( pd.ceProjectId == -1 ) { await pd.setCEProjectId( authData, jd, ceProjects ); }
-	// console.log( "GHR: cePID", pd.ceProjectId );
+	console.log( "GHR: cePID", pd.ceProjectId );
 	
 	ceRouter.setLastCEP( pd.ceProjectId );
 	assert( jd.queueId == authData.job ) ;

@@ -114,7 +114,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     // NOTE: occasionally card creation happens a little slowly, so this triggers instead of 'carded issue with status'
     let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
 
-    // console.log( "label cePID", pd.ceProjectId );
+    // console.log( "label cePID", pd.ceProjectId, card );
     // We have a peq.  Make sure project is linked in ceProj, PNP is dependent on locs existing.
     let projLinks = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: card.pid } );
     if( projLinks === -1 ) { await ghLinks.linkProject( authData, pd.ceProjectId, card.pid ); }
@@ -424,6 +424,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'transferred':
+	// Multiple notifications
 	// 1: issue:open       has full change field, with old_issue, old_repo (!)  (ignored)
 	// 2: issue:edit       has a change, has new repo in normal repo field      (ignored)
 	// 3: pv2Item edit     has change with type:repo and PVTF for field         (ignored)
@@ -436,6 +437,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	// Transfer from non-CE to ceProj: issue arrives as newborn.
 	// Transfer out of ceProj: as above xfer out.
 
+	// do not allow peq transfer between CEVentures.
 	// do not allow peq transfer into or out of non-CEP repo.
 	// p1_r1_cep1 to p1_r2_cep1:     link (CEP data).  link p1_r2 (adds all links/locs.  no need to resolve, as p1_r1 active).
 	// p1_r1_cep1 to p1_r2_cep2:     link (CEP data).  link p1_r2 (adds all links/locs.  no need to resolve, as p1_r1 active).
@@ -454,12 +456,14 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let oldRepo     = pd.reqBody.repository.full_name;
 	    let oldRepoId   = pd.reqBody.repository.node_id;
 	    let oldCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, oldRepo );
+	    let oldCEV      = ceProjects.findById( oldCEP ).CEVentureId;
 	    
 	    let newRepo     = pd.reqBody.changes.new_repository.full_name;
 	    let newRepoId   = pd.reqBody.changes.new_repository.node_id;
 	    let newIssueId  = pd.reqBody.changes.new_issue.node_id;
 	    let newIssueNum = pd.reqBody.changes.new_issue.number;
 	    let newCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, newRepo );
+	    let newCEV      = ceProjects.findById( newCEP ).CEVentureId;
 
 	    assert( issueTitle == pd.issueName );
 	    
@@ -474,20 +478,39 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    assert( links.length == 1 );
-	    // console.log( authData.who, "old link", links[0] );
+	    let origLink = links[0]; 
+	    // console.log( authData.who, "old link", origLink );
 
 	    let peq = await awsUtils.getPEQ( authData, pd.ceProjectId, oldIssueId, false );
 
 	    // Undo if trying to move peq into repo that is not CEP.  ceServer should not create new ceProject without owner input.
-	    if( newCEP == config.EMPTY && peq !== -1 ) {
+	    // Undo if trying to move peq into a different CEVenture.  This is rare, complicated, and should be handled with a one-off agreement.
+	    let nonCEP = ( newCEP == config.EMPTY && peq !== -1 );
+	    let difCEV = ( oldCEV != config.EMPTY && newCEV != oldCEV && peq != -1 );
+	    if( nonCEP || difCEV ) {
+		if( nonCEP ) { console.log("Can not transfer a PEQ into a non-CodeEquity project.  Undoing transfer."); }
+		if( difCEV ) { console.log("Can not transfer PEQs between CodeEquity Ventures.  Undoing transfer."); }
+		
 		let xferIssue = await ghV2.transferIssue( authData, newIssueId, oldRepoId );
 		// link issueId and issueNum will change.
-		let newLink = { ...links[0] };
+		let newLink = { ...origLink };
 		newLink.hostIssueId  = xferIssue.id;
 		newLink.hostIssueNum = xferIssue.number;
+
+		// XXX remove peq!
+		// a sibling notification 'label' has been generated but maybe not yet processed.  This creates a new, bad link
+		links = ghLinks.getLinks( authData, { "ceProjId": newCEP, "repo": newRepo, "issueId": newIssueId } );
+		if( links.length != 1 ) {
+		    console.log( "Bad transfer detected.. waiting for bad location labeling to be processed" );
+		    return "postpone";
+		}
+		ghLinks.removeLinkage( { "authData": authData, "ceProjId": newCEP, "issueId": newIssueId } );
 		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
 		ghLinks.addLinkage( authData, oldCEP, newLink );
-
+		
+		let badPeq = await awsUtils.getPEQ( authData, newCEP, newIssueId, false );		
+		awsUtils.removePEQ( authData, badPeq.PEQId );
+		
 		// not needed, but safer vs future changes
 		let pdCopy = {};
 		pdCopy.ceProjectId = newCEP;
@@ -496,7 +519,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		pdCopy.reqBody     = pd.reqBody;
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, xferIssue.id, oldRepoId, oldCEP ];
 		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
-					  config.PACTVERB_CONF, config.PACTACT_NOTE, subject, config.PACTNOTE_BXFR,
+					  config.PACTVERB_CONF, config.PACTACT_CHAN, subject, config.PACTNOTE_BXFR,
 					  utils.getToday() );
 		
 		return;
@@ -513,7 +536,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    // To get here, cep cep world, either peq or carded.  both need to update link (remove/add)
-	    let newLink = { ...links[0] };
+	    let newLink = { ...origLink };
 	    newLink.ceProjectId  = newCEP; 
 	    newLink.hostIssueId  = newIssueId;
 	    newLink.hostIssueNum = newIssueNum;
@@ -528,9 +551,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // wait for this, PNP needs locs.
 	    // (e.g. from testing, issue: CT Blast in cep:serv repo:ari proj:ghOps  goes to  cep:hak repo:ariAlt proj:ghOps with new issue_id)
-	    // await ghLinks.linkProject( authData, ceProjects, newCEP, links[0].hostProjectId );
-	    await ghV2.linkProject( authData, ghLinks, ceProjects, newCEP, pd.org, pd.actor, newRepoId, newRepo, links[0].hostProjectName ) 
-	    await ghLinks.linkProject( authData, newCEP, links[0].hostProjectId );
+	    // await ghLinks.linkProject( authData, ceProjects, newCEP, origLink.hostProjectId );
+	    await ghV2.linkProject( authData, ghLinks, ceProjects, newCEP, pd.org, pd.actor, newRepoId, newRepo, origLink.hostProjectName ) 
+	    await ghLinks.linkProject( authData, newCEP, origLink.hostProjectId );
 	    
 	    // Do this after linking project, so good link doesn't interfere with badlinks check during linkProject.
 	    ghLinks.addLinkage( authData, newCEP, newLink );
@@ -541,6 +564,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		// Transfer is PAct'd with oldCEP
 		// NOTE: this record is async.  If just send in pd alone, the async won't start for a while, and pd can (is) rewritten before it starts
 		//       Need to send copy.
+		// NOTE: transfer sends a delete (handles old PEQ), and a justAdd (handles new PEQ).  GXFR not needed - notice for future proofing.
 		let pdCopy = {};
 		pdCopy.ceProjectId = oldCEP;
 		pdCopy.actor       = pd.actor;
@@ -548,7 +572,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		pdCopy.reqBody     = pd.reqBody;
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, newIssueId, newRepoId, newCEP ];
 		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
-					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, config.PACTNOTE_GXFR,
+					  config.PACTVERB_CONF, config.PACTACT_NOTE, subject, config.PACTNOTE_GXFR,
 					  utils.getToday() );
 
 		// Deactivate old peq, can't do much with old ID.
