@@ -355,6 +355,7 @@ async function getCards( authData, rid, pid, colId ) {
     let variables = {"nodeId": pid, "fName": config.GH_COL_FIELD };
     query = JSON.stringify({ query, variables });
 
+    // If use error handler this way, it passes out and avoids settle wait
     try{ 
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "TU_getCards" )
 	    .then( async (raw) => {
@@ -397,7 +398,7 @@ async function getCards( authData, rid, pid, colId ) {
 		}
 	    });
     }
-    catch( e ) { cards = await ghUtils.errorHandler( "getCards", e, getCards, authData, rid, pid, colId ); }
+    catch( e ) { cards = []; }
 
     // return cards.length == 0 ? -1 : cards;
     return cards;
@@ -892,14 +893,7 @@ async function reopenIssue( authData, td, issueId ) {
 
 async function remIssue( authData, issueId ) {
 
-    let query     = "mutation( $id:ID! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
-    let variables = {"id": issueId };
-    query         = JSON.stringify({ query, variables });
-    
-    let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "TU_remIssue" );
-
-    if( typeof res.data === 'undefined' ) { console.log( "ERROR.", res ); }
-    console.log( "executed remIssue id", issueId, res );
+    await ghV2.remIssue( authData, issueId );
     
     await utils.sleep( tu.MIN_DELAY );
 }
@@ -1093,7 +1087,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 	if( links != -1 ) {
 	    let link   = ( links.filter((link) => link.hostIssueId == issDat[0] ))[0];
 	    subTest = tu.checkEq( link !== 'undefined', true,               subTest, "Wait for link" );
-	    if( link !== 'undefined' ) {
+	    if( typeof link !== 'undefined' ) {
 		subTest = tu.checkEq( link.hostIssueNum, issDat[1].toString(), subTest, "Linkage Issue num" );
 		subTest = tu.checkEq( link.hostCardId, card.cardId,            subTest, "Linkage Card Id" );
 		subTest = tu.checkEq( link.hostColumnName, loc.colName,        subTest, "Linkage Col name" );

@@ -633,8 +633,9 @@ class Linkage {
 		     utils.fill( "ProjId", 13 ), 
 		     utils.fill( "ProjName", 15 ),
 		     utils.fill( "Repo", 10 ),
-		     utils.fill( "RepoId", 10 )
-		     // utils.fill( "sourceCol", 10 )
+		     utils.fill( "RepoId", 10 ),
+		     // utils.fill( "sourceCol", 10 ),
+		     utils.fill( "HU", 10 )
 		   );
 
 	// console.log( this.links );
@@ -666,7 +667,8 @@ class Linkage {
 			 utils.fill( link.hostProjectName, 15 ),
 			 // link.flatSource == -1 ? utils.fill( "-1", 10 ) : utils.fill( link.flatSource, 10 ),
 			 utils.fill( link.hostRepoName, 10 ), 
-			 utils.fill( link.hostRepoId, 10 )
+			 utils.fill( link.hostRepoId, 10 ),
+			 utils.fill( link.hostUtility, 10 )
 		       );
 	}
     }

@@ -554,10 +554,12 @@ async function getAssignees( authData, issueId ) {
     return retVal;
 }
 
+// Hmm.. do not seem to get assignees right off the bat on xfer.
 async function transferIssue( authData, issueId, newRepoNodeId) {
 
     let query = `mutation ($issueId: ID!, $repoId: ID!) 
-                    { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId, createLabelsIfMissing: true }) {clientMutationId, issue{id,number}}}`;
+                    { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId, createLabelsIfMissing: true })
+                                   { clientMutationId, issue{id,number,assignees(first:100){edges{node{login id}}}}}}`;
     let variables = {"issueId": issueId, "repoId": newRepoNodeId };
     query = JSON.stringify({ query, variables });
 
@@ -566,7 +568,8 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
 	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "transferIssue", true );
 	assert( utils.validField( ret.data.transferIssue, "issue" ) );
 	ret = ret.data.transferIssue.issue;
-	// console.log( issueId, newRepoNodeId, ret, ret.data.transferIssue.issue );
+	// console.log( "XyX", ret );
+	ret.assignees = ret.assignees.edges.map( edge => edge.node );
     }
     catch( e ) {
 	if( e.status == 422 ) { console.log( authData.who, "WARNING. Issue not transferred.", issueId, e.errors ); }
@@ -575,7 +578,23 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
     return ret;
 }
 
+async function remIssue( authData, issueId ) {
 
+    let query     = "mutation( $id:ID! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
+    let variables = {"id": issueId };
+    query         = JSON.stringify({ query, variables });
+
+    let ret = -1;
+    try {
+	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "removeIssue" );
+	assert( typeof ret.data !== 'undefined' );
+    }
+    catch( e ) {
+	ret = await ghUtils.errorHandler( "remIssue", e, remIssue, authData, issueId );
+    }
+    
+    return ret;
+}
 
 
 async function createLabel( authData, repoNode, name, color, desc ) {
@@ -1886,6 +1905,7 @@ export {addAssignee};
 export {remAssignee};
 export {getAssignees};
 export {transferIssue};
+export {remIssue};
 
 export {makeHumanLabel};
 export {createLabel};

@@ -478,7 +478,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    assert( links.length == 1 );
-	    let origLink = links[0]; 
+	    let origLink = {...links[0]}; 
 	    // console.log( authData.who, "old link", origLink );
 
 	    let peq = await awsUtils.getPEQ( authData, pd.ceProjectId, oldIssueId, false );
@@ -490,38 +490,44 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    if( nonCEP || difCEV ) {
 		if( nonCEP ) { console.log("Can not transfer a PEQ into a non-CodeEquity project.  Undoing transfer."); }
 		if( difCEV ) { console.log("Can not transfer PEQs between CodeEquity Ventures.  Undoing transfer."); }
-		
-		let xferIssue = await ghV2.transferIssue( authData, newIssueId, oldRepoId );
-		// link issueId and issueNum will change.
-		let newLink = { ...origLink };
-		newLink.hostIssueId  = xferIssue.id;
-		newLink.hostIssueNum = xferIssue.number;
 
-		// XXX remove peq!
-		// a sibling notification 'label' has been generated but maybe not yet processed.  This creates a new, bad link
-		links = ghLinks.getLinks( authData, { "ceProjId": newCEP, "repo": newRepo, "issueId": newIssueId } );
-		if( links.length != 1 ) {
-		    console.log( "Bad transfer detected.. waiting for bad location labeling to be processed" );
-		    return "postpone";
-		}
-		ghLinks.removeLinkage( { "authData": authData, "ceProjId": newCEP, "issueId": newIssueId } );
-		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
-		ghLinks.addLinkage( authData, oldCEP, newLink );
-		
+		// Can't transfer back, will come right back here.  Rebuild.
+		let fullIssue = await ghV2.getFullIssue( authData, newIssueId );
+
+		ghLinks.show(10, oldCEP );
+		ghLinks.show(10, newCEP );
+				
 		let badPeq = await awsUtils.getPEQ( authData, newCEP, newIssueId, false );		
 		awsUtils.removePEQ( authData, badPeq.PEQId );
+
+		await ghV2.remIssue( authData, newIssueId );
 		
-		// not needed, but safer vs future changes
+		// rebuild creates in no status.  move to correct loc.
+		let issueData   = await ghV2.rebuildIssue( authData, oldRepoId, origLink.hostProjectId, fullIssue, "Transfer failed, issue recreated." );
+		await ghV2.moveCard( authData, origLink.hostProjectId, issueData[2], origLink.hostUtility, origLink.hostColumnId );		
+
+		// a sibling notification 'label' MAY be generated.  If so, remove it.
+		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
+		links = ghLinks.getLinks( authData, { "ceProjId": newCEP, "repo": newRepo, "issueId": newIssueId } );
+		if( links.length == 1 ) {
+		    ghLinks.removeLinkage( { "authData": authData, "ceProjId": newCEP, "issueId": newIssueId } );
+		}
+
+		let newLink = { ...origLink };
+		newLink.hostIssueId  = issueData[0];
+		newLink.hostIssueNum = issueData[1];
+		ghLinks.addLinkage( authData, oldCEP, newLink );
+		
 		let pdCopy = {};
 		pdCopy.ceProjectId = newCEP;
 		pdCopy.actor       = pd.actor;
 		pdCopy.actorId     = pd.actorId;
 		pdCopy.reqBody     = pd.reqBody;
-		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, xferIssue.id, oldRepoId, oldCEP ];
+		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, issueData[0], oldRepoId, oldCEP ];
 		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
 					  config.PACTVERB_CONF, config.PACTACT_CHAN, subject, config.PACTNOTE_BXFR,
 					  utils.getToday() );
-		
+
 		return;
 	    }
 
