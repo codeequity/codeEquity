@@ -1143,6 +1143,7 @@ async function getCardFromIssue( authData, issueId ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "getCardFromIssue" )
 	    .then( raw => {
+		if( !utils.validField( raw.data, "node" ) ) { return -1; }
 		let issue = raw.data.node;
 		retVal.issueId     = issue.id;
 		retVal.issueNum    = issue.number;
@@ -1404,6 +1405,11 @@ async function getProjIdFromPeq ( authData, iid ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "getProjIdFromPeq" )
 	    .then( async (raw) => {
+		// bad transfers leave peqs laying around with old, removed hostIssueIds until ingest is run
+		if( !utils.validField( raw.data, "node" )) {
+		    console.log( "YYY POPPY", iid );
+		    return pid;
+		}
 		let cards = raw.data.node.projectItems;
 		assert( cards.edges.length == 1 );
 		
@@ -1412,7 +1418,7 @@ async function getProjIdFromPeq ( authData, iid ) {
 	    });
     }
     catch( e ) {
-	console.log( "Didn't like", iid, query );
+	console.log( "Bad transfer? Didn't like", e, iid );
 	return await ghUtils.errorHandler( "getProjIdFromPeq", e, getProjIdFromPeq, authData, iid );
     }
 

@@ -112,7 +112,11 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 
     // get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
     // NOTE: occasionally card creation happens a little slowly, so this triggers instead of 'carded issue with status'
-    let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
+    let card = await ghV2.getCardFromIssue( authData, pd.issueId );
+    if( card == -1 ) {
+	console.log( "WARNING.  Issue Id no longer exists.  Ignoring label." );
+	return false;
+    }
 
     // console.log( "label cePID", pd.ceProjectId, card );
     // We have a peq.  Make sure project is linked in ceProj, PNP is dependent on locs existing.
@@ -493,18 +497,24 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 		// Can't transfer back, will come right back here.  Rebuild.
 		let fullIssue = await ghV2.getFullIssue( authData, newIssueId );
-
-		ghLinks.show(10, oldCEP );
-		ghLinks.show(10, newCEP );
-				
-		let badPeq = await awsUtils.getPEQ( authData, newCEP, newIssueId, false );		
-		awsUtils.removePEQ( authData, badPeq.PEQId );
-
-		await ghV2.remIssue( authData, newIssueId );
+		let issueData = await ghV2.rebuildIssue( authData, oldRepoId, origLink.hostProjectId, fullIssue, "Transfer failed, issue recreated." );
+		
+		// oldCEP peq has old issue id.  Need to repair it here else server discovers mismatching peqs.  Don't wait.
+		let origPeq = await awsUtils.getPEQ( authData, oldCEP, oldIssueId, false );
+		awsUtils.rehostPEQ( authData, origPeq, issueData[0] );
 		
 		// rebuild creates in no status.  move to correct loc.
-		let issueData   = await ghV2.rebuildIssue( authData, oldRepoId, origLink.hostProjectId, fullIssue, "Transfer failed, issue recreated." );
-		await ghV2.moveCard( authData, origLink.hostProjectId, issueData[2], origLink.hostUtility, origLink.hostColumnId );		
+		let locs = ghLinks.getLocs( authData, { "ceProjId": oldCEP, "pid": origLink.hostProjectId, "colId": origLink.hostColumnId } );
+		assert( locs.length == 1 );
+		
+		await ghV2.moveCard( authData, origLink.hostProjectId, issueData[2], locs[0].hostUtility, origLink.hostColumnId );		
+
+		// transfer may or may not send an extra issue:label notice for newCEP.  If it does, a peq is created that must be removed.
+		// possible race condition.  sometimes transfer starts a label operation that arrives slowly.
+		// if it arrives after the bad issue delete begins, bad things happen.  Move this as far back as possible, wait and see.
+		let badPeq  = await awsUtils.getPEQ( authData, newCEP, newIssueId, false );
+		if( badPeq != -1 ) { awsUtils.removePEQ( authData, badPeq.PEQId ); }
+		await ghV2.remIssue( authData, newIssueId );
 
 		// a sibling notification 'label' MAY be generated.  If so, remove it.
 		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
@@ -516,17 +526,25 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		let newLink = { ...origLink };
 		newLink.hostIssueId  = issueData[0];
 		newLink.hostIssueNum = issueData[1];
+		newLink.hostCardId   = issueData[2];
 		ghLinks.addLinkage( authData, oldCEP, newLink );
-		
+
 		let pdCopy = {};
-		pdCopy.ceProjectId = newCEP;
+		pdCopy.ceProjectId = oldCEP;
 		pdCopy.actor       = pd.actor;
 		pdCopy.actorId     = pd.actorId;
 		pdCopy.reqBody     = pd.reqBody;
+
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, issueData[0], oldRepoId, oldCEP ];
 		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
 					  config.PACTVERB_CONF, config.PACTACT_CHAN, subject, config.PACTNOTE_BXFR,
 					  utils.getToday() );
+
+		// XXX XXX remove this
+		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
+					  config.PACTVERB_CONF, config.PACTACT_NOTE, [], "",
+					  utils.getToday() );
+
 
 		return;
 	    }

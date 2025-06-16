@@ -1019,6 +1019,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     let opVal        = typeof specials !== 'undefined' && specials.hasOwnProperty( "opVal" )        ? specials.opVal        : false;
     let peqHolder    = typeof specials !== 'undefined' && specials.hasOwnProperty( "peqHolder" )    ? specials.peqHolder    : false;
     let rejected     = typeof specials !== 'undefined' && specials.hasOwnProperty( "rejected" )     ? specials.rejected     : false;
+    let newCardId    = typeof specials !== 'undefined' && specials.hasOwnProperty( "newCardId" )    ? specials.newCardId    : false;
     
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal, assignCnt, peqIID, peqCEP );
     let subTest = [ 0, 0, []];
@@ -1079,7 +1080,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     if( typeof mCard[0] !== 'undefined' && typeof card !== 'undefined' ) {
     
 	subTest = tu.checkEq( mCard.length, 1,                           subTest, "Card claimed" );
-	subTest = tu.checkEq( mCard[0].cardId, card.cardId,              subTest, "Card claimed" );
+	if( !newCardId ) { subTest = tu.checkEq( mCard[0].cardId, card.cardId,              subTest, "Card claimed" ); }
 
 	// CHECK linkage
 	let links  = await linksP;
@@ -1089,7 +1090,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 	    subTest = tu.checkEq( link !== 'undefined', true,               subTest, "Wait for link" );
 	    if( typeof link !== 'undefined' ) {
 		subTest = tu.checkEq( link.hostIssueNum, issDat[1].toString(), subTest, "Linkage Issue num" );
-		subTest = tu.checkEq( link.hostCardId, card.cardId,            subTest, "Linkage Card Id" );
+		subTest = tu.checkEq( link.hostCardId, mCard[0].cardId,        subTest, "Linkage Card Id" );
 		subTest = tu.checkEq( link.hostColumnName, loc.colName,        subTest, "Linkage Col name" );
 		subTest = tu.checkEq( link.hostIssueName, issDat[3],           subTest, "Linkage Card Title" );
 		subTest = tu.checkEq( link.hostProjectName, loc.projName,      subTest, "Linkage Project Title" );
@@ -1786,7 +1787,7 @@ async function checkPact( authData, testLinks, td, title, verb, action, note, te
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     depth = pacts.length >= depth ? depth : pacts.length;
-    
+
     let foundPAct = false;
     for( let i = pacts.length - depth; i < pacts.length; i++ ) {
 	const pact = pacts[i];
@@ -1800,13 +1801,18 @@ async function checkPact( authData, testLinks, td, title, verb, action, note, te
 
 	    if( subject != -1 ) {
 		foundPAct = foundPAct && pact.Subject.length == subject.length;
-		// console.log( pact.Subject );
-		// console.log( subject );
 		for( let i = 0; i < subject.length; i++ ) {
 		    foundPAct = foundPAct && pact.Subject[i] == subject[i];
 		}
 	    }
-	    // console.log( verb, action, note, subject, depth, foundPAct );
+	    /*
+	    console.log( i, depth, foundPAct );
+	    console.log( " ..", "[", verb, pact.Verb, "]" );
+	    console.log( " ..", "[", action, pact.Action, "]" );
+	    console.log( " ..", "[", note, pact.Note, "]" );
+	    console.log( " ..", "[", subject, pact.Subject, "]" );
+	    */
+
 	    if( foundPAct ) { break; }
 	}
     }

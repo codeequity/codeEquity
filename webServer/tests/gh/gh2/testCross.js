@@ -171,7 +171,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_ADD, "", testStatus, {sub: [newPeqX.PEQId], depth: 8} );
 
     tu.testReport( testStatus, "Test " + testName + " C" );    
-/*
+
     // Setup Fail Xfer
     let FcrossPid   = await gh2tu.createProjectWorkaround( authDataF, tdF, "Cross Proj", "For testing transfers to other repos" );
     let FcrossCid   = await gh2tu.makeColumn( authDataF, testLinks, tdF.ceProjectId, tdF.ghFullName, FcrossPid, "Cross Col" );
@@ -217,16 +217,16 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     console.log( issDatF, oldIdF );
     console.log( newFIssue );
 
-    // PEQ will have old id until ingest repairs it.
+    // 2 assignees only after ingest.
     testStatus = await gh2tu.checkSituatedIssue( authDataF, testLinks, tdF, FcrossLoc, issDatF, cardF, testStatus,
-						 {assign: 2, label: 704, lblCount: 1, peqCEP: tdF.ceProjectId, peqIID: oldIdF} );    
+						 {assign: 0, label: 704, lblCount: 1, peqCEP: tdF.ceProjectId, peqIID: issDatF[0], newCardId: true} );    
 
     let newPeqsF = awsUtils.getPEQs( authDataF, { "ceProjectId": tdF.ceProjectId });
 
     // PAct is found from oldCEP
     sub         = [peqF.PEQId, oldIdF, tdF.ghRepoId, tdF.ceProjectId, issDatF[0], tdF.ghRepoId, tdF.ceProjectId ];
     testStatus  = await gh2tu.checkPact( authDataF, testLinks, tdF, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, config.PACTNOTE_BXFR, testStatus, {sub: sub, depth: 8} );
-*/
+
     
     tu.testReport( testStatus, "Test " + testName );
     return testStatus;
@@ -395,9 +395,9 @@ async function runTests( flutterTest, authData, authDataX, authDataM, authDataF,
     console.log( "\n\nMultithread test complete." );
     // ghUtils.show( true );
     await utils.sleep( 5000 );
-    
+
     testStatus = tu.mergeTests( testStatus, t1 );
-    //testStatus = tu.mergeTests( testStatus, t2 );
+    testStatus = tu.mergeTests( testStatus, t2 );
 
     return testStatus
 }

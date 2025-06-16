@@ -1053,7 +1053,8 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    }
    else if( pact.note == PActNotes['badXfer']) {
       assert( pact.subject.length == 7 );
-      newIssueId = pact.subject[4];
+      // This must be handled by ceServer
+      // newIssueId = pact.subject[4];
    }
    
    List<String> ceHolders = [];
