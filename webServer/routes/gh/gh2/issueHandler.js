@@ -52,6 +52,14 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
 }
 
+// During bad xfer, an issue is created in a cross CEProject repo.  
+// XXX Was a permission error.  If this does not fail by 6/25, eliminate function
+async function waitDelIssue( authData, issueId ) {
+    console.log( "Attempting to delete xferd issue", issueId );
+    // await utils.sleep( 2000 ); 
+    await ghV2.remIssue( authData, issueId );
+}
+
 // labelIssue must deal with new wrinkles
 //   0) item:create can arrive before issue:label and issue:open   demote?
 //   1) GH issue dialog can specify project.
@@ -510,11 +518,15 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		await ghV2.moveCard( authData, origLink.hostProjectId, issueData[2], locs[0].hostUtility, origLink.hostColumnId );		
 
 		// transfer may or may not send an extra issue:label notice for newCEP.  If it does, a peq is created that must be removed.
-		// possible race condition.  sometimes transfer starts a label operation that arrives slowly.
-		// if it arrives after the bad issue delete begins, bad things happen.  Move this as far back as possible, wait and see.
 		let badPeq  = await awsUtils.getPEQ( authData, newCEP, newIssueId, false );
-		if( badPeq != -1 ) { awsUtils.removePEQ( authData, badPeq.PEQId ); }
-		await ghV2.remIssue( authData, newIssueId );
+		if( badPeq != -1 ) {
+		    awsUtils.removePEQ( authData, badPeq.PEQId );
+		    awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
+					      config.PACTVERB_CONF, config.PACTACT_DEL,	[ badPeq.PEQId ], config.PACTNOTE_BXFR,
+					      utils.getToday() ); 
+		}
+		// mysteriously, can getFullIssue above, but sometimes GH is not ready to delete it here.  Don't wait
+		waitDelIssue( authData, newIssueId );  
 
 		// a sibling notification 'label' MAY be generated.  If so, remove it.
 		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );

@@ -578,6 +578,7 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
     return ret;
 }
 
+// This requires admin privs on repo at GH.  
 async function remIssue( authData, issueId ) {
 
     let query     = "mutation( $id:ID! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
@@ -586,8 +587,12 @@ async function remIssue( authData, issueId ) {
 
     let ret = -1;
     try {
+	// console.log( authData );
 	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "removeIssue" );
-	assert( typeof ret.data !== 'undefined' );
+	if( utils.validField( ret, "errors" )) {
+	    console.log( "WARNING.  Delete issue failed.  Admin permissions may be required." );
+	    console.log( ret );
+	}
     }
     catch( e ) {
 	ret = await ghUtils.errorHandler( "remIssue", e, remIssue, authData, issueId );
