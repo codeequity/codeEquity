@@ -18,7 +18,7 @@ import * as gh2tu    from './gh2TestUtils.js';
 // Adding a small sleep in each gh2tu.make* - GH seems to get confused if requests come in too fast
 async function createPreferredCEProjects( authData, testLinks, td ) {
     console.log( "Building preferred CE project layout, a mini version" );
-
+    
     // First build up aws CEProjects hostRepositories for repo: ceTesterAri
     await gh2tu.linkRepo( authData, td.ceProjectId, td.ghRepoId, td.ghFullName, td.cepDetails );
 

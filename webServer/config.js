@@ -35,7 +35,6 @@ export const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT";
 
 export const TEST_OWNER        = "codeequity";
 export const TEST_ACTOR        = "ariCETester";
-
 export const TEST_REPO         = "ceTesterAri";
 export const TEST_CEPID        = "CE_ServTest_usda23k425";    // XXX Remove once ceFlutter is back up
 export const TEST_CEVID        = "CE_TEST_Serv_abcde12345";   // XXX Remove once ceFlutter is back up
@@ -47,17 +46,29 @@ export const FLUTTER_TEST_REPO = "ceFlutterTester";
 export const FLUTTER_TEST_NAME = "CE MD App Testing";          // XXX Remove once ceFlutter is back up
 export const FLUTTER_TEST_DESC = "Internal testing: Front end"; // XXX Remove once ceFlutter is back up
 
+export const FAIL_CROSS_TEST_OWNER  = "codeequity";          
+export const FAIL_CROSS_TEST_ACTOR  = "ariCETester";          
+export const FAIL_CROSS_TEST_REPO   = "ceTesterAriAlt";
+export const FAIL_CROSS_TEST_CEPID  = "CE_AltTest_hakeld80a2";     // XXX Remove once ceFlutter is back up
+export const FAIL_CROSS_TEST_CEVID  = "CE_TEST_Alt_abcde12345";    // XXX Remove once ceFlutter is back up
+export const FAIL_CROSS_TEST_NAME   = "CE Alt Server Testing";     // XXX Remove once ceFlutter is back up
+export const FAIL_CROSS_TEST_DESC   = "Internal testing: server";  // XXX Remove once ceFlutter is back up
+
 export const CROSS_TEST_OWNER  = "codeequity";          
 export const CROSS_TEST_ACTOR  = "ariCETester";          
-export const CROSS_TEST_REPO   = "ceTesterAriAlt";
-export const CROSS_TEST_CEPID  = "CE_AltTest_hakeld80a2";     // XXX Remove once ceFlutter is back up
-export const CROSS_TEST_CEVID  = "CE_TEST_Alt_abcde12345";    // XXX Remove once ceFlutter is back up
-export const CROSS_TEST_NAME   = "CE Alt Server Testing";     // XXX Remove once ceFlutter is back up
+export const CROSS_TEST_REPO   = "ceTesterConnie";
+export const CROSS_TEST_CEPID  = "CE_ServTest_usda23k425";    // XXX Remove once ceFlutter is back up
+export const CROSS_TEST_CEVID  = "CE_TEST_Serv_abcde12345";   // XXX Remove once ceFlutter is back up
+export const CROSS_TEST_NAME   = "CE Server Testing";         // XXX Remove once ceFlutter is back up
 export const CROSS_TEST_DESC   = "Internal testing: server";  // XXX Remove once ceFlutter is back up
+export const FLUTTER_CROSS_TEST_REPO   = "ceFlutterConnie";
+export const FLUTTER_CROSS_TEST_CEPID  = "CE_FlutTest_ks8asdlg42";     // XXX Remove once ceFlutter is back up
+export const FLUTTER_CROSS_TEST_CEVID  = "CE_TEST_Flut_abcde12345";    // XXX Remove once ceFlutter is back up
+export const FLUTTER_CROSS_TEST_NAME   = "CE MD App Testing";          // XXX Remove once ceFlutter is back up
+export const FLUTTER_CROSS_TEST_DESC   = "Internal testing: Front end";  // XXX Remove once ceFlutter is back up
 
 export const MULTI_TEST_OWNER  = "codeequity";
 export const MULTI_TEST_ACTOR  = "connieCE";
-
 export const MULTI_TEST_REPO   = "ceTesterConnie";
 export const MULTI_TEST_CEPID  = "CE_ServTest_usda23k425";    // XXX Remove once ceFlutter is back up
 export const MULTI_TEST_CEVID  = "CE_TEST_Serv_abcde12345";   // XXX Remove once ceFlutter is back up
@@ -68,7 +79,6 @@ export const FLUTTER_MULTI_TEST_CEPID  = "CE_FlutTest_ks8asdlg42";    // XXX Rem
 export const FLUTTER_MULTI_TEST_CEVID  = "CE_TEST_Flut_abcde12345";   // XXX Remove once ceFlutter is back up
 export const FLUTTER_MULTI_TEST_NAME   = "CE MD App Testing";         // XXX Remove once ceFlutter is back up
 export const FLUTTER_MULTI_TEST_DESC   = "Internal testing: Front end";  // XXX Remove once ceFlutter is back up
-
 
 // Required project columns.  Can rename, not reorder, and retain CE functionality
 // These are used in conjunction with ceRepoPrefs:PROJ_COLS

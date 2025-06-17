@@ -55,49 +55,53 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
 	const peq = peqs[0];
 	// console.log( authData.who, ceProject.CEProjectId, "looking for", peq );
 	const pid = await ghV2.getProjIdFromPeq( authData, peq.HostIssueId );
-	assert( pid != -1 );
-
-	assert( !hostProjs.includes( pid ) );
-	hostProjs.push( pid );
-	
-	// Note, for links being built below, the link is a complete ceServer:link that supplied info for the 1:1 mapping issue:card.
-	//       it is not necessarily a complete picture of a host link (which ceServer does not need).
-	//       for example, in GH an issue may be 1:m i.e. in 1 repo with cards in many projects. several links will be created below
-	//       these multiple links will be resolved once that issue becomes peq.
-	// Note, any peq issue will have already been resolved.
-	console.log( authData.who, "GET FOR PROJECT", ceProject.CEProjectId, pid );
-	let rLinks = [];
-	let rLocs  = [];
-	
-	await ghV2.getHostLinkLoc( authData, pid, rLocs, rLinks, -1 )
-	    .catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
-	
-	// hostProjs may contain issues from other ceProjects.  Filter these out by requiring hostRepo to match one of the list in ceProjects
-	// initialization of the other ceProjects will pick up these filtered out links.
-	rLinks = rLinks.filter( (link) => hostRepoIds.includes( link.hostRepoId ));
-	
-	// console.log( authData.who, "Populate Linkage", pid );
-	rLinks.forEach( function (link) { ghLinks.addLinkage( authData, ceProject.CEProjectId, link, { populate: true } );
-					}, ghLinks);
-	
-	for( var loc of rLocs ) {
-	    loc.ceProjectId = ceProject.CEProjectId;
-	    loc.active = "true";
+	// bad transfers leave peqs laying around with old, removed hostIssueIds until ingest is run
+	if( pid == -1 ) {
+	    peqs.shift();   // remove 0th element
 	}
-	// ghLinks.addLocs( authData, rLocs, false ); 
-	
-	// Concat creates a new array - need to return these results.
-	baseLinks = baseLinks.concat( rLinks );
-	locData = locData.concat( rLocs );
-
-	// Filter peqs list to remove those just pulled in by getHostLinkLoc
-	for( const link of rLinks ) {
-	    const idx = peqs.findIndex( p => p.HostIssueId == link.hostIssueId );
-	    if( idx >= 0 ) {
-		peqs.splice( idx, 1 );
+	else {
+	    
+	    assert( !hostProjs.includes( pid ) );
+	    hostProjs.push( pid );
+	    
+	    // Note, for links being built below, the link is a complete ceServer:link that supplied info for the 1:1 mapping issue:card.
+	    //       it is not necessarily a complete picture of a host link (which ceServer does not need).
+	    //       for example, in GH an issue may be 1:m i.e. in 1 repo with cards in many projects. several links will be created below
+	    //       these multiple links will be resolved once that issue becomes peq.
+	    // Note, any peq issue will have already been resolved.
+	    console.log( authData.who, "GET FOR PROJECT", ceProject.CEProjectId, pid );
+	    let rLinks = [];
+	    let rLocs  = [];
+	    
+	    await ghV2.getHostLinkLoc( authData, pid, rLocs, rLinks, -1 )
+		.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
+	    
+	    // hostProjs may contain issues from other ceProjects.  Filter these out by requiring hostRepo to match one of the list in ceProjects
+	    // initialization of the other ceProjects will pick up these filtered out links.
+	    rLinks = rLinks.filter( (link) => hostRepoIds.includes( link.hostRepoId ));
+	    
+	    // console.log( authData.who, "Populate Linkage", pid );
+	    rLinks.forEach( function (link) { ghLinks.addLinkage( authData, ceProject.CEProjectId, link, { populate: true } );
+					    }, ghLinks);
+	    
+	    for( var loc of rLocs ) {
+		loc.ceProjectId = ceProject.CEProjectId;
+		loc.active = "true";
+	    }
+	    // ghLinks.addLocs( authData, rLocs, false ); 
+	    
+	    // Concat creates a new array - need to return these results.
+	    baseLinks = baseLinks.concat( rLinks );
+	    locData = locData.concat( rLocs );
+	    
+	    // Filter peqs list to remove those just pulled in by getHostLinkLoc
+	    for( const link of rLinks ) {
+		const idx = peqs.findIndex( p => p.HostIssueId == link.hostIssueId );
+		if( idx >= 0 ) {
+		    peqs.splice( idx, 1 );
+		}
 	    }
 	}
-	
     }
     
     /*
@@ -162,6 +166,8 @@ async function linkProject( authData, ghLinks, ceProjId, hostProjectId, pushAWS 
     let rLocs  = [];
     let rLinks = [];
     console.log( authData.who, "linkage:link project", ceProjId, hostProjectId, pushAWS );
+    // XXX 
+    assert( ceProjId != config.EMPTY );
     
     await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	.catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
@@ -208,16 +214,18 @@ async function linkRepo( authData, ghLinks, ceProjects, ceProjId, repoId, repoNa
 	return false;
     }
     
+    // console.log( authData.who, "LU: Link Repo", ceProjId, repoId, repoName );
+    // ceProjects.showX();
+
     let cep = ceProjects.findById( ceProjId );
 
-    // console.log( authData.who, "LU: Link Repo" );
-    // ceProjects.showX();
+    // console.log( cep );
     
     // TESTING ONLY!  Outside testing, ceFlutter controls all access to this, will never need initBlank.
     //                testDelete removes HostParts, then unlinkRepo.  unlinkRepo removes ceProjId from server state: ceProjects
     //                testSetup, testCross then linkRepo.  linkRepo does not find cep, so uses blank.
-    if( typeof cep === 'undefined' ) {
-	let testingRepos = [config.TEST_REPO, config.MULTI_TEST_REPO, config.CROSS_TEST_REPO, config.FLUTTER_TEST_REPO];
+    if( typeof cep === 'undefined' || cep == config.EMPTY ) {
+	let testingRepos = [config.TEST_REPO, config.FLUTTER_TEST_REPO, config.MULTI_TEST_REPO, config.FLUTTER_MULTI_TEST_REPO, config.CROSS_TEST_REPO, config.FLUTTER_CROSS_TEST_REPO, config.FAIL_CROSS_TEST_REPO ];
 	let repoShort    = repoName.split('/');
 	repoShort        = repoShort[ repoShort.length - 1 ]; 
 	assert( testingRepos.includes( repoShort ));

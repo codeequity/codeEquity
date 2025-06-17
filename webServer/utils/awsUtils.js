@@ -122,6 +122,9 @@ async function wrappedPostAWS( authData, shortName, postData ) {
     // XXX formalize or remove ... if use this again, move count to config, with opt out
     // recordCount = recordCount + 1;
     // if( recordCount % 25 == 0 ) { show( true ); }  
+
+    // let zz = JSON.stringify( postData );
+    // console.log( "YYY ", zz.substring( 0, 25 ),zz.length.toString() );
     
     if( response['status'] == 201 ) {
 	let body = await response.json();
@@ -189,7 +192,7 @@ async function getProjectStatus( authData, ceProjId ) {
 	for( const c of cut ) { console.log( "DEPRECATED ceProject", c.CEProjectId, "is being ignored." ); }
 	ceps = ceps.filter((cep) => cep.ProjectMgmtSys != config.PMS_GHC );
     }
-    
+
     return ceps;
 }
 
@@ -253,7 +256,7 @@ async function changeReportPEQVal( authData, pd, peqVal, link ) {
 async function recordPEQ( authData, postData ) {
     assert( postData.CEProjectId !== 'undefined' );
     if( !postData.hasOwnProperty( "silent" )) {
-	console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.HostIssueTitle, postData.HostProjectSub );
+	console.log( authData.who, "Recording PEQ actual", postData.CEProjectId, postData.HostIssueId, postData.Amount, "PEQs for", postData.HostIssueTitle, postData.HostProjectSub );
     }
 
     let shortName = "RecordPEQ";
@@ -269,6 +272,18 @@ async function recordPEQ( authData, postData ) {
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
+// issueId
+async function rehostPEQ( authData, oldPeq, hostIssueId ) {
+    let postData = { ...oldPeq };
+    postData.HostIssueId    = hostIssueId;
+    postData.Active         = "true";
+
+    let newPEQId = await recordPEQ( authData, postData );
+    assert( newPEQId == oldPeq.PEQId );
+    return newPEQId; 
+}
+
+// Project, column names
 async function rebuildPEQ( authData, link, oldPeq ) {
     let postData = {};
     postData.PEQId          = -1;
@@ -446,7 +461,7 @@ async function updateLinkageSummary( authData, ceProjId, locs ) {
 
 async function updateCEPHostParts( authData, ceProject ) {
     console.log( authData.who, "Updating hostparts" );
-
+    
     // assert( typeof ceProject.ceVentureId !== 'undefined' && ceProject.ceVentureId != "" );
     let shortName = "UpdateCEP"; 
 
@@ -595,6 +610,7 @@ export {removePEQ};
 export {updatePEQPSub};
 export {changeReportPEQVal};
 export {recordPEQ};
+export {rehostPEQ};
 export {rebuildPEQ};
 export {recordPEQData};
 

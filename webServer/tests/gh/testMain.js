@@ -42,7 +42,7 @@ import gh2TestComponents from './gh2/testComponents.js';
 import gh2TestCross      from './gh2/testCross.js';
 
 
-async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks ) {
+async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, authDataF, td, tdX, tdM, tdF, testLinks ) {
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up.  The purpose of wakey is to kick off both aws and each host.
 
@@ -68,7 +68,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
 
     let subTest = "";
 
-    await gh2TestDelete( authData, authDataX, authDataM, testLinks, td, tdX, tdM );
+    await gh2TestDelete( authData, authDataX, authDataM, authDataF, testLinks, td, tdX, tdM, tdF );
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
 
@@ -97,7 +97,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    subTest = await gh2TestCross( flutterTest, authData, authDataX, authDataM, testLinks, td, tdX, tdM );
+    subTest = await gh2TestCross( flutterTest, authData, authDataX, authDataM, authDataF, testLinks, td, tdX, tdM, tdF );
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
@@ -210,14 +210,31 @@ async function runTests() {
     td.actorId       = await ghUtils.getOwnerId( authData.pat, td.actor );
     td.ghRepoId      = await ghUtils.getRepoId( authData.pat, td.ghOwner, td.ghRepo );
 
-
     console.log( "Got repo: ", td.ghRepo, td.ghRepoId );
+
+    // FAIL_CROSS_TEST_REPO auth
+    let tdF        = new testData();
+    tdF.ghOwner    = config.FAIL_CROSS_TEST_OWNER;
+    tdF.actor      = config.FAIL_CROSS_TEST_ACTOR;
+    tdF.ghRepo     = config.FAIL_CROSS_TEST_REPO;
+    tdF.ghFullName = tdF.ghOwner + "/" + tdF.ghRepo;
+    
+    let authDataF     = new authDataC();
+    // authDataF.ic      = await ghAuth.getInstallationClient( tdF.ghOwner, tdF.ghRepo, tdF.ghOwner );
+    authDataF.who     = authData.who;
+    authDataF.api     = authData.api;
+    authDataF.cog     = authData.cog;
+    authDataF.cogLast = Date.now();        
+    authDataF.pat     = await ghAuth.getPAT( tdF.actor );
+    tdF.ghOwnerId     = await ghUtils.getOwnerId( authDataF.pat, tdF.ghOwner );
+    tdF.actorId       = await ghUtils.getOwnerId( authDataF.pat, tdF.actor );
+    tdF.ghRepoId      = await ghUtils.getRepoId( authDataF.pat, tdF.ghOwner, tdF.ghRepo );
     
     // CROSS_TEST_REPO auth
     let tdX        = new testData();
     tdX.ghOwner    = config.CROSS_TEST_OWNER;
     tdX.actor      = config.CROSS_TEST_ACTOR;
-    tdX.ghRepo     = config.CROSS_TEST_REPO;
+    tdX.ghRepo     = flutterTest ? config.FLUTTER_CROSS_TEST_REPO : config.CROSS_TEST_REPO;
     tdX.ghFullName = tdX.ghOwner + "/" + tdX.ghRepo;
     
     let authDataX     = new authDataC();
@@ -249,7 +266,6 @@ async function runTests() {
     tdM.actorId       = await ghUtils.getOwnerId( authDataM.pat, tdM.actor );
     tdM.ghRepoId      = await ghUtils.getRepoId( authDataM.pat, tdM.ghOwner, tdM.ghRepo );
 
-
     // ceFlutter fix ?? If so, would have a 3-phase test nightly.  1: ceFlutter init.  2: ceServer.  3: ceFlutter ingest.  hmmm.
     // This is yucky.  ceFlutter is responsible to initiate cep, and id (link) initial repo(s).
     // linkRepo assumes cep exists.  it helps during testing to have fixed repo and cep ids, makes debugging much simpler.
@@ -260,15 +276,17 @@ async function runTests() {
     // td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.ghFullName );
     // tdX.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdX.ghFullName );
     // tdM.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdM.ghFullName );
-    td.ceProjectId  = flutterTest ? config.FLUTTER_TEST_CEPID : config.TEST_CEPID;
+    td.ceProjectId  = flutterTest ? config.FLUTTER_TEST_CEPID       : config.TEST_CEPID;
     tdM.ceProjectId = flutterTest ? config.FLUTTER_MULTI_TEST_CEPID : config.MULTI_TEST_CEPID;
-    tdX.ceProjectId = config.CROSS_TEST_CEPID;
+    tdX.ceProjectId = flutterTest ? config.FLUTTER_CROSS_TEST_CEPID : config.CROSS_TEST_CEPID;
+    tdF.ceProjectId = config.FAIL_CROSS_TEST_CEPID;
 
     // Convert project names to flutter as needed to avoid crossover infection between server tests and flutter tests (the CEPIDs otherwise share projects)
     if( flutterTest ) {
 	flutterRename( td  );
 	flutterRename( tdX );
 	flutterRename( tdM );
+	flutterRename( tdF );
     }
     
     // cepDetails, typically set from ceFlutter
@@ -280,11 +298,13 @@ async function runTests() {
     tdBlank.pms           = config.PMS_GH2;
 
     let tdXBlank = { ...tdBlank }; 
+    let tdFBlank = { ...tdBlank }; 
     // tdXBlank.CEProjectComponent = "ceServer Alt Testing";
 
     td.cepDetails  = tdBlank;  // same CEP
     tdM.cepDetails = tdBlank;  // same CEP
     tdX.cepDetails = tdXBlank;
+    tdF.cepDetails = tdFBlank;
 
     // XXX very ugly calling convention to linkRepo .. needs updating
     td.cepDetails.ceVentureId = flutterTest ? config.FLUTTER_TEST_CEVID : config.TEST_CEVID;
@@ -295,16 +315,20 @@ async function runTests() {
     tdM.cepDetails.name        = flutterTest ? config.FLUTTER_MULTI_TEST_NAME  : config.MULTI_TEST_NAME;
     tdM.cepDetails.description = flutterTest ? config.FLUTTER_MULTI_TEST_DESC  : config.MULTI_TEST_DESC;
     
-    tdX.cepDetails.ceVentureId = config.CROSS_TEST_CEVID;
-    tdX.cepDetails.name        = config.CROSS_TEST_NAME;
-    tdX.cepDetails.description = config.CROSS_TEST_DESC;
+    tdX.cepDetails.ceVentureId = flutterTest ? config.FLUTTER_CROSS_TEST_CEVID : config.CROSS_TEST_CEVID;
+    tdX.cepDetails.name        = flutterTest ? config.FLUTTER_CROSS_TEST_NAME : config.CROSS_TEST_NAME;
+    tdX.cepDetails.description = flutterTest ? config.FLUTTER_CROSS_TEST_DESC : config.CROSS_TEST_DESC;
 
+    tdF.cepDetails.ceVentureId = config.FAIL_CROSS_TEST_CEVID;
+    tdF.cepDetails.name        = config.FAIL_CROSS_TEST_NAME;
+    tdF.cepDetails.description = config.FAIL_CROSS_TEST_DESC;
+    
     let testStatus = [ 0, 0, []];
 
     // XXX Add an arg if these are ever useful again
     // await runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks );
 
-    testStatus = await runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks );
+    testStatus = await runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, authDataF, td, tdX, tdM, tdF, testLinks );
 
     // Save dynamo data if run was successful
     if( testStatus[1] == 0 ) {

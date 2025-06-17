@@ -24,6 +24,7 @@ async function remIssues( authData, testLinks, pd ) {
     // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
     let issues = await gh2tu.getIssues( authData, pd );
     console.log( authData.who, pd.ghFullName, "REMISSUE", issues.length );
+    // console.log( issues );
     
     let allLinks = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId, "repo": pd.ghFullName } );
     
@@ -162,9 +163,11 @@ async function clearRepo( authData, testLinks, pd ) {
 
     // Delete all issues, cards, projects, columns, labels.
     // Eeek.  This works a little too well.  Make sure the repo is expected.
-    assert( pd.ghRepo == config.TEST_REPO || pd.ghRepo == config.FLUTTER_TEST_REPO ||
-	    pd.ghRepo == config.CROSS_TEST_REPO ||
-	    pd.ghRepo == config.MULTI_TEST_REPO || pd.ghRepo == config.FLUTTER_MULTI_TEST_REPO );
+    assert( pd.ghRepo == config.TEST_REPO       || pd.ghRepo == config.FLUTTER_TEST_REPO ||
+	    pd.ghRepo == config.CROSS_TEST_REPO || pd.ghRepo == config.FLUTTER_CROSS_TEST_REPO ||
+	    pd.ghRepo == config.MULTI_TEST_REPO || pd.ghRepo == config.FLUTTER_MULTI_TEST_REPO ||
+	    pd.ghRepo == config.FAIL_CROSS_TEST_REPO
+	  );
 
     // Start promises
     let jobsP  = tu.purgeJobs( pd.ghRepo );
@@ -239,35 +242,48 @@ async function clearRepo( authData, testLinks, pd ) {
 // A ceProject can own several repos.
 // Split delete into clearing repo-specific data, then clearing higher level ceProject-specific data.
 // clearRepo can not clear project-wide data.
-async function runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM ) {
+async function runTests( authData, authDataX, authDataM, authDataF, testLinks, td, tdX, tdM, tdF ) {
 
     console.log( "Clear testing environment" );
     
     let promises = [];
+    let repos = [];
     promises.push( clearRepo( authData,  testLinks, td ));
-    promises.push( clearRepo( authDataX, testLinks, tdX ));
-    promises.push( clearRepo( authDataM, testLinks, tdM ));
+    repos.push( td.ghRepoId );
+
+    if( !repos.includes( tdX.ghRepoId ) ) { promises.push( clearRepo( authDataX, testLinks, tdX )); repos.push( tdX.ghRepoId ); }
+    if( !repos.includes( tdM.ghRepoId ) ) { promises.push( clearRepo( authDataM, testLinks, tdM )); repos.push( tdM.ghRepoId ); }
+    if( !repos.includes( tdF.ghRepoId ) ) { promises.push( clearRepo( authDataF, testLinks, tdF )); repos.push( tdF.ghRepoId ); }
     await Promise.all( promises );
 
     console.log( "... Clear Repo finished." );
     
     // clearRepo should unlinkRepo.  Running clearRepos in parallel saves a lot of time, but can cause
     // a race condition in linkage:unlinkRepo.  Serialize
+    repos = [];
     await gh2tu.unlinkRepo( authData,  td.ceProjectId,  td.ghRepoId );
-    await gh2tu.unlinkRepo( authDataX, tdX.ceProjectId, tdX.ghRepoId ); 
-    await gh2tu.unlinkRepo( authDataM, tdM.ceProjectId, tdM.ghRepoId );   // this is ce_serv, multiproj
+    repos.push( td.ghRepoId );
+    if( !repos.includes( tdX.ghRepoId )) { await gh2tu.unlinkRepo( authDataX, tdX.ceProjectId, tdX.ghRepoId ); repos.push( tdX.ghRepoId ); }
+    if( !repos.includes( tdM.ghRepoId )) { await gh2tu.unlinkRepo( authDataM, tdM.ceProjectId, tdM.ghRepoId ); repos.push( tdM.ghRepoId ); }
+    if( !repos.includes( tdF.ghRepoId )) { await gh2tu.unlinkRepo( authDataF, tdM.ceProjectId, tdF.ghRepoId ); repos.push( tdF.ghRepoId ); }
 
     console.log( "... Unlink Repo finished." );
     
     // Now, unlink unclaimed, which was avoided above to remove race condition
+    repos = [];
     await clearUnclaimed( authData,  testLinks, td  );
-    await clearUnclaimed( authDataX, testLinks, tdX );
-    await clearUnclaimed( authDataM, testLinks, tdM );
+    repos.push( td.ghRepoId );
+    if( !repos.includes( tdX.ghRepoId )) { await clearUnclaimed( authDataX, testLinks, tdX ); repos.push( tdX.ghRepoId ); }
+    if( !repos.includes( tdM.ghRepoId )) { await clearUnclaimed( authDataM, testLinks, tdM ); repos.push( tdM.ghRepoId ); }
+    if( !repos.includes( tdF.ghRepoId )) { await clearUnclaimed( authDataF, testLinks, tdF ); repos.push( tdF.ghRepoId ); }
 
     promises = [];
+    repos = [];
     promises.push( clearCEProj( authData,  testLinks, td ));
-    promises.push( clearCEProj( authDataX, testLinks, tdX ));
-    promises.push( clearCEProj( authDataM, testLinks, tdM ));
+    repos.push( td.ghRepoId );
+    if( !repos.includes( tdX.ghRepoId )) { promises.push( clearCEProj( authDataX, testLinks, tdX )); repos.push( tdX.ghRepoId ); }
+    if( !repos.includes( tdM.ghRepoId )) { promises.push( clearCEProj( authDataM, testLinks, tdM )); repos.push( tdM.ghRepoId ); }
+    if( !repos.includes( tdF.ghRepoId )) { promises.push( clearCEProj( authDataF, testLinks, tdF )); repos.push( tdF.ghRepoId ); }
     await Promise.all( promises );
 
 }

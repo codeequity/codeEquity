@@ -212,8 +212,7 @@ void _swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 // Case 2: <removed>
 // Case 3: "add" will arrive twice in many cases, one addRelo for no status (when peq label an issue), then the second when situating the issue
 //          ignore the second add, it is irrelevant
-// Case 4: "relo" can arrive after "delete" is received, during transfer.
-//          _relo (used for local and x-proj transfers) handles allocation removal.  ignore delete and let relo manage local kp
+// Case 4: "relo"  _relo handles allocation removal.  ignore delete and let relo manage local kp
 // Case 5: Creating a card during blast can begin with card in 'No Status' column.  Rarely, relo to No Status pact arrives after
 //         relo to actual location.
 // 
@@ -637,18 +636,22 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
 void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
    // This can be called as part of a transfer out, in which this is a no-op, handled in _relo.
    if( ka != null ) {
-      if( pact.note != PActNotes['transOut'] ) {
-         _vPrint( appState, 1, "\n Delete: " + ka.category.toString() );
-         List<Allocation> remAllocs = [];  // category, hostUserId, allocType
-         
-         // avoid concurrent mod of list
-         for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
-            Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId, ceUID: sourceAlloc.ceUID );
-            remAllocs.add( miniAlloc );
+      if(   pact.note == PActNotes['transOut'] ) { _vPrint( appState, 1, "\n Transfer out: " + ka.category.toString() ); }
+      else                                       { _vPrint( appState, 1, "\n Delete: " + ka.category.toString() ); }
+
+      List<Allocation> remAllocs = [];  // category, hostUserId, allocType
+      
+      // avoid concurrent mod of list
+      for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
+         Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId, ceUID: sourceAlloc.ceUID );
+         remAllocs.add( miniAlloc );
+      }
+      for( var remAlloc in remAllocs ) {
+         if( pact.note == PActNotes['transOut'] ) {
+            assert( assignees.contains( remAlloc.hostUserId ));
+            _vPrint( appState, 1, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
          }
-         for( var remAlloc in remAllocs ) {
-            adjustSummaryAlloc( appState, peq.id, [], appState.EMPTY, -1*assigneeShare, ka.allocType, source: remAlloc );
-         }
+         adjustSummaryAlloc( appState, peq.id, [], appState.EMPTY, -1*assigneeShare, ka.allocType, source: remAlloc );
       }
 
       // No need to update dyamo.  'Active' is managed by ceServer, all others are managed by other operations during ingest.
@@ -716,7 +719,7 @@ Future _add( context, container, pact, peq, peqMods, assignees, assigneeShare, s
 }
 
 
-// Note.  The only cross-project moves allowed are unclaimed -> new home.  This move is programmatic via ceServer.
+// Note.  The only cross-project moves allowed by ceServer are unclaimed -> new home.  This move is programmatic via ceServer.
 // Note.  There is a rare race condition in ceServer that may reorder when recordPeqs arrive.  Specifically, psub
 //        may be unclaimed when expect otherwise.  Relo must then deal with it.
 // Note.  Once an allocation is in Accr, relo will no longer touch it.
@@ -733,11 +736,15 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
 
    // Delete only.
    if( pact.note == PActNotes['transOut'] ) {
+      assert( false );
+      // XXX transOut PAct is a confirm delete.
+      /*
       _vPrint( appState, 4, "Transfer out of repository" );
       // Note.  Transfer out is basically a delete, so no update of PID in dynamo PEQ table.
       //        Transfer in, issue comes in as newborn, so no PEQ to update.
+      // Note.  ceServer handles updating dynamo with both deactivation on delete, and creating new peq in new loc.  ingest must handle allocs.
+      // Note.  ACCR is allowed, as the only xfers that ceServer does not undo is PEQ within CEV.  The CEProjectId can change.
       // XXX Should inform participants.  Otherwise, this just disappears.
-      // XXX Can transfer accrued........?
       
       Allocation sourceAlloc = ka != null ? ka : -1;
       assert( sourceAlloc != -1 );
@@ -760,6 +767,7 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
 
       // As with delete, ceServer manages 'active' flag, no work here in dynamo.
       return;
+      */
    }
    else {
       _vPrint( appState, 1, "Relo PEQ" );
@@ -767,11 +775,6 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
       Allocation sourceAlloc = ka != null ? ka : -1;
       assert( sourceAlloc != -1 );
       assert( sourceAlloc.category.length >= 1 );
-
-      if( pact.subject.length == 7 ) {
-         print( "TRANSFERS ARE NOT YET HANDLED" );
-         return;
-      }
 
       if( sourceAlloc.setInStone != null && sourceAlloc.setInStone!.contains( peq.id )) {
          print( "Attempting to relocate an Accrued PEQ.  Disregard." );
@@ -974,11 +977,12 @@ void _recreate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    // ceServer creates the new peq with correct values for all but assignees, which was set properly above.
 }
 
+// update peq on aws occurs in _change
 // no alloc-related work to be done here, allocs are not recorded by regular peq issue name.
 String _titRename( appState, pact, ka ) {
    assert( ka != null );
-
-   // XXX untested
+   assert( pact.subject.length == 2 );
+   
    _vPrint( appState, 1, "Change title, new val: " + pact.subject.last );
    
    return pact.subject.last;
@@ -1019,6 +1023,7 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    List<String> newAssign = assignees;
    double newShareAmount  = assigneeShare;  
    String newTitle        = peq.hostIssueTitle;
+   String newIssueId      = peq.hostIssueId;
    String pactLast        = _convertNameToId( appState, pact.subject.last );  // if peqValUpdate, this will be an int, but won't be used.
 
    if( pact.note == PActNotes['addAssignee'] ) {
@@ -1046,6 +1051,11 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    else if( pact.note == PActNotes['projRename']) {
       _projRename( context, container, pact );
    }
+   else if( pact.note == PActNotes['badXfer']) {
+      assert( pact.subject.length == 7 );
+      // This must be handled by ceServer
+      // newIssueId = pact.subject[4];
+   }
    
    List<String> ceHolders = [];
    if( !listEq( newAssign, [appState.UNASSIGN ] )) {
@@ -1063,10 +1073,12 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    peqData['ceHolderId'  ]   = ceHolders;
    peqData['amount']         = ( newShareAmount * newAssign.length ).round();
    peqData['hostIssueTitle'] = newTitle;
+   peqData['hostIssueId']    = newIssueId;
 
    if( !listEq( peqData['hostHolderId'], peq.hostHolderId )) { _vPrint( appState, 1, "_change changing assignees to "   + peqData['hostHolderId'].toString() ); }
    if( peqData['amount']         != peq.amount )             { _vPrint( appState, 1, "_change changing amount to "      + peqData['amount'].toString() ); }
    if( peqData['hostIssueTitle'] != peq.hostIssueTitle )     { _vPrint( appState, 1, "_change changing title to "       + peqData['hostIssueTitle'] ); }
+   if( peqData['hostIssueId']    != peq.hostIssueId )        { _vPrint( appState, 1, "_change changing issueId to "     + peqData['hostIssueId'] ); }
    
    _addMod( context, container, peq, peqData, peqMods );      
    // print( "MILLI Change " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
@@ -1136,6 +1148,8 @@ note:  [DAcWeodOvb, 13302090, 15978796]
 //    modify peq.HostProjectSub after first relo from unclaimed to initial home
 //    set assignees only if issue existed before it was PEQ (pacts wont see this assignment)
 // ---------------
+// Note: Good transfers arrive as:  1) confirm delete trans out, 2) confirm add, 3) confirm note all xfer details
+//       Bad transfers are undone:  1) confirm change with detail on peq's issue id update
 Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending, peqMods ) async {
 
    PEQAction pact = tup.item1;

@@ -325,7 +325,7 @@ class Linkage {
 		match = colName == config.EMPTY     ? match : match && (link.hostColumnName  == colName );
 		match = issueTitle == config.EMPTY  ? match : match && (link.hostIssueName   == issueTitle );
 		match = ceProjId == config.EMPTY    ? match : match && (link.ceProjectId     == ceProjId );
-		match = hostUtility == config.EMPTY ? match : match && (link.hostUtility     == hostUtility );
+		match = hostUtility == config.EMPTY ? match : match && (link.hostUtility     == hostUtility );  // ingestUtils needs this for splitting issues
 		
 		if( match ) { links.push( link ); }
 	    }
@@ -359,6 +359,7 @@ class Linkage {
 	const colId     = utils.validField( query, "colId" )    ? query.colId.toString()  : -1;
 	const projName  = utils.validField( query, "projName" ) ? query.projName          : config.EMPTY;
 	const colName   = utils.validField( query, "colName" )  ? query.colName           : config.EMPTY;
+	const hostUtil  = utils.validField( query, "hostUtility" )  ? query.hostUtility   : config.EMPTY;  // GH uses this for the id of the column field
 
 	let locs = [];
 
@@ -376,6 +377,7 @@ class Linkage {
 		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
 		match = projName == config.EMPTY ? match : match && (loc.hostProjectName  == projName);
 		match = colName  == config.EMPTY ? match : match && (loc.hostColumnName   == colName);
+		match = hostUtil == config.EMPTY ? match : match && (loc.hostUtility      == hostUtil);
 		match =                                    match && (loc.active           == "true");
 
 		if( match ) { matchFunc( locs, loc ); }
@@ -530,7 +532,7 @@ class Linkage {
 	}
 
 	let cep = ceProjects.findById( ceProjId );
-	if( typeof cep === 'undefined' ) { return true; }
+	if( typeof cep === 'undefined' || cep == config.EMPTY ) { return true; }
 
 	// TESTING ONLY!  This will be executed by ceFlutter before issuing unlink.
 	// We do not allow unlink repo if it contains active peqs.
@@ -633,8 +635,8 @@ class Linkage {
 		     utils.fill( "ProjId", 13 ), 
 		     utils.fill( "ProjName", 15 ),
 		     utils.fill( "Repo", 10 ),
-		     utils.fill( "RepoId", 10 )
-		     // utils.fill( "sourceCol", 10 )
+		     utils.fill( "RepoId", 10 ),
+		     // utils.fill( "sourceCol", 10 ),
 		   );
 
 	// console.log( this.links );
@@ -666,7 +668,7 @@ class Linkage {
 			 utils.fill( link.hostProjectName, 15 ),
 			 // link.flatSource == -1 ? utils.fill( "-1", 10 ) : utils.fill( link.flatSource, 10 ),
 			 utils.fill( link.hostRepoName, 10 ), 
-			 utils.fill( link.hostRepoId, 10 )
+			 utils.fill( link.hostRepoId, 10 ),
 		       );
 	}
     }
