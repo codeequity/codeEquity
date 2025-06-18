@@ -549,7 +549,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, issueData[0], oldRepoId, oldCEP ];
 		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
-					  config.PACTVERB_CONF, config.PACTACT_CHAN, subject, config.PACTNOTE_BXFR,
+					  config.PACTVERB_CONF, config.PACTACT_NOTE, subject, config.PACTNOTE_BXFR,
 					  utils.getToday() );
 
 		// XXX XXX remove this
