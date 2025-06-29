@@ -381,6 +381,7 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
 
 // also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
 async function recordPEQAction( authData, ceUID, pd, verb, action, subject, note, entryDate ) {
+    // XXX ?? 
     pd.actorId = await pd.actorId;
     console.log( authData.who, "Recording PEQAction: ", verb, action, subject, note, pd.actor, pd.actorId, pd.ceProjectId );
 

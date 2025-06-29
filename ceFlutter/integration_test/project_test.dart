@@ -990,7 +990,7 @@ Future<bool> validateUnAssign40( WidgetTester tester ) async {
    String issue  = "Blast 6";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
 
-   expect( await validateAdd(      tester, repo, issue, "604 PEQ",     "0 0 confirm add" ),      true );
+   expect( await validateAdd(      tester, repo, issue, "604 PEQ",     "1 0 confirm add" ),      true );  // This can show up at step 2, no double count potential
    expect( await validatePass(     tester,                             "1 0 confirm relocate"),  true );
    // want 2 assigns, 2 unassigns.  Since checkNTap will simply look for 'confirm change', will always pass on 1st check in this test.
    // need assign before unassign

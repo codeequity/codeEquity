@@ -521,6 +521,12 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		let badPeq  = await awsUtils.getPEQ( authData, newCEP, newIssueId, false );
 		if( badPeq != -1 ) {
 		    awsUtils.removePEQ( authData, badPeq.PEQId );
+
+		    let pdCopy = {};
+		    pdCopy.ceProjectId = newCEP;
+		    pdCopy.actor       = pd.actor;
+		    pdCopy.actorId     = pd.actorId;
+		    pdCopy.reqBody     = pd.reqBody;
 		    awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
 					      config.PACTVERB_CONF, config.PACTACT_DEL,	[ badPeq.PEQId ], config.PACTNOTE_BXFR,
 					      utils.getToday() ); 
