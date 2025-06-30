@@ -125,14 +125,14 @@ Future<bool> approvalsTabFraming( WidgetTester tester ) async {
    return true;
 }
 
-Future<bool> contributorsTabFraming( WidgetTester tester ) async {
+Future<bool> statusTabFraming( WidgetTester tester ) async {
    expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
-   final Finder tab = find.byKey( const Key('Contributors' ));
+   final Finder tab = find.byKey( const Key('Status' ));
    await tester.tap( tab );
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
    await tester.pumpAndSettle();
 
-   expect( find.text( 'ZooBaDoo!' ), findsOneWidget );
+   expect( find.text( 'CE MD App Testing' ), findsOneWidget );
    return true;
 }
 
@@ -854,12 +854,15 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    await tester.drag( listFinder, Offset(0.0, -50.0) );
    
 
-   // 3 possible paths, multiple differences on arrival order.  Remember add/relo are both always both sent on label notification pact in order to protect 
+   // Ignore this test, testing method incompatible with multiple pact arrival possibilities.
+   // 4 possible paths, multiple differences on arrival order.  Remember add/relo are both always both sent on label notification pact in order to protect 
    //   against no status
    // 1) single add/relo. raw pact is issue:labeled.  Column is final destination.  then assign, propose/reject  (confirmed)
    // 2) double add/relo.  first is issue:labeled, move to unclaimed.  second is card:created, move to 'no status' (created without project).  3rd relo move to correct col.
    // 3) single add/relo, labeled, move to ... ? no status?  then relo move to right spot.
+   // 4) single add/relo, labeled, second relo arrives early (position 2, falsely triggering vmExists).  This is not accounted for in this commented out code.
    issue = "Close Open test";           // peq 2
+   /*
    print( issue );
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(        tester, repo, issue, "1k PEQ",  "0 2 confirm add" ),      true );   // label
@@ -893,6 +896,7 @@ Future<bool> validateAri22( WidgetTester tester ) async {
 
    await tester.drag( listFinder, Offset(0.0, -300.0) );
    await pumpSettle( tester, 2 );
+   */
    
    issue  = "IR Accrued";              // peq 3
    print( issue );
@@ -1095,9 +1099,9 @@ void main() {
 
          expect( await verifyEmptyProjectPage( tester ), true );         
          expect( await approvalsTabFraming( tester ),    true );
-         expect( await contributorsTabFraming( tester ), true );
          expect( await equityPlanTabFraming( tester ),   true );
          expect( await agreementsTabFraming( tester ),   true );
+         expect( await statusTabFraming( tester ), true );
 
          await logout( tester );         
 
@@ -1244,7 +1248,7 @@ void main() {
          await _checkHelper( tester );
 
          // tab out, back in
-         await contributorsTabFraming( tester );
+         await statusTabFraming( tester );
          await peqSummaryTabFraming( tester, ignoreAccrued: true, fromBlank: true );
          await _checkHelper( tester );         
          

@@ -348,7 +348,7 @@ Widget makeToolTip( child, message, {wait=false} ) {
 }
 
 // XXX convert all to IWTitle?
-Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "" } ) {
+Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "", sw = null } ) {
    // Add as encountered.
    var mux = 1.0;
    if     ( fontSize == 18 ) { mux = 24.0 / appState.BASE_TXT_HEIGHT; }
@@ -363,6 +363,7 @@ Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
       child: IntrinsicWidth( 
          key: Key( keyName ),
+         stepWidth: sw,
          child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                      style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: color))));
 }
