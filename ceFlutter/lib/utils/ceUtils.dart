@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/widgetUtils.dart';
+import 'package:ceFlutter/utils/ghUtils.dart';      // host-specific Utils
 
 import 'package:ceFlutter/screens/launch_page.dart';
 
@@ -292,8 +293,8 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
             return fetchPEQs( context, container, postData );
          }).toList();
 
-      appState.gotAllPeqs = true;
       List<List<PEQ>> cepPeqs = await Future.wait( futs );   // all peqs for all ceps user is part of
+      appState.gotAllPeqs = true;
       
       // each peq has ceHolderId. accumulate per, put into appState.userPeqs
       // Note: peqs do not cross CEP boundaries
@@ -311,7 +312,32 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
    }
 }
 
+// Active only.
+Future<void> updateCEPeqs( container, context ) async {
+   final appState  = container.state;
 
+   // Get all peqs for currently selected CEP
+   String cep   = appState.selectedCEProject;
+   assert( cep != "" );
+   
+   if( appState.cePeqs[ cep ] == null ) {
+      print( "building peq data for " + cep );
+      appState.cePeqs[ cep ] = await fetchPEQs( context, container, '{ "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": "$cep", "allAccrued": "true" }}' );
+   }
+
+}
+
+Future<List<PEQ>> updateHostPeqs( context, container, CEProject cep ) async {
+   List<PEQ> res = [];
+   if( cep.hostPlatform == "GitHub" ) {
+      res = await updateGHPeqs( context, container, cep );
+   }
+   else {
+      print( "Error, host platform not yet implemented." );
+      assert( false );
+   }
+   return res;
+}
 
 void confirmedNav( context, container, newPage ) {
    final appState  = container.state;

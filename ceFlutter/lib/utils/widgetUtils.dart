@@ -368,7 +368,7 @@ Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight
                      style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: color))));
 }
 
-Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "" } ) {
+Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "", color = Colors.black } ) {
    // Add as encountered.
    var mux = 1.0;
    if     ( fontSize == 18 ) { mux = 24.0 / appState.BASE_TXT_HEIGHT; }
@@ -377,7 +377,7 @@ Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, high
    else if( fontSize == 36 ) { mux = 48.0 / appState.BASE_TXT_HEIGHT; }
 
    String keyName = keyTxt == "" ? title : keyTxt;
-   Color color = highlight ? appState.BUTTON_COLOR : Colors.black;
+   Color c = highlight ? appState.BUTTON_COLOR : color;
    
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
@@ -385,7 +385,7 @@ Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, high
                         height: appState.BASE_TXT_HEIGHT * lines * mux,
                         key: Key( keyName ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: color))));
+                                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: c))));
 }
 
 Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 14, mux = 1.0 } ) {

@@ -610,6 +610,8 @@ Future<bool> validatePass( WidgetTester tester, String detailName ) async {
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
+   if( detailName == "Element Not Found." ) { return false; }
+   
    expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
@@ -715,8 +717,9 @@ Future<bool> validateProposeAccrue( WidgetTester tester, String repo, String iss
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
+   if( detailName == "Element Not Found." ) { return false; }
    expect( find.text( "Raw Host Action:" ), findsOneWidget );
-
+   
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
    if( action == "closed" ) {
@@ -826,20 +829,30 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    // Most recent first
 
    String issue = "Situated Accrued iss1st";  // peq 0
-   print( issue );
+   print( "\n"+issue );
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
 
    expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "0 0 confirm add" ),      true );
    expect( await validatePass(          tester,                         "1 0 confirm relocate" ), true );
    expect( await validateAssign(        tester, repo, issue, "ariCETester", "2 0 confirm change" ),   true );  // raw pacts are stored with GH identities
-   expect( await validatePass(          tester,                         "3 0 confirm relocate" ), true );      // XXX order 
-   expect( await validateCreateCard(    tester,                         "4 0 confirm add" ),      true );      // XXX order 
-   expect( await validateProposeAccrue( tester, repo, issue,            "5 0 propose accrue", action: "edited" ),   true );
+
+   // relo can be slow.
+   bool relo3 = await validatePass(     tester,                         "3 0 confirm relocate" );
+   bool relo4 = await validatePass(     tester,                         "4 0 confirm relocate" );
+   expect( relo3 || relo4, true );
+   
+   expect( await validateCreateCard(    tester,                         "4 0 confirm add" ),      true );
+
+   // propose can be early.
+   bool prop5 = await validateProposeAccrue( tester, repo, issue,       "5 0 propose accrue", action: "edited" );
+   bool prop4 = await validateProposeAccrue( tester, repo, issue,       "4 0 propose accrue", action: "edited" );
+   expect( prop4 || prop5, true );
+   
    expect( await validateConfirmAccrue( tester, repo,                   "6 0 confirm accrue" ),   true );
    expect( await validateConfirmDelete( tester, repo, issue,            "7 0 confirm delete", issue: true ),   true );
 
    issue = "Situated Accrued card1st";   // peq 1
-   print( issue );
+   print( "\n"+issue );
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "0 1 confirm add" ),      true );
    expect( await validatePass(          tester,                         "1 1 confirm relocate" ), true );
@@ -863,7 +876,7 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    // 4) single add/relo, labeled, second relo arrives early (position 2, falsely triggering vmExists).  This is not accounted for in this commented out code.
    issue = "Close Open test";           // peq 2
    /*
-   print( issue );
+   print( "\n"+issue );
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(        tester, repo, issue, "1k PEQ",  "0 2 confirm add" ),      true );   // label
    expect( await validatePass(       tester,                         "1 2 confirm relocate" ), true );   // pass
@@ -894,12 +907,12 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    expect( await validateProposeAccrue( tester, repo, issue,         (9 + offset).toString() + " 2 propose accrue" ),   true );
    expect( await validateConfirmAccrue( tester, repo,                (10 +  offset).toString() + " 2 confirm accrue" ),   true );
 
+   */
    await tester.drag( listFinder, Offset(0.0, -300.0) );
    await pumpSettle( tester, 2 );
-   */
    
    issue  = "IR Accrued";              // peq 3
-   print( issue );
+   print( "\n"+issue );
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(        tester, repo, issue, "1k PEQ",      "0 3 confirm add" ),      true );
    expect( await validatePass(       tester,                             "1 3 confirm relocate" ), true );
