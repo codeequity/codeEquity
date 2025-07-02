@@ -276,6 +276,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
          _vPrint( appState, 1, "   Removing known peq " + peq.hostIssueTitle + " " + peq.id + " " + peq.active.toString());
       }
       else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete && pact.note == PActNotes['transfer'] ) {
+         assert( false ); // XXX verify. no longer possible
          _vPrint( appState, 2, "   Ignoring delete for relocated peq" + peq.hostIssueTitle + " " + peq.id + " " + peq.active.toString());
          it.add( i );
          ignored = true;
@@ -634,7 +635,7 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
 // Delete proj/col with peqs?     issues remain, series of del card/label are sent.  
 // Delete proj/col with ACCR?     ACCR are relocated
 void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
-   // This can be called as part of a transfer out, in which this is a no-op, handled in _relo.
+   // For transfer, can see 'transOut', or 'badXfer'
    if( ka != null ) {
       if(   pact.note == PActNotes['transOut'] ) { _vPrint( appState, 1, "\n Transfer out: " + ka.category.toString() ); }
       else                                       { _vPrint( appState, 1, "\n Delete: " + ka.category.toString() ); }
@@ -658,7 +659,7 @@ void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
    }
 }
 
-// Note: there is no transfer in.  transferred peq issues arrive as uncarded newborns, and so are untracked.
+// Note: there is no 'transferred in'.  transferred peq issues have a separate 'add' pact.
 // Note: some early peq states may be unexpected during add.  For example, LabelTest.
 //       When performing a sequence of add/delete/move, an issue can be created correctly, then bounced out of reserved into "In Prog",
 //       then unlabeled (untracked), then re-tracked.  In this case, the PEQ is re-created, with the correct column of "In Prog".
@@ -719,7 +720,7 @@ Future _add( context, container, pact, peq, peqMods, assignees, assigneeShare, s
 }
 
 
-// Note.  The only cross-project moves allowed by ceServer are unclaimed -> new home.  This move is programmatic via ceServer.
+// Note.  The only cross-project moves (not transfers) allowed by ceServer are unclaimed -> new home.  This move is programmatic via ceServer.
 // Note.  There is a rare race condition in ceServer that may reorder when recordPeqs arrive.  Specifically, psub
 //        may be unclaimed when expect otherwise.  Relo must then deal with it.
 // Note.  Once an allocation is in Accr, relo will no longer touch it.
@@ -734,123 +735,86 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
    // _vPrint( appState, "subBase: " + subBase.toString() );
    // _vPrint( appState, "baseCat: " + baseCat.toString() );
 
-   // Delete only.
-   if( pact.note == PActNotes['transOut'] ) {
-      assert( false );
-      // XXX transOut PAct is a confirm delete.
-      /*
-      _vPrint( appState, 4, "Transfer out of repository" );
-      // Note.  Transfer out is basically a delete, so no update of PID in dynamo PEQ table.
-      //        Transfer in, issue comes in as newborn, so no PEQ to update.
-      // Note.  ceServer handles updating dynamo with both deactivation on delete, and creating new peq in new loc.  ingest must handle allocs.
-      // Note.  ACCR is allowed, as the only xfers that ceServer does not undo is PEQ within CEV.  The CEProjectId can change.
-      // XXX Should inform participants.  Otherwise, this just disappears.
-      
-      Allocation sourceAlloc = ka != null ? ka : -1;
-      assert( sourceAlloc != -1 );
-      assert( sourceAlloc.category.length >= 1 );
-      
-      // Exactly one alloc per peq.id,assignee pair
-      List<Allocation> reloAlloc = [];  // category, hostUserId, allocType
-      
-      // avoid concurrent mod of list
-      for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
-         Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId, ceUID: sourceAlloc.ceUID );
-         reloAlloc.add( miniAlloc );
-      }
-      
-      for( var remAlloc in reloAlloc ) {
-         assert( assignees.contains( remAlloc.hostUserId ));
-         _vPrint( appState, 1, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
-         adjustSummaryAlloc( appState, peq.id, [], appState.EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc );
-      }
-
-      // As with delete, ceServer manages 'active' flag, no work here in dynamo.
+   _vPrint( appState, 1, "Relo PEQ" );
+   
+   Allocation sourceAlloc = ka != null ? ka : -1;
+   assert( sourceAlloc != -1 );
+   assert( sourceAlloc.category.length >= 1 );
+   
+   if( sourceAlloc.setInStone != null && sourceAlloc.setInStone!.contains( peq.id )) {
+      print( "Attempting to relocate an Accrued PEQ.  Disregard." );
       return;
-      */
    }
-   else {
-      _vPrint( appState, 1, "Relo PEQ" );
+   
+   // Get name of new column home.  Assume locations projectId.columnId are unique.
+   assert( pact.subject.length == 3 );
+   HostLoc loc = appState.myHostLinks.locations.firstWhere( (a) => a.hostProjectId == pact.subject[1] && a.hostColumnId == pact.subject[2] );
+   assert( loc != null );
+   
+   // peq.psub IS the correct initial home if unclaimed, and right after the end of unclaimed residence.  Column is correct afterwards.
+   // (if no existing alloc, use psub - can't happen).  If alloc.cat is not unclaimed, use column (only moves within proj).
+   // If alloc.cat is unclaimed, ceServer will move across projects.  use psub.   Test col.  Will be stable even with multiple relos, since
+   // psub is only overwritten the first time after unclaimed is claimed.
+   // pallocs do not have assignees
+   
+   // Exactly one alloc per peq.id,assignee pair
+   List<Allocation> reloAlloc = [];  // category, hostUserId, allocType
+   
+   // avoid concurrent mod of list
+   for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
+      Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId, ceUID: sourceAlloc.ceUID );
+      reloAlloc.add( miniAlloc );
+   }
+   
+   for( var remAlloc in reloAlloc ) {
+      assert( assignees.contains( remAlloc.hostUserId ));
+      _vPrint( appState, 1, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
+      adjustSummaryAlloc( appState, peq.id, [], appState.EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc, pid: loc.hostProjectId );
       
-      Allocation sourceAlloc = ka != null ? ka : -1;
-      assert( sourceAlloc != -1 );
-      assert( sourceAlloc.category.length >= 1 );
-
-      if( sourceAlloc.setInStone != null && sourceAlloc.setInStone!.contains( peq.id )) {
-         print( "Attempting to relocate an Accrued PEQ.  Disregard." );
-         return;
-      }
-      
-      // Get name of new column home.  Assume locations projectId.columnId are unique.
-      assert( pact.subject.length == 3 );
-      HostLoc loc = appState.myHostLinks.locations.firstWhere( (a) => a.hostProjectId == pact.subject[1] && a.hostColumnId == pact.subject[2] );
-      assert( loc != null );
-      
-      // peq.psub IS the correct initial home if unclaimed, and right after the end of unclaimed residence.  Column is correct afterwards.
-      // (if no existing alloc, use psub - can't happen).  If alloc.cat is not unclaimed, use column (only moves within proj).
-      // If alloc.cat is unclaimed, ceServer will move across projects.  use psub.   Test col.  Will be stable even with multiple relos, since
-      // psub is only overwritten the first time after unclaimed is claimed.
-      // pallocs do not have assignees
-
-      // Exactly one alloc per peq.id,assignee pair
-      List<Allocation> reloAlloc = [];  // category, hostUserId, allocType
-      
-      // avoid concurrent mod of list
-      for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
-         Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId, ceUID: sourceAlloc.ceUID );
-         reloAlloc.add( miniAlloc );
-      }
-      
-      for( var remAlloc in reloAlloc ) {
-         assert( assignees.contains( remAlloc.hostUserId ));
-         _vPrint( appState, 1, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
-         adjustSummaryAlloc( appState, peq.id, [], appState.EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc, pid: loc.hostProjectId );
+      // Check to see if relo contains new information (new proj name, or new location if recordPeqData race condition).  If so, get category from existing allocs.
+      if( !baseCat.contains( loc.hostProjectName ) ) {
+         _vPrint( appState, 2, "  .. RELO is cross project!  Reconstituting category ");
          
-         // Check to see if relo contains new information (new proj name, or new location if recordPeqData race condition).  If so, get category from existing allocs.
-         if( !baseCat.contains( loc.hostProjectName ) ) {
-            _vPrint( appState, 2, "  .. RELO is cross project!  Reconstituting category ");
-            
-            Allocation? newSource = null;
-            // does not like firstwhereornull...
-            for( var ns in appState.myPEQSummary.getAllAllocs() ) {
-               if( ns.category.contains( loc.hostProjectName )) {
-                  newSource = ns;
-                  break;
-               }
-            }
-            
-            if( newSource == null ) {
-               // Possible if project name just changed.
-               baseCat = [loc.hostProjectName];
-            }
-            else {
-               List<String> sourceCat = newSource.category;
-               baseCat = sourceCat.sublist( 0, sourceCat.indexOf( loc.hostProjectName ) + 1 );
+         Allocation? newSource = null;
+         // does not like firstwhereornull...
+         for( var ns in appState.myPEQSummary.getAllAllocs() ) {
+            if( ns.category.contains( loc.hostProjectName )) {
+               newSource = ns;
+               break;
             }
          }
          
-         // Moving into ACCR is handled by _accrue.  moving out of ACCR, for example by rejecting a propose ACCR, must update allocType here
-         if( remAlloc.allocType == PeqType.grant && loc.hostColumnName != appState.ACCRUED ) {
-            remAlloc.allocType = loc.hostColumnName == appState.PEND ? PeqType.pending : PeqType.plan;
-            _vPrint( appState, 4, "  .. Removed granted status, set to " + enumToStr(remAlloc.allocType) );
+         if( newSource == null ) {
+            // Possible if project name just changed.
+            baseCat = [loc.hostProjectName];
          }
-         
-         _vPrint( appState, 1, "  .. relocating to " + loc.toString() );
-         peqLoc = baseCat + [loc.hostColumnName];
-         adjustSummaryAlloc( appState, peq.id, baseCat + [loc.hostColumnName], remAlloc.hostUserId, assigneeShare, remAlloc.allocType, pid: loc.hostProjectId );
+         else {
+            List<String> sourceCat = newSource.category;
+            baseCat = sourceCat.sublist( 0, sourceCat.indexOf( loc.hostProjectName ) + 1 );
+         }
       }
-
-
-      var peqData = {};
-      // peqType is set by prior add, accrues, etc.
-      // peqLoc can change.  Note that allocation titles are not part of psub.
-      peqData['id']        = peq.id;
-      peqData['hostProjectSub'] = peqLoc;
       
-      if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) {
-         _vPrint( appState, 1, "_relo changing psub to "        + peqData['hostProjectSub'].toString() );
-         _addMod( context, container, peq, peqData, peqMods );   
+      // Moving into ACCR is handled by _accrue.  moving out of ACCR, for example by rejecting a propose ACCR, must update allocType here
+      if( remAlloc.allocType == PeqType.grant && loc.hostColumnName != appState.ACCRUED ) {
+         remAlloc.allocType = loc.hostColumnName == appState.PEND ? PeqType.pending : PeqType.plan;
+         _vPrint( appState, 4, "  .. Removed granted status, set to " + enumToStr(remAlloc.allocType) );
       }
+      
+      _vPrint( appState, 1, "  .. relocating to " + loc.toString() );
+      peqLoc = baseCat + [loc.hostColumnName];
+      adjustSummaryAlloc( appState, peq.id, baseCat + [loc.hostColumnName], remAlloc.hostUserId, assigneeShare, remAlloc.allocType, pid: loc.hostProjectId );
+   }
+   
+   
+   var peqData = {};
+   // peqType is set by prior add, accrues, etc.
+   // peqLoc can change.  Note that allocation titles are not part of psub.
+   peqData['id']        = peq.id;
+   peqData['hostProjectSub'] = peqLoc;
+   
+   if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) {
+      _vPrint( appState, 1, "_relo changing psub to "        + peqData['hostProjectSub'].toString() );
+      _addMod( context, container, peq, peqData, peqMods );   
    }
    // print( "MILLI Relo " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
 }   
@@ -1052,8 +1016,9 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
       _projRename( context, container, pact );
    }
    else if( pact.note == PActNotes['badXfer']) {
+      assert( false );  // XXX verify
       assert( pact.subject.length == 7 );
-      // This must be handled by ceServer
+      // This must be handled by ceServer to avoid server issues with mismatched peqs & hostIssueIds
       // newIssueId = pact.subject[4];
    }
    
@@ -1147,9 +1112,15 @@ note:  [DAcWeodOvb, 13302090, 15978796]
 //    not modify peq.amount after initial creation
 //    modify peq.HostProjectSub after first relo from unclaimed to initial home
 //    set assignees only if issue existed before it was PEQ (pacts wont see this assignment)
+//    modify hostIssueId during bad transfer
 // ---------------
-// Note: Good transfers arrive as:  1) confirm delete trans out, 2) confirm add, 3) confirm note all xfer details
-//       Bad transfers are undone:  1) confirm change with detail on peq's issue id update
+// Note: Good transfer PActs arrive as:  1) confirm delete trans out, 2) confirm add, 3) confirm note all xfer details
+//       Bad transfers are undone:  1) add/relo, 2) delete, 3) confirm note with xfer detail, 4) confirm note blank
+//           (note that ceServer removes bad peq, updates hostIssueId, and may or may not receive an extra labeling request from GH.)
+//   in all cases, GH retains card, assignees, labels, and loc.
+//   in all cases, ceServer handles updating dynamo with both deactivation on delete, and creating new peq in new loc.  ingest must handle allocs.
+//   ACCR is allowed, as the only xfers that ceServer does not undo is PEQ within CEV.  The CEProjectId can change.
+//   XXX Should inform participants.  Otherwise, this just disappears.
 Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending, peqMods ) async {
 
    PEQAction pact = tup.item1;

@@ -1368,47 +1368,49 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
     
     // CHECK dynamo Peq
     let allPeqs =  await peqsP;
-    let peqs = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
-    subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
-    let peq = peqs[0];
-    subTest = tu.checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );       
-    subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],           subTest, "peq title is wrong" );
-    subTest = tu.checkEq( peq.HostHolderId.length, 0,              subTest, "peq holders wrong" );
-    subTest = tu.checkEq( peq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
-    subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
-    subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],   subTest, "peq project sub invalid" );
-    if( loc.projSub.length > 1 ) {
-	// NS is valid, allow for it here
-	let foundPsub = ( peq.HostProjectSub[1] == loc.projSub[1] ) || ( peq.HostProjectSub[1] == config.GH_NO_STATUS ); 
-	subTest = tu.checkEq( foundPsub, true,                    subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( allPeqs != -1, true,                     subTest, "No peqs" );
+    if( allPeqs != -1 ) {
+	let peqs = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
+	subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
+	let peq = peqs[0];
+	subTest = tu.checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );       
+	subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub invalid" );
+	subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],           subTest, "peq title is wrong" );
+	subTest = tu.checkEq( peq.HostHolderId.length, 0,              subTest, "peq holders wrong" );
+	subTest = tu.checkEq( peq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
+	subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
+	subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],   subTest, "peq project sub invalid" );
+	if( loc.projSub.length > 1 ) {
+	    // NS is valid, allow for it here
+	    let foundPsub = ( peq.HostProjectSub[1] == loc.projSub[1] ) || ( peq.HostProjectSub[1] == config.GH_NO_STATUS ); 
+	    subTest = tu.checkEq( foundPsub, true,                    subTest, "peq project sub invalid" );
+	}
+	subTest = tu.checkEq( peq.HostRepoId, td.ghRepoId,            subTest, "peq RID bad" );
+	subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
+	
+	// CHECK dynamo Pact
+	// label carded issue?  1 pact.  attach labeled issue to proj col?  2 pact.
+	// Could be any number.  add (unclaimed).  change (assign) x n.  relocate (peqify)
+	// Note.  Can arrive in dynamo out of order - no awaiting for most PActs
+	let allPacts = await pactsP;
+	let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+	subTest = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );         
+	
+	// Verify number of adds == relos.  Don't count on order of arrival.
+	let addUncl  = 0;
+	let relUncl  = 0;
+	for( const pact of pacts ) {
+	    let hr     = await tu.hasRaw( authData, pact.PEQActionId );
+	    subTest = tu.checkEq( hr, true,                            subTest, "PAct Raw match" ); 
+	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
+	    subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
+	    subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
+	    subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+	    addUncl = addUncl + ( pact.Action == config.PACT_ADD  ? 1 : 0 ); 
+	    relUncl = relUncl + ( pact.Action == config.PACT_RELO ? 1 : 0 ); 
+	}
+	subTest = tu.checkEq( addUncl, relUncl,          subTest, "PAct Action counts"); 
     }
-    subTest = tu.checkEq( peq.HostRepoId, td.ghRepoId,            subTest, "peq RID bad" );
-    subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
-
-    // CHECK dynamo Pact
-    // label carded issue?  1 pact.  attach labeled issue to proj col?  2 pact.
-    // Could be any number.  add (unclaimed).  change (assign) x n.  relocate (peqify)
-    // Note.  Can arrive in dynamo out of order - no awaiting for most PActs
-    let allPacts = await pactsP;
-    let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-    subTest = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );         
-
-    // Verify number of adds == relos.  Don't count on order of arrival.
-    let addUncl  = 0;
-    let relUncl  = 0;
-    for( const pact of pacts ) {
-	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
-	subTest = tu.checkEq( hr, true,                            subTest, "PAct Raw match" ); 
-	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
-	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
-	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
-	addUncl = addUncl + ( pact.Action == config.PACT_ADD  ? 1 : 0 ); 
-	relUncl = relUncl + ( pact.Action == config.PACT_RELO ? 1 : 0 ); 
-    }
-    subTest = tu.checkEq( addUncl, relUncl,          subTest, "PAct Action counts"); 
-
     return await tu.settle( subTest, testStatus, checkNewlySituatedIssue, authData, testLinks, td, loc, issDat, card, testStatus, specials );
 }
 

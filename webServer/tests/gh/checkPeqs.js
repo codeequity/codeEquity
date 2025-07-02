@@ -57,13 +57,13 @@ const _p11 = { title: "LabelTest Carded", id: "-1", ceProjectId: "CE_FlutTest_ks
 
 // Github Operations
 
-// this shows up in inactive as well.  this is a transferred peq, note the different cepid, psub, repo
-// note this one is in a different ceproj.  it has not been ingested, so no ceholderids
+// Good xfer must be within CEV.  This is all within CEP, but between repos.
+// this shows up in inactive as well.  this is a transferred peq, note the different repo
 // NOTE: If genFlutData did not run, this will have a ceServer psub, i.e: ["Github Operations", "Stripes"]
-const _p13 = { title: "CT Blast", id: "-1", ceProjectId: "CE_AltTest_hakeld80a2", ceGrantorId:"---",
-              ceHolderId: [], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
+const _p13 = { title: "CT Blast", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
+              ceHolderId: ["eaeIqcqqdp", "yxsklawdpc" ], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOH8VRDg", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOOHkgXw", hostIssueId: "-1", active: "true" };
 
 const _p15 = { title: "IR Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
 	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
@@ -101,7 +101,7 @@ const _p29 = { title: "Situated Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks
 
 
 // CROSS PROJ
-// Note these two start in ariAlt, then xfer to flut and to serv.  So there are two active peqs here, different ceprojs
+// Note these two start in ceTesterConne or ceFlutterConnie, then xfer to flut and to serv.  So there are two active peqs here, different ceprojs from dif. runs
 const _p23 = { title: "CT Blast X", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["eaeIqcqqdp", "yxsklawdpc" ], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
@@ -207,7 +207,8 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
     for( const gp of PEQS_GOLD ) {
 	let goodGold = true;
 	let active = gp.active == "true" ? "active" : "inactive";
-	let ap = awsPeqs.find( p => p.CEProjectId == gp.ceProjectId && p.HostIssueTitle == gp.title && utils.arrayEquals( p.HostProjectSub, gp.hostProjectSub ));
+	// CrossTest now begins from within same CEP/CEV, so need to filter on active flag as well since both active and inactive are available per CEP
+	let ap = awsPeqs.find( p => p.CEProjectId == gp.ceProjectId && p.HostIssueTitle == gp.title && gp.active == p.Active && utils.arrayEquals( p.HostProjectSub, gp.hostProjectSub ));
 	if( typeof ap === 'undefined' ) {
 	    console.log( "ERROR.  Gold image PEQ is not found in dynamo", gp.ceProjectId, gp.title, gp.hostProjectSub );
 	    goodGold = false;
@@ -232,7 +233,7 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 	    goodGold = goodGold && ( gp.active == ap.Active );
 	    
 	    if( !goodGold ) {
-		console.log( "ERROR.  Gold image does not match dynamo peq" );
+		console.log( "ERROR.  Gold image does not match dynamo peq (gold standard is first)" );
 		report( gp, ap );
 	    }
 	}

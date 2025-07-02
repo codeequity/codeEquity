@@ -225,7 +225,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
 
     // PAct is found from oldCEP
     sub         = [peqF.PEQId, oldIdF, tdF.ghRepoId, tdF.ceProjectId, issDatF[0], tdF.ghRepoId, tdF.ceProjectId ];
-    testStatus  = await gh2tu.checkPact( authDataF, testLinks, tdF, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, config.PACTNOTE_BXFR, testStatus, {sub: sub, depth: 8} );
+    testStatus  = await gh2tu.checkPact( authDataF, testLinks, tdF, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, config.PACTNOTE_BXFR, testStatus, {sub: sub, depth: 8} );
 
     
     tu.testReport( testStatus, "Test " + testName );

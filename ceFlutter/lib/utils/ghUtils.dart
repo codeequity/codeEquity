@@ -16,6 +16,8 @@ import 'package:ceFlutter/utils/awsUtils.dart';    // fetchPAT
 import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/models/HostAccount.dart';
+import 'package:ceFlutter/models/CEProject.dart';
+import 'package:ceFlutter/models/PEQ.dart';
 
 
 // Post request to GitHub
@@ -37,6 +39,13 @@ Future<http.Response> _postGH( PAT, postData, name ) async {
    if (response.statusCode != 201 && response.statusCode != 204) { print( "Error.  GH post error " + name + " " + postData ); }
    
    return response;
+}
+
+Future<List<PEQ>> updateGHPeqs( context, container, CEProject cep ) async {
+   final appState  = container.state;
+   List<PEQ> peqs = [];
+
+   return peqs;
 }
 
 // This needs to work for both users and orgs
