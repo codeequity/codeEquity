@@ -79,6 +79,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
 
    void _loadPeqs() async {
+      print( "in _loadPeqs, " + peqsLoaded.toString() );
       if( !peqsLoaded ) {
          // get all peqs for the currently selected CEP
          await updateCEPeqs( container, context );
@@ -89,7 +90,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    void _loadHPeqs( CEProject cep ) async {
       if( !hpeqsLoaded ) {
          // get all peqs for the currently selected CEP
-         await updateHostPeqs( container, context, cep );
+         await updateHostPeqs( container, cep );
          setState(() => hpeqsLoaded = true );
       }
    }
@@ -120,6 +121,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<PEQ> accrHPeqs = [];
       
       if( peqsLoaded ) {
+         // appState.cePeqs.keys.forEach( print );
          assert( appState.cePeqs[ cep.ceProjectId ] != null );
          peqs = appState.cePeqs[ cep.ceProjectId ]!;
          planPeqs = peqs.where( (PEQ p) => p.peqType == PeqType.plan ).toList();
@@ -180,6 +182,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       if( cep == null ) { return makeTitleText( appState, "First choose Project from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
 
+      if( appState.cePeqs[ cep.ceProjectId ] != null ) { peqsLoaded = true; }     
       _loadPeqs();
       _loadHPeqs( cep! );
 
@@ -228,7 +231,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       Widget hd = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
       hdiv      = Wrap( spacing: 0, children: [fatPad, hd] );   
 
-      if( appState.gotAllPeqs )   { peqsLoaded = true; }
+      // if( appState.gotAllPeqs )   { peqsLoaded = true; }
       if( appState.verbose >= 2 ) { print( "STATUS BUILD. " ); }
       
       return getStatus( context );

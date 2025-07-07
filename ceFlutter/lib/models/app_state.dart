@@ -92,11 +92,13 @@ class AppState {
 
    late bool   peqAllocsLoading;        // allows spin while summary frame peq allocations are being constructed
 
-   late bool   gotAllPeqs;              // can search over all peqs in CEPs the user is attached to.  this prevents multiple loads
+   late bool   gotUserPeqs;              // can search over all peqs in CEPs the user is attached to.  this prevents multiple loads
 
    late bool   userPActUpdate;  // need to upate pact list
    late String hoverChunk;      // For hover highlighting
 
+   // CE Server access
+   final CESERVER_ENDPOINT       = 'http://127.0.0.1:3000/ceServer/ceMD';
    
    // UI constants
    final double MAX_PANE_WIDTH   = 950.0;
@@ -145,7 +147,7 @@ class AppState {
       updateEquityPlan   = false;
       updateEquityView   = false;
       peqAllocsLoading   = false;
-      gotAllPeqs         = false;
+      gotUserPeqs        = false;
 
       selectedCEVenture = "";
       selectedCEProject = "";

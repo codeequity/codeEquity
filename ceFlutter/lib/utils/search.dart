@@ -283,7 +283,7 @@ class _getPossibilities {
       // Allows search over all peqs in all CEPS the currently logged-in user is connected to.
       var futs = await Future.wait([
                                                                             
-                                      (!appState.gotAllPeqs ? 
+                                      (!appState.gotUserPeqs ? 
                                        updateUserPeqs( container, context, getAll: true ) :
                                        new Future<bool>.value(true) ),
                                       

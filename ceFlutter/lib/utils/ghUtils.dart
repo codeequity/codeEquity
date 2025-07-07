@@ -19,7 +19,6 @@ import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 
-
 // Post request to GitHub
 Future<http.Response> _postGH( PAT, postData, name ) async {
    // print( "Warning.  postGH fired. " + postData + " " + name );
@@ -41,10 +40,19 @@ Future<http.Response> _postGH( PAT, postData, name ) async {
    return response;
 }
 
-Future<List<PEQ>> updateGHPeqs( context, container, CEProject cep ) async {
+Future<List<PEQ>> updateGHPeqs( container ) async {
    final appState  = container.state;
    List<PEQ> peqs = [];
 
+   final postData = '{"Endpoint": "ceMD", "Request": "getBuilderPAT", "host": "GitHub" }'; // XXX
+   final response = await postCE( appState, postData );
+   // print( "XXX " + PAT.statusCode.toString() );
+   final builderPAT = json.decode( utf8.decode( response.bodyBytes ));
+   // print( "XXX " + builderPAT.toString() );
+
+
+   
+   
    return peqs;
 }
 

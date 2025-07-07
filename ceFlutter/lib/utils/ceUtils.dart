@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/widgetUtils.dart';
@@ -25,6 +26,24 @@ String enumToStr(Object? o) => (o ?? "").toString().split('.').last;
 
 T enumFromStr<T>(String key, List<T> values) => values.firstWhere((v) => key == enumToStr(v),
                                                                   orElse: (() { print( "Warning " + key + " not found"); return values[values.length - 1]; }));
+
+// Post request to ceServer
+Future<http.Response> postCE( appState, postData ) async {
+   print( "Warning.  postCE fired. " + postData.toString() );
+
+   final gatewayURL = Uri.parse( appState.CESERVER_ENDPOINT );
+                                                               
+   final response =
+      await http.post(
+         gatewayURL,
+         headers: { 'Content-Type': 'application/json' },
+         body: postData
+         );
+
+   if (response.statusCode != 201 && response.statusCode != 204) { print( "Error.  CE Server post error " + postData ); }
+   
+   return response;
+}
 
 
 
@@ -294,7 +313,7 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
          }).toList();
 
       List<List<PEQ>> cepPeqs = await Future.wait( futs );   // all peqs for all ceps user is part of
-      appState.gotAllPeqs = true;
+      appState.gotUserPeqs = true;
       
       // each peq has ceHolderId. accumulate per, put into appState.userPeqs
       // Note: peqs do not cross CEP boundaries
@@ -319,7 +338,7 @@ Future<void> updateCEPeqs( container, context ) async {
    // Get all peqs for currently selected CEP
    String cep   = appState.selectedCEProject;
    assert( cep != "" );
-   
+
    if( appState.cePeqs[ cep ] == null ) {
       print( "building peq data for " + cep );
       appState.cePeqs[ cep ] = await fetchPEQs( context, container, '{ "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": "$cep", "allAccrued": "true" }}' );
@@ -327,10 +346,10 @@ Future<void> updateCEPeqs( container, context ) async {
 
 }
 
-Future<List<PEQ>> updateHostPeqs( context, container, CEProject cep ) async {
+Future<List<PEQ>> updateHostPeqs( container, CEProject cep ) async {
    List<PEQ> res = [];
    if( cep.hostPlatform == "GitHub" ) {
-      res = await updateGHPeqs( context, container, cep );
+      res = await updateGHPeqs( container );
    }
    else {
       print( "Error, host platform not yet implemented." );

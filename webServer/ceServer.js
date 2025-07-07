@@ -37,10 +37,11 @@ ceServer.use(express.static(path.join(__dirname, 'public')));
 ceServer.use(express.static(path.join(__dirname, 'public-flutter')));
 
 import * as ceRouter from './routes/ceRouter.js';
-ceServer.use('/archive/github', ceRouter.router);
-ceServer.use('/github/testing', ceRouter.router);
+ceServer.use('/ceServer/server', ceRouter.router);  // hosts send peq updates here
+ceServer.use('/ceServer/ceMD', ceRouter.router);    // ceMD interacts with ceServer here
+ceServer.use('/github/testing', ceRouter.router);   // ce-github testing interacts with ceServer here
 
-import * as flutterRouter from './routes/flutterRouter.js';
-ceServer.use('/update/github', flutterRouter.router);
+// import * as flutterRouter from './routes/flutterRouter.js';
+// ceServer.use('/update/github', flutterRouter.router);
 
 export default ceServer;

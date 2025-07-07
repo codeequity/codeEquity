@@ -13,6 +13,7 @@ import fifoQ    from  '../components/queue.js' ;
 import hist     from  '../components/histogram.js' ;
 import circBuff from  '../components/circBuff.js' ;
 
+import ceMD     from  './ceMDHandler.js' ;
 import testing  from  './gh/githubTestHandler.js' ;
 import * as ghr from  './gh/githubRouter.js' ;
 
@@ -254,6 +255,7 @@ router.post('/:location?', async function (req, res) {
 
     // invisible, mostly
     if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing( hostLinks, ceJobs, ceProjects, ceNotification, req.body, res ); }
+    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "ceMD" )    { return ceMD( req.body, res ); }
 
     let jd     = new jobData();
     jd.reqBody = req.body;
