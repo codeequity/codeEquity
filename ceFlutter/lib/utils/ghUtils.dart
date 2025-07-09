@@ -19,7 +19,6 @@ import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 
-
 // Post request to GitHub
 Future<http.Response> _postGH( PAT, postData, name ) async {
    // print( "Warning.  postGH fired. " + postData + " " + name );
@@ -41,10 +40,36 @@ Future<http.Response> _postGH( PAT, postData, name ) async {
    return response;
 }
 
-Future<List<PEQ>> updateGHPeqs( context, container, CEProject cep ) async {
+Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
    final appState  = container.state;
    List<PEQ> peqs = [];
 
+   String host  = cep.hostPlatform;
+   String cepId = cep.ceProjectId; 
+   assert( host == "GitHub" );
+   
+   var postData = '{"Endpoint": "ceMD", "Request": "getBuilderPAT", "host": "$host" }';
+   var response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return peqs;
+   }
+   // print( "XXX " + response.statusCode.toString() );
+   final builderPAT = json.decode( utf8.decode( response.bodyBytes ));
+   print( "XXX " + builderPAT.toString() );
+
+   
+   // Have cep, gives me repo name per cepId,  have hostOrg.
+   print( cep.repositories.toString() );
+   postData = '{"Endpoint": "ceMD", "Request": "getHPeqs", "PAT": "$builderPAT", "host": "$host", "cepId": "$cepId" }'; 
+   response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return peqs;
+   }
+   peqs = json.decode( utf8.decode( response.bodyBytes ));
+   print( "XXX " + peqs.toString() );
+   
    return peqs;
 }
 

@@ -19,4 +19,12 @@ async function getAuths( authData, host, pms, org, actor ) {
     if( host == config.HOST_GH ) { await gha.getAuths( authData, pms, org, actor ); }
 }
 
-export {getAuths};
+// get ceServer's builder PAT
+async function getHostPAT( host ) {
+    let retVal = -1;
+    if( host == config.HOST_GH ) { retVal = await gha.getPAT( config.CE_ACTOR ); }
+    console.log( "ceAuth getPat val", retVal );
+    return retVal
+}
+
+export {getAuths, getHostPAT};

@@ -120,6 +120,8 @@ async function getPAT( actor ) {
     else if( actor == config.TEST_ACTOR )       { fname = config.TEST_PAT_PATH; }
     else if( actor == config.CROSS_TEST_ACTOR ) { fname = config.CROSS_PAT_PATH; }
     else if( actor == config.MULTI_TEST_ACTOR ) { fname = config.MULTI_PAT_PATH; }
+
+    console.log( "getPat", fname );
     
     try { PAT = fs.readFileSync(fname, 'utf8'); }
     catch(e) { console.log('Error:', e.stack); }

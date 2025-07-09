@@ -254,7 +254,7 @@ async function testAssignment( authData, testLinks, td ) {
     // 1. Create PEQ issue, add to proj
     const kp = "1000 " + config.PEQ_LABEL;
     console.log( "Make newly peq'd issue" );
-    let assData = await gh2tu.makeIssue( authData, td, ISS_ASS, [] );     // [id, number, title]  
+    let assData = await gh2tu.makeIssue( authData, td, ISS_ASS, [] );     // [id, number, cardId, title]  
 
     let newLabel = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, kp, 1000 );
     await gh2tu.addLabel( authData, newLabel.id, assData );
@@ -911,10 +911,12 @@ async function testLabelMods( authData, testLinks, td ) {
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL; 
 
-	await utils.sleep( 1500 );	
+	await utils.sleep( 1500 );
+	// NOTE updateLabel returns subtest, but we don't catch it here so settle time can go crazy and still claim success.
+	//      labHelp confirms that GH made the change, and updateLabel failure confirms that ceServer never got the notice.
+	//      XXX this is incomplete - ceServer needs to do some work here, needs the notification.
 	labNP1 = await tu.settleWithVal( "Label mods newName", getLabHelp, authData, td, "newName" );
 	await gh2tu.updateLabel( authData, labNP1, {name: pl105, description: "newDesc"} );
-
 	testStatus = await labHelp( authData, td, pl105, pl105, "PEQ value: 105", testStatus );
 	tu.testReport( testStatus, "Label mods H" );
 

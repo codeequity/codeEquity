@@ -53,10 +53,10 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 }
 
 // During bad xfer, an issue is created in a cross CEProject repo.  
-// XXX Was a permission error.  If this does not fail by 6/25, eliminate function
+// XXX Was a permission error.  If this does not fail by 6/25, eliminate function.  Fail 7/8  2x same spot... perms change???
 async function waitDelIssue( authData, issueId ) {
     console.log( "Attempting to delete xferd issue", issueId );
-    // await utils.sleep( 2000 ); 
+    await utils.sleep( 2000 ); 
     await ghV2.remIssue( authData, issueId );
 }
 
@@ -532,6 +532,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 					      utils.getToday() ); 
 		}
 		// mysteriously, can getFullIssue above, but sometimes GH is not ready to delete it here.  Don't wait
+		// XXX not sent 7/8/25
 		waitDelIssue( authData, newIssueId );  
 
 		// a sibling notification 'label' MAY be generated.  If so, remove it.

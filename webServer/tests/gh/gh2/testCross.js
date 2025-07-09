@@ -204,30 +204,32 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     console.log( "TRANSFER BEGINNING" );  
     console.log( "baseF: ", issueF.id, repo.id );
     await gh2tu.transferIssue( authDataF, issueF.id, repo.id );
-    await utils.sleep( 2000 );
+    // failed transfer ends up deleting both the original issue (issDatF) and the intended issue, creating a new issue in the old spot.
+    // Can take a little while for GH to recover.
+    await utils.sleep( 4000 );
 
     // Original issue is gone - no linkage in transfer-to area and no original issueId (id changes on fail)
     testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, issDatF, testStatus );
 
     // The transfer was rejected, led to this new issue in same spot with all same data
+    // XXX If this new issue is not created in time again, do settle wait.
     const newFIssue  = await gh2tu.findIssueByName( authDataF, tdF, issDatF[3] );
     let oldIdF = issDatF[0];
     issDatF[0] = newFIssue.id;
     issDatF[1] = newFIssue.number;
     console.log( issDatF, oldIdF );
     console.log( newFIssue );
-
+    
     // 2 assignees only after ingest.
     testStatus = await gh2tu.checkSituatedIssue( authDataF, testLinks, tdF, FcrossLoc, issDatF, cardF, testStatus,
 						 {assign: 0, label: 704, lblCount: 1, peqCEP: tdF.ceProjectId, peqIID: issDatF[0], newCardId: true} );    
-
+    
     let newPeqsF = awsUtils.getPEQs( authDataF, { "ceProjectId": tdF.ceProjectId });
-
+    
     // PAct is found from oldCEP
     sub         = [peqF.PEQId, oldIdF, tdF.ghRepoId, tdF.ceProjectId, issDatF[0], tdF.ghRepoId, tdF.ceProjectId ];
     testStatus  = await gh2tu.checkPact( authDataF, testLinks, tdF, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, config.PACTNOTE_BXFR, testStatus, {sub: sub, depth: 8} );
 
-    
     tu.testReport( testStatus, "Test " + testName );
     return testStatus;
 }

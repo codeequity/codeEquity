@@ -122,7 +122,7 @@ class _CEApprovalState extends State<CEApprovalFrame> {
 
    void _loadPeqs() async {
       // get all CEPS the currently logged-in user is connected to.  
-      if( !appState.gotAllPeqs )
+      if( !appState.gotUserPeqs )
       {
          await updateUserPeqs( container, context, getAll: true );
          setState(() => peqsLoaded = true );
@@ -285,7 +285,7 @@ class _CEApprovalState extends State<CEApprovalFrame> {
       hdiv      = Wrap( spacing: 0, children: [fatPad, hd] );   
 
 
-      if( appState.gotAllPeqs )   { peqsLoaded = true; }
+      if( appState.gotUserPeqs )   { peqsLoaded = true; }
       if( appState.verbose >= 2 ) { print( "APPROVAL BUILD. " + peqsLoaded.toString() ); }
       
       return getPending( context );
