@@ -200,6 +200,19 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
     }
 }
 
+async function getHostPeqs( PAT, ghLinks, host, cepId, cursor ) {
+    // XXX ceMD status frame needs to warn if not yet fully ingested.
+
+    // aws peqs: amount, hostHolderId, hostIssueId, hostIssueTitle, hostRepoId, hostProjectSub, peqType
+    // gh issue: peq labels, assignees, issueId, title, repoId, link:projName,colName, open?  plan.   closed?  label sez pend or accr
+    //             issue        issue     link    link   link       link               issue                     
+    
+    // will need labels, assignees i.e. get lots of issues...
+
+    
+    return [];
+}
+
 // Create in No Status.
 async function cardIssue( authData, pid, issDat ) {
     assert( issDat.length == 3 );
@@ -1412,7 +1425,7 @@ async function getProjIdFromPeq ( authData, iid ) {
 	    .then( async (raw) => {
 		// bad transfers leave peqs laying around with old, removed hostIssueIds until ingest is run
 		if( !utils.validField( raw.data, "node" )) {
-		    console.log( "YYY POPPY", iid );
+		    console.log( "YYY Bad xfer peq laying around until ingest runs", iid );
 		    return pid;
 		}
 		let cards = raw.data.node.projectItems;
@@ -1903,6 +1916,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
 
 export {getHostLinkLoc};
+export {getHostPeqs};
 
 export {createIssue};
 export {getIssue};

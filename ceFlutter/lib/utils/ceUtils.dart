@@ -32,13 +32,21 @@ Future<http.Response> postCE( appState, postData ) async {
    print( "Warning.  postCE fired. " + postData.toString() );
 
    final gatewayURL = Uri.parse( appState.CESERVER_ENDPOINT );
-                                                               
-   final response =
-      await http.post(
+
+   var response = null;
+   try {
+      response = await http.post(
          gatewayURL,
          headers: { 'Content-Type': 'application/json' },
          body: postData
          );
+   }
+   catch( e, stacktrace ) {
+      print( "\n" );
+      print( e );
+      http.Response err = new http.Response("blat", 401 );
+      return err;
+   }
 
    if (response.statusCode != 201 && response.statusCode != 204) { print( "Error.  CE Server post error " + postData ); }
    
@@ -349,7 +357,7 @@ Future<void> updateCEPeqs( container, context ) async {
 Future<List<PEQ>> updateHostPeqs( container, CEProject cep ) async {
    List<PEQ> res = [];
    if( cep.hostPlatform == "GitHub" ) {
-      res = await updateGHPeqs( container );
+      res = await updateGHPeqs( container, cep );
    }
    else {
       print( "Error, host platform not yet implemented." );

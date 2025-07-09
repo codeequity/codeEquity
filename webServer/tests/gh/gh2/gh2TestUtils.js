@@ -790,9 +790,9 @@ async function updateLabel( authData, label, updates ) {
     // XXX
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
     let query = "label edited " + newName + locator;
-    let res = await tu.settleWithVal( "update label", tu.findNotice, query );
+    let res = await tu.settleWithVal( "verify update label", tu.findNotice, query );
 
-    subTest = tu.checkEq( res !== 'undefined' && res, true, subTest, "Label update notification not sent" );
+    subTest = tu.checkEq( ((res !== 'undefined') && res), true,    subTest, "Label update notification not sent" );
     await utils.sleep( tu.MIN_DELAY );
     return subTest;
 }
