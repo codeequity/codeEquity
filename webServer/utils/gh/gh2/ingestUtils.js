@@ -177,7 +177,11 @@ async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, spli
 	specials.columnId = splitLink.hostColumnId; 
 
 	// Won't be issuing non-bot-sent 'close' or moved notice, handle here.  ACCR already opted out.
-	if( splitLink.hostColumnName == config.PROJ_COLS[config.PROJ_PEND] ) { specials.propose = true; }
+	// However, do need to convince GH to close the newly rebuilt issue.
+	if( splitLink.hostColumnName == config.PROJ_COLS[config.PROJ_PEND] ) {
+	    specials.propose = true; 
+	    ghV2.updateIssue( authData, pd.issueId, "state", config.GH_ISSUE_CLOSED );
+	}	    
 	console.log( "Split time specials", specials );
 
 	// Add assignees to pd, so recordPD pushes them to aws.  hostUserName.  Should be present as we are splitting a GH issue here.

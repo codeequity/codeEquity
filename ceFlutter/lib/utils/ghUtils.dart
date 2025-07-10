@@ -42,7 +42,7 @@ Future<http.Response> _postGH( PAT, postData, name ) async {
 
 Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
    final appState  = container.state;
-   List<PEQ> peqs = [];
+   List<PEQ> hostPeqs = [];
 
    String host  = cep.hostPlatform;
    String cepId = cep.ceProjectId; 
@@ -52,25 +52,33 @@ Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
-      return peqs;
+      return hostPeqs;
    }
-   // print( "XXX " + response.statusCode.toString() );
    final builderPAT = json.decode( utf8.decode( response.bodyBytes ));
-   print( "XXX " + builderPAT.toString() );
-
    
    // Have cep, gives me repo name per cepId,  have hostOrg.
    print( cep.repositories.toString() );
-   postData = '{"Endpoint": "ceMD", "Request": "getHPeqs", "PAT": "$builderPAT", "host": "$host", "cepId": "$cepId" }'; 
+   postData = '{"Endpoint": "ceMD", "Request": "getHPeqs", "PAT": "$builderPAT", "cepId": "$cepId" }'; 
    response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
-      return peqs;
+      return hostPeqs;
    }
-   peqs = json.decode( utf8.decode( response.bodyBytes ));
-   print( "XXX " + peqs.toString() );
+
+   /*
+   final peqs = json.decode( utf8.decode( response.bodyBytes ));
+
+   for( final peq in peqs ) {
+      print( "WORKING " + peq.toString() + peq.hostHolderId );  // XXX not an object, can't access values
+      
+      hostPeqs.add( new PEQ( id: "", ceProjectId: cepId, ceHolderId: [], hostHolderId: new List<String>.from( peq.hostHolderId ),
+                              ceGrantorId: "", hostProjectSub: new List<String>.from( peq.hostProjectSub ), amount: int.parse( peq.amount ),
+                              vestedPerc: 0.0, accrualDate: "", peqType: peq.peqType, hostIssueTitle: peq.hostIssueTitle,
+                              hostIssueId: peq.hostIssueId, hostRepoId: peq.hostRepoId, active: true ) );
+   }
+   */
    
-   return peqs;
+   return hostPeqs;
 }
 
 // This needs to work for both users and orgs

@@ -11,7 +11,7 @@ async function handler( hostLinks, reqBody, res ) {
 
     let retVal = -1;
     if(      reqBody.Request == "getBuilderPAT" ) { retVal = await ceAuth.getHostPAT( reqBody.host ); }
-    else if( reqBody.Request == "getHPeqs" )      { retVal = await ghV2.getHostPeqs( reqBody.PAT, hostLinks, reqBody.host, reqBody.cepId, -1 ); }
+    else if( reqBody.Request == "getHPeqs" )      { retVal = await ghV2.getHostPeqs( reqBody.PAT, hostLinks, reqBody.cepId ); }
 
     // console.log( "XXX ceMD handler returns", retVal );
     return res

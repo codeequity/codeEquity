@@ -8,7 +8,7 @@ class PEQ {
    final String  id;
    String        ceProjectId;
    List<String>  ceHolderId;   // assignees evenly splitting this PEQ, CEUIDs    
-   List<String>  hostHolderId; // assignees evenly splitting this PEQ, hostUserNames
+   List<String>  hostHolderId; // assignees evenly splitting this PEQ, hostUserNames (yes, names for now not ids.  see ingest:_convert)
    String        ceGrantorId;
 
    PeqType       peqType;      // usually from Master, sub created/inprogress, sub pending/accrued
