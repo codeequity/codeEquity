@@ -131,7 +131,7 @@ export const PACTNOTE_BLEA = "PEQ label edit attempt";
 export const PACTNOTE_BLDA = "PEQ label delete attempt";
 
 // server job queue operation
-export const MAX_DELAYS = 30;          // how many times can a single job be pushed further back into queue waiting for pre-req job to complete
+export const MAX_DELAYS = 50;          // how many times can a single job be pushed further back into queue waiting for pre-req job to complete
 export const STEP_COST  = 500;         // expanding job backoff timer, step_cost * delay number millis
 export const NOQ_DELAY  = 10000;       // backoff millis if queue is empty
 export const MIN_DIFF   = 1000;        // min timestamp diff in millis for new insert location 

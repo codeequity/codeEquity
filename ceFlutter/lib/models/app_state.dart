@@ -64,6 +64,7 @@ class AppState {
    late Map< String, Person    >         cePeople;        // all cePeople, ce uid to person
    late Map< String, List<PEQAction> >   userPActs;       // ceUser    : pactions                          
    late Map< String, List<PEQ> >         cePeqs;          // cep id    : all peqs for a given CEP.  
+   late Map< String, List<PEQ> >         hostPeqs;        // cep id    : all host peqs for a given CEP.  
    late Map< String, List<PEQ> >         userPeqs;        // ceUser    : some or all peqs for all CEPS that user is part of
                                                           //             accessed by CEUID for the pact actor, plus unassign_user for uningested
    late Map< String, List<HostAccount> > ceHostAccounts;  // ceUser    : HostAccount (list with 1 HA per platform)
@@ -160,6 +161,7 @@ class AppState {
       userPActs       = new Map<String, List<PEQAction>>();
       userPeqs        = new Map<String, List<PEQ>>();
       cePeqs          = new Map<String, List<PEQ>>();
+      hostPeqs        = new Map<String, List<PEQ>>();
       ceHostAccounts  = new Map<String, List<HostAccount>>();
       cePEQSummaries  = new Map<String, PEQSummary?>();
       ceHostLinks     = new Map<String, Linkage?>();

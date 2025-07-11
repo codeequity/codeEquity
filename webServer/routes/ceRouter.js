@@ -137,7 +137,10 @@ async function demoteJob( jd ) {
 
     const stepCost = config.STEP_COST * oldDelayCount;   
     
-    // If nothing else is here yet, delay.  Overall, will delay over a minute 
+    // If nothing else is here yet, delay.  Overall, will delay over a minute
+    // XXX this doesn't work well if the only other thing on the queue is from the same issue.
+    //     for example, blast might have 2 assignees, 1 label, and the two assignees keep the queue popping.
+    //     this has failed 2x in 3 years.  if it fails again, modify the else condition strategy.
     if( jobs.length <= 1 ) {
 	console.log( "... empty queue, sleep" );
 	let delay = oldDelayCount > 4 ? stepCost + config.NOQ_DELAY : stepCost;

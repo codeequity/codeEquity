@@ -29,7 +29,7 @@ T enumFromStr<T>(String key, List<T> values) => values.firstWhere((v) => key == 
 
 // Post request to ceServer
 Future<http.Response> postCE( appState, postData ) async {
-   print( "Warning.  postCE fired. " + postData.toString() );
+   // print( "postCE fired. " + postData.toString() );
 
    final gatewayURL = Uri.parse( appState.CESERVER_ENDPOINT );
 
@@ -348,22 +348,23 @@ Future<void> updateCEPeqs( container, context ) async {
    assert( cep != "" );
 
    if( appState.cePeqs[ cep ] == null ) {
-      print( "building peq data for " + cep );
+      print( "building CE peq data for " + cep );
       appState.cePeqs[ cep ] = await fetchPEQs( context, container, '{ "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": "$cep", "allAccrued": "true" }}' );
    }
 
 }
 
-Future<List<PEQ>> updateHostPeqs( container, CEProject cep ) async {
-   List<PEQ> res = [];
+Future<void> updateHostPeqs( container, CEProject cep ) async {
+   final appState  = container.state;
+
    if( cep.hostPlatform == "GitHub" ) {
-      res = await updateGHPeqs( container, cep );
+      print( "building host peq data for " + cep.ceProjectId );
+      appState.hostPeqs[ cep.ceProjectId ] = await updateGHPeqs( container, cep );
    }
    else {
       print( "Error, host platform not yet implemented." );
       assert( false );
    }
-   return res;
 }
 
 void confirmedNav( context, container, newPage ) {

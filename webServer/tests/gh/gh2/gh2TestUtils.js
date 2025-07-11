@@ -1659,7 +1659,8 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 		subTest = await checkUntrackedIssue( authData, testLinks, td, origLoc, issDat,   card,      subTest, {lblCount: labelCnt } );
 		subTest = await checkUntrackedIssue( authData, testLinks, td, newLoc,  splitDat, splitCard, subTest, {lblCount: labelCnt } );
 	    }
-	    subTest = tu.checkEq( issue.state, splitIss.state,    subTest, "Issues have different state" );
+	    // Bad test.  Can split plan into pend as a proposal. Will have different state.
+	    // subTest = tu.checkEq( issue.state, splitIss.state,    subTest, "Issues have different state" );
 	    
 	    // check assign
 	    subTest = tu.checkEq( issue.assignees.length, assignCnt,    subTest, "Issue assignee count" );

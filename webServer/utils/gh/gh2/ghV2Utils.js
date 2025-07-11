@@ -186,7 +186,7 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 		// console.log( "UTILS: Links", linkData );
 		
 		// Wait.  Data is modified
-		if( items !== -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( authData, pid, locData, linkData, items.pageInfo.endCursor ); }
+		if( items !== -1 && items.pageInfo.hasNextPage ) { await getHostLinkLoc( authData, pid, locData, linkData, items.pageInfo.endCursor ); }
 	    });
     }
     catch( e ) {
@@ -200,17 +200,118 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
     }
 }
 
-async function getHostPeqs( PAT, ghLinks, host, cepId, cursor ) {
-    // XXX ceMD status frame needs to warn if not yet fully ingested.
+// aws peqs: amount, hostHolderId, hostIssueId, hostIssueTitle, hostRepoId, hostProjectSub, peqType
+// gh issue: peq labels, assignees, issueId, title, repoId, link:projName,colName, open?  plan.   closed?  label sez pend or accr
+//             issue        issue     link    link   link       link               issue                     
+async function getHostPeqs( PAT, ghLinks, ceProjId ) {
+    let retVal = [];
+    let authData = { pat: PAT, who: "ceMD" };
 
-    // aws peqs: amount, hostHolderId, hostIssueId, hostIssueTitle, hostRepoId, hostProjectSub, peqType
-    // gh issue: peq labels, assignees, issueId, title, repoId, link:projName,colName, open?  plan.   closed?  label sez pend or accr
-    //             issue        issue     link    link   link       link               issue                     
+    if( ghLinks == -1 ) { return retVal; }
     
-    // will need labels, assignees i.e. get lots of issues...
+    let links   = await ghLinks.getLinks( authData, { ceProjId: ceProjId } );
 
-    
-    return [];
+    // Get issue data by repoId.  Build issue map to speed this up.
+    let repoIds = [];
+    let issues = {};
+    links.forEach( link => {
+	// console.log( link );
+	if( !repoIds.includes( link.hostRepoId ) ) { repoIds.push( link.hostRepoId ); }
+	issues[link.hostIssueId] = {
+	    amount:         -1,
+	    hostHolderId:   [],
+	    hostIssueId:    link.hostIssueId,
+	    hostIssueTitle: link.hostIssueName,
+	    hostRepoId:     link.hostRepoId,
+	    hostProjectSub: [ link.hostProjectName, link.hostColumnName ],
+	    peqType:        config.PEQTYPE_END
+	};
+    });
+
+    // Need to check for multiple pages of issues per repo
+    for( let r = 0; r < repoIds.length; r++ ) {
+	let cursor        = -1;
+	let getNextPage   = true;
+	let repoId = repoIds[r];
+	while( getNextPage ) {
+	    let query1 = `query($nodeId: ID!) {
+	      node( id: $nodeId ) {
+              ... on Repository {
+                  issues(first:100) {
+                     pageInfo { hasNextPage, endCursor }
+                     edges {node { id title number body state
+                        assignees(first: 100) {edges {node {id login }}}
+                        labels(first: 100) {edges {node {id name }}}
+                    }}}}
+              }}`;
+	    let queryN = `query($nodeId: ID!, $cursor: String!) {
+	      node( id: $nodeId ) {
+              ... on Repository {
+                  issues(first:100 after: $cursor) {
+                     pageInfo { hasNextPage, endCursor }
+                     edges {node { id title number body state
+                        assignees(first: 100) {edges {node {id login }}}
+                        labels(first: 100) {edges {node {id name }}}
+                    }}}}
+              }}`;
+	    
+	    let query     = cursor === -1 ? query1 : queryN;
+	    let variables = cursor === -1 ? {"nodeId": repoId } : {"nodeId": repoId, "cursor": cursor };
+	    query = JSON.stringify({ query, variables });
+	    
+	    try {
+		await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "getHostPeqs" )
+		    .then( async (raw) => {
+			let allItems = raw.data.node.issues;
+			let items    = allItems.edges;
+			for( let i = 0; i < items.length; i++ ) {
+			    let iss = items[i].node;
+			    
+			    // skip non-peq issue
+			    // console.log( "WORKING", iss.title );
+			    if( typeof issues[ iss.id ] === 'undefined' ) { console.log( "YYY skipping non-peq", iss.title ); continue; }
+
+			    // Matching aws peqs, so keep id not name
+			    issues[ iss.id ].hostHolderId =  iss.assignees.edges.map( edge => edge.node.id );
+			    
+			    // This code is called when checking on errors between GH and CEServer.
+			    // There should be only 1 peq label, but in case, make a crazy one that status checking will catch
+			    let labels = iss.labels.edges.map( edge => edge.node );
+			    let amount = 0;
+			    labels.forEach( label => {
+				amount = amount * 10 + ghUtils.parseLabelName( label.name );
+			    });
+			    issues[ iss.id ].amount = amount;
+			    
+			    // require issue state and col name to be consistent with peq type
+			    const pend = config.PROJ_COLS[ config.PROJ_PEND ];
+			    const accr = config.PROJ_COLS[ config.PROJ_ACCR ];
+			    console.log( iss.title, iss.state, pend, accr, issues[ iss.id ].hostProjectSub[1] );
+			    if( iss.state == config.GH_ISSUE_OPEN && issues[ iss.id ].hostProjectSub[1] != pend && issues[ iss.id ].hostProjectSub[1] != accr ) {
+				issues[ iss.id ].peqType = config.PEQTYPE_PLAN;
+			    }
+			    else if( iss.state == config.GH_ISSUE_CLOSED && issues[ iss.id ].hostProjectSub[1] == pend ) {
+				issues[ iss.id ].peqType = config.PEQTYPE_PEND;
+			    }
+			    else if( iss.state == config.GH_ISSUE_CLOSED && issues[ iss.id ].hostProjectSub[1] == accr ) {
+				issues[ iss.id ].peqType = config.PEQTYPE_GRANT;
+			    }
+			    
+			    // console.log( issues[ iss.id ] );
+			}
+			
+			if( allItems !== -1 && allItems.pageInfo.hasNextPage ) { cursor = allItems.pageInfo.endCursor; }
+			else                                                   { getNextPage = false; }
+		    });
+	    }
+	    catch( e ) { retVal = await ghUtils.errorHandler( "getHostPeqs", e, getHostPeqs, PAT, ghLinks, ceProjId ); }
+	}
+    }
+
+    Object.values(issues).forEach( v => retVal.push( v ) );
+    console.log( retVal );
+
+    return retVal;
 }
 
 // Create in No Status.

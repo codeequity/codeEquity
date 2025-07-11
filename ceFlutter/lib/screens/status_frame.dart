@@ -64,13 +64,11 @@ class _CEStatusState extends State<CEStatusFrame> {
    late Widget vSpace; 
    
    late bool     peqsLoaded;
-   late bool     hpeqsLoaded;
 
    @override
    void initState() {
       super.initState();
       peqsLoaded = false;
-      hpeqsLoaded = false;
    }
 
    @override
@@ -78,23 +76,17 @@ class _CEStatusState extends State<CEStatusFrame> {
       super.dispose();
    }
 
-   void _loadPeqs() async {
-      print( "in _loadPeqs, " + peqsLoaded.toString() );
+   void _loadPeqs( CEProject cep ) async {
       if( !peqsLoaded ) {
-         // get all peqs for the currently selected CEP
-         await updateCEPeqs( container, context );
+         await Future.wait([
+                              updateCEPeqs( container, context ),           // get all ce peqs for the currently selected CEP
+                              updateHostPeqs( container, cep )             // get all host peqs for the currently selected CEP
+                              ]);
+         
          setState(() => peqsLoaded = true );
       }
    }
-   // host peqs are not (yet?) stored in the app, do not anticipate a need to carry them around
-   void _loadHPeqs( CEProject cep ) async {
-      if( !hpeqsLoaded ) {
-         // get all peqs for the currently selected CEP
-         await updateHostPeqs( container, cep );
-         setState(() => hpeqsLoaded = true );
-      }
-   }
-
+   
    // XXX would be interesting to add average latency of last few requests to aws and gh.. small font (43)
    List<List<Widget>> _getHeader( cep ) {
       List<List<Widget>> header = [];
@@ -182,9 +174,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       if( cep == null ) { return makeTitleText( appState, "First choose Project from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
 
-      if( appState.cePeqs[ cep.ceProjectId ] != null ) { peqsLoaded = true; }     
-      _loadPeqs();
-      _loadHPeqs( cep! );
+      if( appState.cePeqs[ cep.ceProjectId ] != null  &&  appState.hostPeqs[ cep.ceProjectId ] != null   ) { peqsLoaded  = true; }     
+      _loadPeqs( cep! );
 
       List<List<Widget>> pending = [];
       
@@ -231,7 +222,6 @@ class _CEStatusState extends State<CEStatusFrame> {
       Widget hd = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
       hdiv      = Wrap( spacing: 0, children: [fatPad, hd] );   
 
-      // if( appState.gotAllPeqs )   { peqsLoaded = true; }
       if( appState.verbose >= 2 ) { print( "STATUS BUILD. " ); }
       
       return getStatus( context );
