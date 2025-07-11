@@ -65,18 +65,21 @@ Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
       return hostPeqs;
    }
 
-   /*
    final peqs = json.decode( utf8.decode( response.bodyBytes ));
 
    for( final peq in peqs ) {
-      print( "WORKING " + peq.toString() + peq.hostHolderId );  // XXX not an object, can't access values
+
+      var dynamicHHId = new List<String>.from( peq['hostHolderId'] );
+      var dynamicHPS  = new List<String>.from( peq['hostProjectSub'] );
+      var peqType     = enumFromStr<PeqType>( peq['peqType'], PeqType.values );
       
-      hostPeqs.add( new PEQ( id: "", ceProjectId: cepId, ceHolderId: [], hostHolderId: new List<String>.from( peq.hostHolderId ),
-                              ceGrantorId: "", hostProjectSub: new List<String>.from( peq.hostProjectSub ), amount: int.parse( peq.amount ),
-                              vestedPerc: 0.0, accrualDate: "", peqType: peq.peqType, hostIssueTitle: peq.hostIssueTitle,
-                              hostIssueId: peq.hostIssueId, hostRepoId: peq.hostRepoId, active: true ) );
+      // print( "WORKING " + peq.toString() + dynamicHHId.toString() );
+      
+      hostPeqs.add( new PEQ( id: "", ceProjectId: cepId, ceHolderId: [], hostHolderId: dynamicHHId,
+                              ceGrantorId: "", hostProjectSub: dynamicHPS, amount: peq['amount'],
+                              vestedPerc: 0.0, accrualDate: "", peqType: peqType, hostIssueTitle: peq['hostIssueTitle'],
+                              hostIssueId: peq['hostIssueId'], hostRepoId: peq['hostRepoId'], active: true ) );
    }
-   */
    
    return hostPeqs;
 }
