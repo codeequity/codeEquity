@@ -1,6 +1,8 @@
 import 'dart:ui';       // pointerKinds
 import 'dart:convert';  // json encode/decode
 
+import 'package:collection/collection.dart'; // list eq
+import 'package:flutter/foundation.dart';    // setEquals  
 import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
@@ -12,6 +14,8 @@ import 'package:ceFlutter/utils/ghUtils.dart';     // to load host peqs for comp
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
+
+Function eq    = const ListEquality().equals;
 
 
 // XXX move to WidgetUtils?
@@ -115,10 +119,16 @@ class _CEStatusState extends State<CEStatusFrame> {
       if( peqsLoaded ) {
          // appState.cePeqs.keys.forEach( print );
          assert( appState.cePeqs[ cep.ceProjectId ] != null );
-         peqs = appState.cePeqs[ cep.ceProjectId ]!;
+         peqs     = appState.cePeqs[ cep.ceProjectId ]!;
          planPeqs = peqs.where( (PEQ p) => p.peqType == PeqType.plan ).toList();
          pendPeqs = peqs.where( (PEQ p) => p.peqType == PeqType.pending ).toList();
          accrPeqs = peqs.where( (PEQ p) => p.peqType == PeqType.grant ).toList();
+
+         hPeqs     = appState.hostPeqs[ cep.ceProjectId ]!;
+         planHPeqs = hPeqs.where( (PEQ p) => p.peqType == PeqType.plan ).toList();
+         pendHPeqs = hPeqs.where( (PEQ p) => p.peqType == PeqType.pending ).toList();
+         accrHPeqs = hPeqs.where( (PEQ p) => p.peqType == PeqType.grant ).toList();
+
       }
       String cePeqDetail  = planPeqs.length.toString() + " planned, " + pendPeqs.length.toString() + " pending, " + accrPeqs.length.toString() + " accrued.";
       String cePeqs       = peqs.length.toString() + " PEQs: " + cePeqDetail;
@@ -146,7 +156,48 @@ class _CEStatusState extends State<CEStatusFrame> {
       return header;
    }
 
-   List<List<Widget>> _getBody() {
+   bool _same( PEQ p, PEQ? h ) {
+      bool res = true;
+      if( h == null ) { return false; }
+
+      // hostPeqs are constructed based on host state, which has no access to some information
+      // res = res && p.id == h!.id;
+      // res = res && p.accrualDate == h!.accrualDate;
+      // res = res && p.vestedPerc == h!.vestedPerc;
+      // res = res && p.active == h!.active;
+      // res = res && p.ceHolderId     != null && eq( p.ceHolderId,     h!.ceHolderId );   
+
+      res = res && p.ceProjectId != null && p.ceProjectId    == h!.ceProjectId;
+      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.ceProjectId + " " + h!.ceProjectId ); }
+      
+      res = res && p.peqType != null && p.peqType        == h!.peqType;
+      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + enumToStr( p.peqType ) + " " + enumToStr( h!.peqType )); }
+
+      // amounts in ceMD may be off by one. there are no fractions, two assignees...
+      res = res && p.amount != null && ( p.amount - h!.amount ).abs() <= 1;
+      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.amount.toString() + " " + h!.amount.toString() ); }
+
+      res = res && p.hostRepoId != null && p.hostRepoId     == h!.hostRepoId;
+      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostRepoId + " " + h!.hostRepoId ); }
+
+      res = res && p.hostIssueId != null && p.hostIssueId    == h!.hostIssueId;
+      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostIssueId + " " + h!.hostIssueId ); }
+
+      res = res && p.hostIssueTitle != null && p.hostIssueTitle == h!.hostIssueTitle;
+      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostIssueTitle + " " + h!.hostIssueTitle ); }
+      
+      res = res && p.hostHolderId != null && setEquals( p.hostHolderId.toSet(), h!.hostHolderId.toSet() );
+      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostHolderId.toString() + " " + h!.hostHolderId.toString() ); }
+
+      res = res && p.hostProjectSub != null && eq( p.hostProjectSub, h!.hostProjectSub );
+      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostProjectSub.toString() + " " + h!.hostProjectSub.toString() ); }
+
+      if( !res ) { print( p ); print( h! ); }
+
+      return res; 
+   }
+   
+   List<List<Widget>> _getBody( cep ) {
       Widget miniSpace = Container( height: 1, width: 3 * appState.GAP_PAD );
 
       List<List<Widget>> bad  = [];
@@ -163,6 +214,29 @@ class _CEStatusState extends State<CEStatusFrame> {
       good.add( [ miniSpace, makeIWTitleText( appState, agrText, false, 1 ), empty, empty, empty ] );
       good.add( [ hdiv, empty, empty, empty, empty ] );      
 
+      if( peqsLoaded ) {
+         Map<String, PEQ> peqs  = {};
+         Map<String, PEQ> hPeqs = {};
+         appState.cePeqs[ cep.ceProjectId ]!.forEach( (p) {
+               assert( p.hostIssueId != null );
+               peqs[p.hostIssueId] = p;
+            });
+         appState.hostPeqs[ cep.ceProjectId ]!.forEach( (p) {
+               assert( p.hostIssueId != null );
+               hPeqs[p.hostIssueId] = p;
+            });
+         
+         peqs.forEach( (k,v) {
+               PEQ? h = hPeqs[k];
+               if( _same( v, h ) ) {
+                  print( "Good added " + v.hostIssueTitle );
+                  good.add( [ miniSpace, makeIWTitleText( appState, v.hostIssueTitle, false, 1 ), empty, empty, empty ] ); }
+               else                {
+                  print( "Bad added " + v.hostIssueTitle );
+                  bad.add( [ miniSpace, makeIWTitleText( appState, v.hostIssueTitle, false, 1 ), empty, empty, empty ] ); }
+            });
+      }
+      
       body.addAll( bad );
       body.addAll( good );
       
@@ -181,7 +255,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       
       pending.addAll( _getHeader( cep! ) );
 
-      pending.addAll( _getBody( ) );
+      pending.addAll( _getBody( cep! ) );
 
       return ScrollConfiguration(
          behavior: MyCustomScrollBehavior(),
