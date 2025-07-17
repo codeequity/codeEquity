@@ -65,14 +65,23 @@ class _CEStatusState extends State<CEStatusFrame> {
    late Widget fatPad;
    late Widget midPad;
    late Widget hdiv;
+   late Widget interiorHdiv;
    late Widget vSpace; 
    
-   late bool     peqsLoaded;
-
+   late bool peqsLoaded;
+   late bool goodStatus;     
+   late bool hideGone; 
+   late bool hideBad; 
+   late bool hideGood; 
+   
    @override
    void initState() {
       super.initState();
       peqsLoaded = false;
+      goodStatus = true;
+      hideGone   = true;
+      hideBad    = true;
+      hideGood   = true;
    }
 
    @override
@@ -143,19 +152,21 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       Widget status = makeTitleText( appState, "STATUS", buttonWidth, false, 1, fontSize: 16);
       Widget good   = makeTitleText( appState, "GOOD", buttonWidth, false, 1, color: Colors.green );
-      Widget repair = makeTitleText( appState, "REPAIR", buttonWidth, false, 1, fontSize: 16);
+      Widget repair = makeTitleText( appState, "REPAIR", buttonWidth, false, 1, color: Colors.red, fontSize: 16);
       Widget cePeqW   = makeTitleText( appState, cePeqs, buttonWidth * 3.0, false, 1 );
       Widget hostPeqW = makeTitleText( appState, hostPeqs, buttonWidth * 3.0, false, 1 );
       
       header.add( [ Container( height: appState.MID_PAD ), empty, empty, empty, empty ] );
       header.add( [ miniSpace, status, minierSpace, t1, t2 ] );
-      header.add( [ miniSpace, good, minierSpace, cePeqW, hostPeqW ] );
+      if( goodStatus ) { header.add( [ miniSpace, good, minierSpace, cePeqW, hostPeqW ] ); }
+      else             { header.add( [ miniSpace, repair, minierSpace, cePeqW, hostPeqW ] ); }
       header.add( [ hdiv, empty, empty, empty, empty ] );      
       
       widget.headerTop = header.length;
       return header;
    }
 
+   // p is from aws, h is host
    bool _same( PEQ p, PEQ? h ) {
       bool res = true;
       if( h == null ) { return false; }
@@ -196,30 +207,61 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       return res; 
    }
+
    
    List<List<Widget>> _getBody( cep ) {
-      Widget miniSpace = Container( height: 1, width: 3 * appState.GAP_PAD );
+      Widget miniHor    = Container( height: 1, width: 3 * appState.GAP_PAD );
+      final buttonWidth = 100;
 
+      Widget expandGone = GestureDetector(
+         onTap: () async { setState(() => hideGone = false ); },
+         key: Key( 'hideGone'),
+         child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
+         );
+      
+      Widget shrinkGone = GestureDetector(
+         onTap: () async { setState(() => hideGone = true ); },
+         key: Key( 'hideGone'),
+         child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
+         );
+      
+      Widget expandBad = GestureDetector(
+         onTap: () async { setState(() => hideBad = false ); },
+         key: Key( 'hideBad'),
+         child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
+         );
+      
+      Widget shrinkBad = GestureDetector(
+         onTap: () async { setState(() => hideBad = true ); },
+         key: Key( 'hideBad'),
+         child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
+         );
+      
+      Widget expandGood = GestureDetector(
+         onTap: () async { setState(() => hideGood = false ); },
+         key: Key( 'hideGood'),
+         child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
+         );
+      
+      Widget shrinkGood = GestureDetector(
+         onTap: () async { setState(() => hideGood = true ); },
+         key: Key( 'hideGood'),
+         child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
+         );
+      
+      
+      List<List<Widget>> gone = [];
       List<List<Widget>> bad  = [];
       List<List<Widget>> good = [];
       List<List<Widget>> body = [];
-
-      String disText = "For each PEQ mismatch below, select which version is correct and CE MD will make repairs.";
-      bad.add( [ miniSpace, makeIWTitleText( appState, "Needing Repair", false, 1, fontSize: 16 ), empty, empty, empty ] );
-      bad.add( [ miniSpace, makeIWTitleText( appState, disText, false, 1 ), empty, empty, empty ] );
-      bad.add( [ hdiv, empty, empty, empty, empty ] );      
-
-      String agrText = "These are shown for completeness, nothing needs be done for these PEQs.";
-      good.add( [ miniSpace, makeIWTitleText( appState, "In Agreement", false, 1, fontSize: 16 ), empty, empty, empty ] );
-      good.add( [ miniSpace, makeIWTitleText( appState, agrText, false, 1 ), empty, empty, empty ] );
-      good.add( [ hdiv, empty, empty, empty, empty ] );      
 
       if( peqsLoaded ) {
          Map<String, PEQ> peqs  = {};
          Map<String, PEQ> hPeqs = {};
          appState.cePeqs[ cep.ceProjectId ]!.forEach( (p) {
                assert( p.hostIssueId != null );
-               peqs[p.hostIssueId] = p;
+               // do NOT filter on active, that is a host-specific flag
+               peqs[p.hostIssueId] = p; 
             });
          appState.hostPeqs[ cep.ceProjectId ]!.forEach( (p) {
                assert( p.hostIssueId != null );
@@ -228,15 +270,52 @@ class _CEStatusState extends State<CEStatusFrame> {
          
          peqs.forEach( (k,v) {
                PEQ? h = hPeqs[k];
-               if( _same( v, h ) ) {
+               if( !v.active && v.peqType == PeqType.grant ) {
+                  print( "Not displayed on host: " + v.hostIssueTitle );
+                  gone.add( [ miniHor, makeIWTitleText( appState, v.hostIssueTitle, false, 1 ), empty, empty, empty ] );
+               }
+               else if( _same( v, h ) ) {
                   print( "Good added " + v.hostIssueTitle );
-                  good.add( [ miniSpace, makeIWTitleText( appState, v.hostIssueTitle, false, 1 ), empty, empty, empty ] ); }
+                  good.add( [ miniHor, makeIWTitleText( appState, v.hostIssueTitle, false, 1 ), empty, empty, empty ] ); }
                else                {
                   print( "Bad added " + v.hostIssueTitle );
-                  bad.add( [ miniSpace, makeIWTitleText( appState, v.hostIssueTitle, false, 1 ), empty, empty, empty ] ); }
+                  bad.add( [ miniHor, makeIWTitleText( appState, v.hostIssueTitle, false, 1 ), empty, empty, empty ] ); }
+            });
+         hPeqs.forEach( (k,v) {
+               PEQ? p = peqs[k];
+               if( p == null ) { print("Extra host peq: " + v.toString() ); }
             });
       }
+
+      if( bad.length > 0 ) { setState(() => goodStatus = false ); }
+
       
+      String goneText = gone.length.toString() + " PEQs are granted and in good standing, but no longer visible on the host.";
+      if( hideGone ) { gone = []; }
+      gone.insert( 0, [ miniHor, makeTitleText( appState, "Unavailable on host", 1.5*buttonWidth, false, 1, fontSize: 16 ),
+                        makeTitleText( appState, goneText, 6*buttonWidth, false, 1 ),
+                        hideGone ? expandGone : shrinkGone, empty ] );
+      gone.insert( 1, [ interiorHdiv, empty, empty, empty, empty ] );      
+      
+      String disText = bad.length.toString() + " PEQs are mismatched. Select which version CE MD should use to  make repairs.";
+      if( hideBad ) { bad = []; }
+      bad.insert( 0, [ miniHor, makeTitleText( appState, "Needing Repair", 1.5*buttonWidth, false, 1, fontSize: 16 ),
+                       makeTitleText( appState, disText, 6*buttonWidth, false, 1 ),
+                       hideBad ? expandBad : shrinkBad, empty ] );
+      bad.insert( 1, [ interiorHdiv, empty, empty, empty, empty ] );      
+
+      String agrText = good.length.toString() + " PEQs match. Nothing needs be done here.";
+      if( hideGood ) { good = []; }
+      good.insert( 0, [ miniHor, makeTitleText( appState, "In Agreement", 1.5*buttonWidth, false, 1, fontSize: 16 ),
+                        makeTitleText( appState, agrText, 6*buttonWidth, false, 1 ),
+                        hideGood ? expandGood : shrinkGood, empty ] );
+      good.insert( 1, [ interiorHdiv, empty, empty, empty, empty ] );      
+
+      gone.insert( 0, [ vSpace, empty, empty, empty, empty ] );
+      gone.add( [ vSpace, empty, empty, empty, empty ] );
+      bad.add(  [ vSpace, empty, empty, empty, empty ] );
+      
+      body.addAll( gone );
       body.addAll( bad );
       body.addAll( good );
       
@@ -288,13 +367,16 @@ class _CEStatusState extends State<CEStatusFrame> {
       svWidth        = appState.MAX_PANE_WIDTH; 
 
       empty     = Container( width: 1, height: 1 );
-      gapPad    = Container( width: appState.GAP_PAD*2.0, height: 1 );
+      gapPad    = Container( width: appState.GAP_PAD*3.0, height: 1 );
       fatPad    = Container( width: appState.FAT_PAD, height: 1 );
       midPad    = Container( width: appState.MID_PAD, height: 1 );
-      vSpace    = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
+      vSpace    = Container( width: 1, height: appState!.CELL_HEIGHT * .4 );
 
-      Widget hd = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
-      hdiv      = Wrap( spacing: 0, children: [fatPad, hd] );   
+      Widget hd    = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
+      hdiv         = Wrap( spacing: 0, children: [fatPad, hd] );   
+
+      Widget intHd = makeHDivider( appState, svWidth - 12*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
+      interiorHdiv = Wrap( spacing: 0, children: [gapPad, intHd] );   
 
       if( appState.verbose >= 2 ) { print( "STATUS BUILD. " ); }
       

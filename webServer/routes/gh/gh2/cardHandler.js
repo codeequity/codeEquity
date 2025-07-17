@@ -25,6 +25,15 @@ https://developer.github.com/v3/issues/#create-an-issue
 // del column triggers a move (to no status), not delete.
 // No matter the source, delete card must manage linkage, peq, pact, etc.
 // No matter the source, card will not exist in GH when this is called.
+// Accrued issues, cards - allow delete accr.  GH is a planning tool, not the legal repository of PEQ status.  ceFlutter/aws is the legal repo.
+//   The Active flag for an accrued PEQ is primarily for GH purposes, indicating if it is visible there or not.
+//   Accrued peqs are set in stone, permanently visible in ceFlutter, no matter 'active' status.
+//   For any other PEQ, the meanings for GH, AWS, ceFlutter coincide.
+//   In the past, ceServer deleted ACCR into unclaimed:accr
+//   This was complicated, confusing, and had no beneficial use case.
+//   When you accrue peq1, we promise that legally it will not change.  In records, unchanged.
+//   When GH deletes it, it is deleted in GH, but already setInStone in ceFlutter.
+
 async function deleteCard( authData, ghLinks, ceProjects, pd, cardId, fromIssue ) {
     // issue:del calls here first, if still has linkage.
     let issueExists = typeof fromIssue === 'undefined' ? true : !fromIssue;  

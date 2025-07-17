@@ -206,6 +206,7 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 async function getHostPeqs( PAT, ghLinks, ceProjId ) {
     let retVal = [];
     let authData = { pat: PAT, who: "ceMD" };
+    console.log( "Got host peqs" );
 
     if( ghLinks == -1 ) { return retVal; }
     
@@ -269,7 +270,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			    
 			    // skip non-peq issue
 			    // console.log( "WORKING", iss.title );
-			    if( typeof issues[ iss.id ] === 'undefined' ) { console.log( "YYY skipping non-peq", iss.title ); continue; }
+			    if( typeof issues[ iss.id ] === 'undefined' ) { console.log( " .. skipping non-peq", iss.title ); continue; }
 
 			    // Matching aws peqs, so keep id not name
 			    issues[ iss.id ].hostHolderId =  iss.assignees.edges.map( edge => edge.node.id );
@@ -286,7 +287,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			    // require issue state and col name to be consistent with peq type
 			    const pend = config.PROJ_COLS[ config.PROJ_PEND ];
 			    const accr = config.PROJ_COLS[ config.PROJ_ACCR ];
-			    console.log( iss.title, iss.state, pend, accr, issues[ iss.id ].hostProjectSub[1] );
+			    // console.log( iss.title, iss.state, pend, accr, issues[ iss.id ].hostProjectSub[1] );
 			    if( iss.state == config.GH_ISSUE_OPEN && issues[ iss.id ].hostProjectSub[1] != pend && issues[ iss.id ].hostProjectSub[1] != accr ) {
 				issues[ iss.id ].peqType = config.PEQTYPE_PLAN;
 			    }
@@ -296,6 +297,9 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			    else if( iss.state == config.GH_ISSUE_CLOSED && issues[ iss.id ].hostProjectSub[1] == accr ) {
 				issues[ iss.id ].peqType = config.PEQTYPE_GRANT;
 			    }
+
+			    // remove issues that are untracked
+			    if( amount <= 0 ) { delete issues[ iss.id ]; }
 			    
 			    // console.log( issues[ iss.id ] );
 			}
@@ -309,7 +313,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
     }
 
     Object.values(issues).forEach( v => retVal.push( v ) );
-    console.log( retVal );
+    // console.log( retVal );
 
     return retVal;
 }

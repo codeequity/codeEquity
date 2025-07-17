@@ -564,8 +564,8 @@ class _CEProfileState extends State<CEProfilePage> {
 
         // CEProject repos
         for( int i = 0; i < cep.repositories.length; i++ ) {
-           if( i == 0 ) { repoWid = [ makeTitleText( appState, "   " + cep.repositories[i], textWidth, false, 1 ) ]; }
-           else         { repoWid.add( makeTitleText( appState, "   " + cep.repositories[i], textWidth, false, 1 )); }
+           if( i == 0 ) { repoWid = [ makeTitleText( appState, "   " + cep.repositories[i]  + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 ) ]; }
+           else         { repoWid.add( makeTitleText( appState, "   " + cep.repositories[i] + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 )); }
         }
 
         // CEProject Collabs
