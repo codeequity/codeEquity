@@ -303,7 +303,7 @@ Future<bool> validateProjGarlic( WidgetTester tester ) async {
    expect( txt, findsOneWidget );
    txt = find.text( '   GH Classic' );
    expect( txt, findsOneWidget );
-   txt = find.text( '   connieCE\/GarlicBeer' );
+   txt = find.text( '   connieCE\/GarlicBeer (R_kgDOFusK9Q)' );
    expect( txt, findsOneWidget );
 
    txt = find.text( 'Collaborators' );

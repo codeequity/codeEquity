@@ -58,6 +58,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    late double frameMinWidth;
    late double svWidth;
    late double svHeight;
+   late double baseWidth;
    static const frameMinHeight = 300;
    
    late Widget empty;  // XXX formalize
@@ -65,14 +66,17 @@ class _CEStatusState extends State<CEStatusFrame> {
    late Widget fatPad;
    late Widget midPad;
    late Widget hdiv;
-   late Widget interiorHdiv;
    late Widget vSpace; 
    
    late bool peqsLoaded;
    late bool goodStatus;     
    late bool hideGone; 
    late bool hideBad; 
-   late bool hideGood; 
+   late bool hideGood;
+
+   late List<List<Widget>> peqHeader;
+
+   final listHeaders = ["Issue Title", "Host Project", "PEQ", "Assignee(s)" ];
    
    @override
    void initState() {
@@ -82,6 +86,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       hideGone   = true;
       hideBad    = true;
       hideGood   = true;
+      peqHeader  = [];
    }
 
    @override
@@ -210,9 +215,8 @@ class _CEStatusState extends State<CEStatusFrame> {
 
    
    List<List<Widget>> _getBody( cep ) {
-      Widget miniHor    = Container( height: 1, width: 3 * appState.GAP_PAD );
       final buttonWidth = 100;
-
+      
       Widget expandGone = GestureDetector(
          onTap: () async { setState(() => hideGone = false ); },
          key: Key( 'hideGone'),
@@ -249,7 +253,7 @@ class _CEStatusState extends State<CEStatusFrame> {
          child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
          );
       
-      
+      Widget categoryHDiv = makeHDivider( appState, 4.5 * baseWidth, appState.GAP_PAD*3.0, appState.GAP_PAD * 2.0, tgap: appState.TINY_PAD );
       List<List<Widget>> gone = [];
       List<List<Widget>> bad  = [];
       List<List<Widget>> good = [];
@@ -269,17 +273,32 @@ class _CEStatusState extends State<CEStatusFrame> {
             });
          
          peqs.forEach( (k,v) {
+               // XXX shared with approvalFrame
+               assert( v.hostProjectSub.length >= 2 );
+               List<String> userNames = v.ceHolderId.map( (ceuid) {
+                     assert( appState.cePeople[ceuid] != null );
+                     return appState.cePeople[ceuid]!.userName;
+                  }).toList();
+               Widget title   = Container( width: 1.5*baseWidth, child: makeTableText( appState, v.hostIssueTitle, baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+               Widget hproj   = Container( width: 1.5*baseWidth, child: makeTableText( appState, v.hostProjectSub[ v.hostProjectSub.length - 2 ], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+               Widget peqVal  = Container( width: 0.6*baseWidth, child: makeTableText( appState, v.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+               Widget assign  = Container( width: 1.8*baseWidth, child: makeTableText( appState, userNames.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+
+               title = paddedLTRB( title, 2 * appState.GAP_PAD, 0, 0, 0 );
+               
                PEQ? h = hPeqs[k];
                if( !v.active && v.peqType == PeqType.grant ) {
-                  print( "Not displayed on host: " + v.hostIssueTitle );
-                  gone.add( [ miniHor, makeIWTitleText( appState, v.hostIssueTitle, false, 1 ), empty, empty, empty ] );
+                  if( gone.length < 1 ) { gone.addAll( peqHeader ); }
+                  gone.add( [ empty, title, hproj, peqVal, assign ] );
                }
                else if( _same( v, h ) ) {
-                  print( "Good added " + v.hostIssueTitle );
-                  good.add( [ miniHor, makeIWTitleText( appState, v.hostIssueTitle, false, 1 ), empty, empty, empty ] ); }
-               else                {
-                  print( "Bad added " + v.hostIssueTitle );
-                  bad.add( [ miniHor, makeIWTitleText( appState, v.hostIssueTitle, false, 1 ), empty, empty, empty ] ); }
+                  if( good.length < 1 ) { good.addAll( peqHeader ); }                  
+                  good.add( [ empty, title, hproj, peqVal, assign ] );
+               }
+               else {
+                  if( bad.length < 1 ) { bad.addAll( peqHeader ); }
+                  bad.add( [ empty, title, hproj, peqVal, assign ] );
+               }
             });
          hPeqs.forEach( (k,v) {
                PEQ? p = peqs[k];
@@ -289,27 +308,32 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       if( bad.length > 0 ) { setState(() => goodStatus = false ); }
 
-      
-      String goneText = gone.length.toString() + " PEQs are granted and in good standing, but no longer visible on the host.";
+      int peqLen      = gone.length > 0 ? (gone.length - peqHeader.length) : 0;
+      String goneText = peqLen.toString() + " PEQs are granted and in good standing, but no longer visible on the host.";
+      Widget category = paddedLTRB( makeTitleText( appState, "Unavailable on host", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );
       if( hideGone ) { gone = []; }
-      gone.insert( 0, [ miniHor, makeTitleText( appState, "Unavailable on host", 1.5*buttonWidth, false, 1, fontSize: 16 ),
+      gone.insert( 0, [ empty, category,
                         makeTitleText( appState, goneText, 6*buttonWidth, false, 1 ),
                         hideGone ? expandGone : shrinkGone, empty ] );
-      gone.insert( 1, [ interiorHdiv, empty, empty, empty, empty ] );      
-      
-      String disText = bad.length.toString() + " PEQs are mismatched. Select which version CE MD should use to  make repairs.";
+      gone.insert( 1, [ categoryHDiv, empty, empty, empty, empty ] );      
+
+      peqLen         = bad.length > 0 ? (bad.length - peqHeader.length) : 0;
+      String disText = peqLen.toString() + " PEQs are mismatched. Select which version CE MD should use to  make repairs.";
+      category       = paddedLTRB( makeTitleText( appState, "Needing Repair", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );      
       if( hideBad ) { bad = []; }
-      bad.insert( 0, [ miniHor, makeTitleText( appState, "Needing Repair", 1.5*buttonWidth, false, 1, fontSize: 16 ),
+      bad.insert( 0, [ empty, category, 
                        makeTitleText( appState, disText, 6*buttonWidth, false, 1 ),
                        hideBad ? expandBad : shrinkBad, empty ] );
-      bad.insert( 1, [ interiorHdiv, empty, empty, empty, empty ] );      
+      bad.insert( 1, [ categoryHDiv, empty, empty, empty, empty ] );      
 
-      String agrText = good.length.toString() + " PEQs match. Nothing needs be done here.";
+      peqLen         = good.length > 0 ? (good.length - peqHeader.length) : 0;
+      String agrText = peqLen.toString() + " PEQs match. Nothing needs be done here.";
+      category       = paddedLTRB( makeTitleText( appState, "In Agreement", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );            
       if( hideGood ) { good = []; }
-      good.insert( 0, [ miniHor, makeTitleText( appState, "In Agreement", 1.5*buttonWidth, false, 1, fontSize: 16 ),
+      good.insert( 0, [ empty, category, 
                         makeTitleText( appState, agrText, 6*buttonWidth, false, 1 ),
                         hideGood ? expandGood : shrinkGood, empty ] );
-      good.insert( 1, [ interiorHdiv, empty, empty, empty, empty ] );      
+      good.insert( 1, [ categoryHDiv, empty, empty, empty, empty ] );      
 
       gone.insert( 0, [ vSpace, empty, empty, empty, empty ] );
       gone.add( [ vSpace, empty, empty, empty, empty ] );
@@ -358,6 +382,8 @@ class _CEStatusState extends State<CEStatusFrame> {
    @override
    Widget build(BuildContext context) {
 
+      // XXX hdiv, minispace, minierspace,
+      
       container = widget.appContainer;   
       appState  = container.state;
       assert( appState != null );
@@ -365,20 +391,30 @@ class _CEStatusState extends State<CEStatusFrame> {
       frameMinWidth  = appState.MIN_PANE_WIDTH;
       svHeight       = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
       svWidth        = appState.MAX_PANE_WIDTH; 
-
+      baseWidth      = ( frameMinWidth - 2*appState.FAT_PAD ) / 2.0;
+      
       empty     = Container( width: 1, height: 1 );
       gapPad    = Container( width: appState.GAP_PAD*3.0, height: 1 );
       fatPad    = Container( width: appState.FAT_PAD, height: 1 );
       midPad    = Container( width: appState.MID_PAD, height: 1 );
       vSpace    = Container( width: 1, height: appState!.CELL_HEIGHT * .4 );
+      Widget miniHor   = Container( height: 1, width: 1.7 * appState.GAP_PAD );       // XXX
 
       Widget hd    = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
       hdiv         = Wrap( spacing: 0, children: [fatPad, hd] );   
 
-      Widget intHd = makeHDivider( appState, svWidth - 12*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
-      interiorHdiv = Wrap( spacing: 0, children: [gapPad, intHd] );   
-
       if( appState.verbose >= 2 ) { print( "STATUS BUILD. " ); }
+
+      Widget row0 = Container( width: 1.5*baseWidth, child: makeTableText( appState, listHeaders[0], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
+      Widget row1 = Container( width: 1.5*baseWidth, child: makeTableText( appState, listHeaders[1], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
+      Widget row2 = Container( width: 0.6*baseWidth, child: makeTableText( appState, listHeaders[2], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
+      Widget row3 = Container( width: 1.8*baseWidth, child: makeTableText( appState, listHeaders[3], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
+
+      if( peqHeader.length < 1 ) {
+         peqHeader.add( [ vSpace, vSpace, vSpace, vSpace, vSpace ] );
+         peqHeader.add( [ miniHor, row0, row1, row2, row3 ] );
+         peqHeader.add( [ makeHDivider( appState, 3.5 * baseWidth, appState.GAP_PAD*3.5, appState.GAP_PAD * 4.0 ), empty, empty, empty, empty ] );
+      }
       
       return getStatus( context );
    }
