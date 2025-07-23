@@ -247,21 +247,41 @@ Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
       );
 }
 
-Widget makeClickTableText( appState, title, hov, nohov, width, height, wrap, lines, { fontSize = 14, mux = 1.0 } ) {
-   return MouseRegion(
-      onEnter: hov,
-      onExit: nohov,
-      cursor: SystemMouseCursors.click,
-      child: Padding(
-      padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
-      child: IntrinsicWidth(
-         key: Key( title ),
-         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                     style: TextStyle(fontSize: fontSize,
-                                      fontWeight: FontWeight.bold,
-                                      color:      title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
-                                      decoration: title == appState.hoverChunk ? TextDecoration.underline : null ))))
+Widget makeClickTableText( appState, title, hov, nohov, width, wrap, lines, { fontSize = 14, mux = 1.0, iw = true } ) {
+   Widget mr = Container( width: 1 );
+   if( iw ) {
+      mr = MouseRegion(
+         onEnter: hov,
+         onExit: nohov,
+         cursor: SystemMouseCursors.click,
+         child: Padding(
+            padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+            child: IntrinsicWidth(
+               key: Key( title ),
+               child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                           style: TextStyle(fontSize: fontSize,
+                                            fontWeight: FontWeight.bold,
+                                            color:      title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
+                                            decoration: title == appState.hoverChunk ? TextDecoration.underline : null ))))
          );
+   }
+   else {
+      mr = MouseRegion(
+         onEnter: hov,
+         onExit: nohov,
+         cursor: SystemMouseCursors.click,
+         child: Padding(
+            padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+            child: Container( width: width,
+               key: Key( title ),
+               child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                           style: TextStyle(fontSize: fontSize,
+                                            fontWeight: FontWeight.bold,
+                                            color:      title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
+                                            decoration: title == appState.hoverChunk ? TextDecoration.underline : null ))))
+         );
+   }
+   return mr;
 }
 
 Widget makeIndentedActionableText( appState, title, hov, nohov, width, wrap, lines ) {

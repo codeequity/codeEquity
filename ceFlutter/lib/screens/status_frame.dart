@@ -213,8 +213,48 @@ class _CEStatusState extends State<CEStatusFrame> {
       return res; 
    }
 
+   void _chooseCEPeq() {
+      print( "choose ce" );
+      Navigator.of( context ).pop();
+   }
+
+   void _chooseHostPeq() {
+      print( "Choose host" );
+      Navigator.of( context ).pop();
+   }
+   void _cancel() {
+      print( "Cancel" );
+      Navigator.of( context ).pop();
+   }
+
    
-   List<List<Widget>> _getBody( cep ) {
+
+   Future<void> _detailPopup( context, cePeq, hostPeq, status ) async {
+      List<Widget> buttons = [];
+      if( status == "bad" ) {
+         buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CE Peq"), onPressed: _chooseCEPeq ));
+         buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Use Host Peq"), onPressed: _chooseHostPeq ));
+      }
+      buttons.add( new TextButton( key: Key( 'Cancel Peq fix' ), child: new Text("Cancel"), onPressed: _cancel ));
+
+      Widget scrollBody = Column(
+         mainAxisSize: MainAxisSize.max,
+         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+         children: [] );
+      
+      await showDialog(
+         context: context,
+         builder: (BuildContext context) {
+                          return AlertDialog(
+                             scrollable: true,
+                             title: new Text( "blah blah" ),
+                             content: scrollBody,
+                             actions: buttons);
+                       });
+   }
+      
+   
+   List<List<Widget>> _getBody( context, cep ) {
       final buttonWidth = 100;
       
       Widget expandGone = GestureDetector(
@@ -271,20 +311,36 @@ class _CEStatusState extends State<CEStatusFrame> {
                assert( p.hostIssueId != null );
                hPeqs[p.hostIssueId] = p;
             });
-         
+
+         void _unsetTitle( PointerEvent event ) {
+            setState(() { appState.hoverChunk = ""; });
+         }
+
          peqs.forEach( (k,v) {
+               void _setTitle( PointerEvent event ) {
+                  setState(() { appState.hoverChunk = v.hostIssueTitle; });
+               }
+               Widget peqDetail = GestureDetector(
+                  onTap: () async
+                  {
+                     print( "Show Detail" );
+                     await _detailPopup( context, v, v, "good" );
+                  },
+                  key: Key( 'peqDetail ' + v.hostIssueId ),
+                  child: makeClickTableText( appState, v.hostIssueTitle,  _setTitle, _unsetTitle, 1.3*baseWidth, false, 1, iw: false )
+                  );
+
+
                // XXX shared with approvalFrame
                assert( v.hostProjectSub.length >= 2 );
                List<String> userNames = v.ceHolderId.map( (ceuid) {
                      assert( appState.cePeople[ceuid] != null );
                      return appState.cePeople[ceuid]!.userName;
                   }).toList();
-               Widget title   = Container( width: 1.5*baseWidth, child: makeTableText( appState, v.hostIssueTitle, baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                Widget hproj   = Container( width: 1.5*baseWidth, child: makeTableText( appState, v.hostProjectSub[ v.hostProjectSub.length - 2 ], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                Widget peqVal  = Container( width: 0.6*baseWidth, child: makeTableText( appState, v.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                Widget assign  = Container( width: 1.8*baseWidth, child: makeTableText( appState, userNames.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
-
-               title = paddedLTRB( title, 2 * appState.GAP_PAD, 0, 0, 0 );
+               Widget title   = paddedLTRB( peqDetail, 2 * appState.GAP_PAD, 0, 0, 0 );
                
                PEQ? h = hPeqs[k];
                if( !v.active && v.peqType == PeqType.grant ) {
@@ -358,7 +414,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       
       pending.addAll( _getHeader( cep! ) );
 
-      pending.addAll( _getBody( cep! ) );
+      pending.addAll( _getBody( context, cep! ) );
 
       return ScrollConfiguration(
          behavior: MyCustomScrollBehavior(),
