@@ -217,7 +217,6 @@ class _CEStatusState extends State<CEStatusFrame> {
       print( "choose ce" );
       Navigator.of( context ).pop();
    }
-
    void _chooseHostPeq() {
       print( "Choose host" );
       Navigator.of( context ).pop();
@@ -229,7 +228,7 @@ class _CEStatusState extends State<CEStatusFrame> {
 
    
 
-   Future<void> _detailPopup( context, cePeq, hostPeq, status ) async {
+   Future<void> _detailPopup( context, PEQ cePeq, PEQ? hostPeq, String status ) async {
       List<Widget> buttons = [];
       if( status == "bad" ) {
          buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CE Peq"), onPressed: _chooseCEPeq ));
@@ -237,18 +236,100 @@ class _CEStatusState extends State<CEStatusFrame> {
       }
       buttons.add( new TextButton( key: Key( 'Cancel Peq fix' ), child: new Text("Cancel"), onPressed: _cancel ));
 
+      List<Widget> comparison = [];
+      // ceData   hostData  x or check
+      if( hostPeq == null ) {
+         print( "hostPeq is missing" );
+      }
+      else {
+         print( "Got " + cePeq.hostIssueTitle );
+         var mux = 1.0;
+         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                               Container( width: mux*baseWidth ),
+                               Container( width: 1.3*baseWidth, child: makeTableText( appState, "CodeEquity Data", baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               Container( width: 1.3*baseWidth, child: makeTableText( appState, "Host Data", baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               Container( width: 0.3*baseWidth, child: makeTableText( appState, "Match?", baseWidth, appState!.CELL_HEIGHT, false, 1 ))
+                                  ]) );
+         comparison.add( makeHDivider( appState, 3 * baseWidth, appState.GAP_PAD*3.0, appState.GAP_PAD * 2.0, tgap: appState.TINY_PAD ));
+
+         bool same = cePeq.hostIssueTitle == hostPeq.hostIssueTitle;
+         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                                  Container( width: mux*baseWidth, child: makeTableText( appState, "Title:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.hostIssueTitle, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.hostIssueTitle, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                                  ]) );
+
+         same = cePeq.ceProjectId == hostPeq.ceProjectId;
+         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                                  Container( width: mux*baseWidth, child: makeTableText( appState, "CE Project Id:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.ceProjectId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.ceProjectId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                                  ]) );
+
+         same = ( hostPeq.amount != null && (cePeq.amount - hostPeq.amount ).abs() <= 1 );
+         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                                  Container( width: mux*baseWidth, child: makeTableText( appState, "PEQ Amount:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                                  ]) );
+
+         same = cePeq.hostRepoId == hostPeq.hostRepoId;
+         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                                  Container( width: mux*baseWidth, child: makeTableText( appState, "Host Repo Id:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.hostRepoId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.hostRepoId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                                  ]) );
+
+         same = cePeq.hostIssueId == hostPeq.hostIssueId;
+         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                                  Container( width: mux*baseWidth, child: makeTableText( appState, "Host Issue Id:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.hostIssueId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.hostIssueId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                                  ]) );
+         
+         same = hostPeq.hostHolderId != null && setEquals( cePeq.hostHolderId.toSet(), hostPeq.hostHolderId.toSet() );
+         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                                  Container( width: mux*baseWidth, child: makeTableText( appState, "Host Assignees:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  makeToolTip(
+                                     Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.hostHolderId.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                     cePeq.hostHolderId.toString(), wait: true ),
+                                  makeToolTip(
+                                     Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.hostHolderId.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                     hostPeq.hostHolderId.toString(), wait: true ),
+                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                                  ]) );
+         
+         same = hostPeq.hostProjectSub != null && eq( cePeq.hostProjectSub, hostPeq.hostProjectSub );
+         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                                  Container( width: mux*baseWidth, child: makeTableText( appState, "Host Location:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  makeToolTip(
+                                     Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.hostProjectSub.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                     cePeq.hostProjectSub.toString(), wait: true ),
+                                  makeToolTip(
+                                     Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.hostProjectSub.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                     hostPeq.hostProjectSub.toString(), wait: true ),
+                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                                  ]) );
+         
+      }
+             
       Widget scrollBody = Column(
          mainAxisSize: MainAxisSize.max,
          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         children: [] );
+         children: comparison );
       
       await showDialog(
          context: context,
          builder: (BuildContext context) {
                           return AlertDialog(
                              scrollable: true,
-                             title: new Text( "blah blah" ),
-                             content: scrollBody,
+                             title: new Text( "CodeEquity vs Host PEQ Data" ),
+                             content: Container( width: 5.0 * baseWidth, child: scrollBody ),
                              actions: buttons);
                        });
    }
@@ -323,8 +404,8 @@ class _CEStatusState extends State<CEStatusFrame> {
                Widget peqDetail = GestureDetector(
                   onTap: () async
                   {
-                     print( "Show Detail" );
-                     await _detailPopup( context, v, v, "good" );
+                     print( "Show Detail " + v.hostIssueTitle );
+                     await _detailPopup( context, v, hPeqs[k], "good" );
                   },
                   key: Key( 'peqDetail ' + v.hostIssueId ),
                   child: makeClickTableText( appState, v.hostIssueTitle,  _setTitle, _unsetTitle, 1.3*baseWidth, false, 1, iw: false )

@@ -1057,14 +1057,14 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     //     Should kill this here, put in a handful in basic flow to ensure cleanUnclaimed when we know it should be.
     //     Use of assignCnt to ignore is poor, but will do until this is rebuilt, only shows in testCross.
     // CHECK github location
-    let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
+    let cardsUnc = td.unclaimCID == config.EMPTY ? [] : await cardsU;
     if( !assignCnt ) {
 	let tCard = []; 
-	if( cards.length > 0 ) { tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false ); }
+	if( cardsUnc.length > 0 ) { tCard = cardsUnc.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false ); }
 	subTest = tu.checkEq( tCard.length, 0,                           subTest, "No unclaimed" );
     }
 
-    cards = await cardsP;
+    let cards = await cardsP;
     let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
 
     // Long GH pauses show their fury here, more likely than not.
@@ -1072,7 +1072,18 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 	console.log( "mCard failure. issDat: ", issDat.toString() );
 	console.log( "               card: ", card.title );
 	console.log( "               loc: ", loc );
-	console.log( "               loc: ", loc.projSub.toString() );
+	for( const c of cards ) {
+	    console.log( "Available cards: " );
+	    if( typeof card.repoId !== 'undefined' && typeof card.issueNum !== 'undefined' ) {
+		console.log( "  ",  c.cardId, c.repoId, c.title, c.issueId, c.issueNum, c.columnId );
+	    }
+	}
+	for( const c of cardsUnc ) {
+	    console.log( "Available unclaimed cards: " );
+	    if( typeof card.repoId !== 'undefined' && typeof card.issueNum !== 'undefined' ) {
+		console.log( "  ",  c.cardId, c.repoId, c.title, c.issueId, c.issueNum, c.columnId );
+	    }
+	}
     }
     
     subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
