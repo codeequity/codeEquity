@@ -18,6 +18,7 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
+import 'package:ceFlutter/models/HostLoc.dart';
 
 // Post request to GitHub
 Future<http.Response> _postGH( PAT, postData, name ) async {
@@ -40,26 +41,35 @@ Future<http.Response> _postGH( PAT, postData, name ) async {
    return response;
 }
 
-Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
+Future<String> getHostPAT( container, CEProject cep ) async {
    final appState  = container.state;
-   List<PEQ> hostPeqs = [];
 
    String host  = cep.hostPlatform;
-   String cepId = cep.ceProjectId; 
    assert( host == "GitHub" );
    
    var postData = '{"Endpoint": "ceMD", "Request": "getBuilderPAT", "host": "$host" }';
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
-      return hostPeqs;
+      return "";
    }
    final builderPAT = json.decode( utf8.decode( response.bodyBytes ));
+   return builderPAT;
+}
+
+Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
+   final appState  = container.state;
+   List<PEQ> hostPeqs = [];
+
+   String cepId = cep.ceProjectId; 
+   
+   final builderPAT = await getHostPAT( container, cep );
+   if( builderPAT == "" ) { return hostPeqs; }
    
    // Have cep, gives me repo name per cepId,  have hostOrg.
    print( cep.repositories.toString() );
-   postData = '{"Endpoint": "ceMD", "Request": "getHPeqs", "PAT": "$builderPAT", "cepId": "$cepId" }'; 
-   response = await postCE( appState, postData );
+   var postData = '{"Endpoint": "ceMD", "Request": "getHPeqs", "PAT": "$builderPAT", "cepId": "$cepId" }'; 
+   var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
       return hostPeqs;
@@ -82,6 +92,26 @@ Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
    }
    
    return hostPeqs;
+}
+
+Future<List<HostLoc>> getGHLocs( container, CEProject cep, String ghProjectId ) async {
+   final appState  = container.state;
+   List<HostLoc> hostLocs = [];
+
+   final builderPAT = await getHostPAT( container, cep );
+   if( builderPAT == "" ) { return hostLocs; }
+   
+   var postData = '{"Endpoint": "ceMD", "Request": "getHLocs", "PAT": "$builderPAT", "pid": "$ghProjectId" }'; 
+   var response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return hostLocs;
+   }
+
+   Iterable locs = json.decode( utf8.decode( response.bodyBytes ));
+   hostLocs = locs.map( (l) => HostLoc.fromJson( l ) ).toList();
+   
+   return hostLocs;
 }
 
 // This needs to work for both users and orgs

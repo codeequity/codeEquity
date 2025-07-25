@@ -14,6 +14,7 @@ import 'package:ceFlutter/utils/ghUtils.dart';     // to load host peqs for comp
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
+import 'package:ceFlutter/models/HostLoc.dart';
 
 Function eq    = const ListEquality().equals;
 
@@ -106,7 +107,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
    
    // XXX would be interesting to add average latency of last few requests to aws and gh.. small font (43)
-   List<List<Widget>> _getHeader( cep ) {
+   List<List<Widget>> _getHeader( context, cep ) {
       List<List<Widget>> header = [];
 
       final width = ( frameMinWidth - 2*appState.FAT_PAD ) / 2.0;
@@ -184,42 +185,101 @@ class _CEStatusState extends State<CEStatusFrame> {
       // res = res && p.ceHolderId     != null && eq( p.ceHolderId,     h!.ceHolderId );   
 
       res = res && p.ceProjectId != null && p.ceProjectId    == h!.ceProjectId;
-      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.ceProjectId + " " + h!.ceProjectId ); }
+      // if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.ceProjectId + " " + h!.ceProjectId ); }
       
       res = res && p.peqType != null && p.peqType        == h!.peqType;
-      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + enumToStr( p.peqType ) + " " + enumToStr( h!.peqType )); }
+      // if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + enumToStr( p.peqType ) + " " + enumToStr( h!.peqType )); }
 
       // amounts in ceMD may be off by one. there are no fractions, two assignees...
       res = res && p.amount != null && ( p.amount - h!.amount ).abs() <= 1;
-      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.amount.toString() + " " + h!.amount.toString() ); }
+      // if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.amount.toString() + " " + h!.amount.toString() ); }
 
       res = res && p.hostRepoId != null && p.hostRepoId     == h!.hostRepoId;
-      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostRepoId + " " + h!.hostRepoId ); }
+      // if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostRepoId + " " + h!.hostRepoId ); }
 
       res = res && p.hostIssueId != null && p.hostIssueId    == h!.hostIssueId;
-      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostIssueId + " " + h!.hostIssueId ); }
+      // if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostIssueId + " " + h!.hostIssueId ); }
 
       res = res && p.hostIssueTitle != null && p.hostIssueTitle == h!.hostIssueTitle;
-      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostIssueTitle + " " + h!.hostIssueTitle ); }
+      // if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostIssueTitle + " " + h!.hostIssueTitle ); }
       
       res = res && p.hostHolderId != null && setEquals( p.hostHolderId.toSet(), h!.hostHolderId.toSet() );
-      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostHolderId.toString() + " " + h!.hostHolderId.toString() ); }
+      // if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostHolderId.toString() + " " + h!.hostHolderId.toString() ); }
 
       res = res && p.hostProjectSub != null && eq( p.hostProjectSub, h!.hostProjectSub );
-      if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostProjectSub.toString() + " " + h!.hostProjectSub.toString() ); }
+      // if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.hostProjectSub.toString() + " " + h!.hostProjectSub.toString() ); }
 
-      if( !res ) { print( p ); print( h! ); }
+      // if( !res ) { print( p ); print( h! ); }
 
       return res; 
    }
 
-   void _chooseCEPeq() {
-      print( "choose ce" );
-      Navigator.of( context ).pop();
+
+   Future<void> _writeAll( String source ) async {
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+      assert( appState.myHostLinks != null );    // had to select a CEP by now, which runs reloadProjects
+      assert( appState.cePeqs[ appState.selectedCEProject ] != null );
+   
+      print( "Overwrite GitHub for " + cep!.name );
+
+      // 1) check projects & cols, back out if not
+      // get all hostLinks from aws.  identify which are used in peqs.  
+      print( "Confirming Host project locations exist" );
+
+      // peq: ceProjectId plus hostProjectSub
+      // loc: ceProjectId plus hostProjectName, hostColumnName
+      List<HostLoc> awsLocs    = appState.myHostLinks!.locations;  // aws-known host locs 
+      List<HostLoc> activeLocs = [];                              // active locs for CEP on host according to peqs & aws record
+      appState.cePeqs[ appState.selectedCEProject ]!.forEach( (p) {
+            assert( p.hostProjectSub.length == 2 ); 
+            String id  = p.ceProjectId;
+            String hpn = p.hostProjectSub[0];
+            String hcn = p.hostProjectSub[1];
+
+            // Don't already have loc?
+            List<HostLoc> loc = activeLocs.where( (l) => l.ceProjectId == id && l.hostProjectName == hpn && l.hostColumnName == hcn ).toList();
+            if( loc.length == 0 ) {
+               List<HostLoc> aLocs = awsLocs.where( (l) => l.ceProjectId == id && l.hostProjectName == hpn && l.hostColumnName == hcn ).toList();
+               assert( aLocs.length == 1 );
+               activeLocs.add( aLocs[0] );
+            }
+         });
+
+      // XXX make short list of ghProjectId.  For now, choose first
+      print( activeLocs.toString() );
+      
+      // Make sure each activeLoc exists in GH.. cemd router.  have hpid, etc.  
+      List<HostLoc> ghLocs = await getGHLocs( container, cep!, activeLocs[0].hostProjectId );
+      print( ghLocs.toString() );
+
+
+      
+      // 2) check assignees exist, back out if not
+      // createLabel for all peq labels
+      // deleteIssue with same issueId or issueTitle in same project
+      // createIssue for all
    }
-   void _chooseHostPeq() {
-      print( "Choose host" );
-      Navigator.of( context ).pop();
+      
+   
+   Future<void> _chooseCEPeq( PEQ p ) async {
+      assert( p != null );
+      String msg1 = "Write One: Write this CE PEQ to the host, overwriting any host PEQ with the same hostIssueId or hostIssueTitle.\n\n";
+      String msg2 = "Write All: Overwrite all host PEQs for this Code Equity Project with this PEQ and the others listed under \'Needing Repair\'.\n\n";
+      String msg3 = "Note all historical data, such as comments, will be lost on the Host.";
+      List<Widget> buttons = [];
+      buttons.add( new TextButton( key: Key( 'Fix one' ), child: new Text("Write one"), onPressed: () => print( "One!" )) );
+      buttons.add( new TextButton( key: Key( 'Fix all' ), child: new Text("Write all"), onPressed: () => _writeAll( "CodeEquity")) );
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+
+      Widget m = makeBodyText( appState, msg1 + msg2 + msg3, 3.0 * baseWidth, true, 8, keyTxt: "chooseCEPeq"+p.hostIssueId);
+      popScroll( context, "CodeEquity PEQ:", m, buttons );
+   }
+
+   Future<void> _chooseHostPeq( PEQ? p ) async {
+      assert( p != null );
+      Widget peq = makeBodyText( appState, p!.toString(), 3.0 * baseWidth, true, 6, keyTxt: "chooseHostPeq"+p!.hostIssueId);
+      popScroll( context, "Choose Host PEQ:", peq, [ () => Navigator.of( context ).pop() ] );      
    }
    void _cancel() {
       print( "Cancel" );
@@ -229,94 +289,109 @@ class _CEStatusState extends State<CEStatusFrame> {
    
 
    Future<void> _detailPopup( context, PEQ cePeq, PEQ? hostPeq, String status ) async {
+      print( "Pop! " + status );
       List<Widget> buttons = [];
       if( status == "bad" ) {
-         buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CE Peq"), onPressed: _chooseCEPeq ));
-         buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Use Host Peq"), onPressed: _chooseHostPeq ));
+         if( cePeq != null )   { buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CodeEquity PEQ"),     onPressed: () => _chooseCEPeq( cePeq ) )); }
+         if( hostPeq != null ) { buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Host Peq"), onPressed: () => _chooseHostPeq( hostPeq ) )); }
       }
       buttons.add( new TextButton( key: Key( 'Cancel Peq fix' ), child: new Text("Cancel"), onPressed: _cancel ));
 
       List<Widget> comparison = [];
-      // ceData   hostData  x or check
-      if( hostPeq == null ) {
-         print( "hostPeq is missing" );
-      }
-      else {
-         print( "Got " + cePeq.hostIssueTitle );
-         var mux = 1.0;
-         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+
+      print( "Got " + cePeq.hostIssueTitle );
+      final mux = 1.0;
+      final width = 1.3 * baseWidth;
+      final spacer = Container( width: width );
+      bool noHost = hostPeq == null;
+      comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
                                Container( width: mux*baseWidth ),
-                               Container( width: 1.3*baseWidth, child: makeTableText( appState, "CodeEquity Data", baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                               Container( width: 1.3*baseWidth, child: makeTableText( appState, "Host Data", baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                               Container( width: 0.3*baseWidth, child: makeTableText( appState, "Match?", baseWidth, appState!.CELL_HEIGHT, false, 1 ))
-                                  ]) );
-         comparison.add( makeHDivider( appState, 3 * baseWidth, appState.GAP_PAD*3.0, appState.GAP_PAD * 2.0, tgap: appState.TINY_PAD ));
-
-         bool same = cePeq.hostIssueTitle == hostPeq.hostIssueTitle;
+                               Container( width: width, child: makeTableText( appState, "CodeEquity Data", baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               Container( width: width, child: makeTableText( appState, "Host Data", baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               // Container( width: 0.3*baseWidth, child: makeTableText( appState, "Match?", baseWidth, appState!.CELL_HEIGHT, false, 1 ))
+                               ]) );
+      comparison.add( makeHDivider( appState, 3 * baseWidth, appState.GAP_PAD*3.0, appState.GAP_PAD * 2.0, tgap: appState.TINY_PAD ));
+      
+      if( noHost ) {
+         final w = 2*width + mux*baseWidth + .5 * baseWidth; 
          comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
-                                  Container( width: mux*baseWidth, child: makeTableText( appState, "Title:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.hostIssueTitle, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.hostIssueTitle, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                                  Container( width: w, child: makeTableText( appState, "NOTE: Host Peq is not available.", w, appState!.CELL_HEIGHT, false, 1 )),
                                   ]) );
-
-         same = cePeq.ceProjectId == hostPeq.ceProjectId;
-         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
-                                  Container( width: mux*baseWidth, child: makeTableText( appState, "CE Project Id:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.ceProjectId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.ceProjectId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
-                                  ]) );
-
-         same = ( hostPeq.amount != null && (cePeq.amount - hostPeq.amount ).abs() <= 1 );
-         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
-                                  Container( width: mux*baseWidth, child: makeTableText( appState, "PEQ Amount:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
-                                  ]) );
-
-         same = cePeq.hostRepoId == hostPeq.hostRepoId;
-         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
-                                  Container( width: mux*baseWidth, child: makeTableText( appState, "Host Repo Id:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.hostRepoId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.hostRepoId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
-                                  ]) );
-
-         same = cePeq.hostIssueId == hostPeq.hostIssueId;
-         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
-                                  Container( width: mux*baseWidth, child: makeTableText( appState, "Host Issue Id:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.hostIssueId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.hostIssueId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
-                                  ]) );
-         
-         same = hostPeq.hostHolderId != null && setEquals( cePeq.hostHolderId.toSet(), hostPeq.hostHolderId.toSet() );
-         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
-                                  Container( width: mux*baseWidth, child: makeTableText( appState, "Host Assignees:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  makeToolTip(
-                                     Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.hostHolderId.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                     cePeq.hostHolderId.toString(), wait: true ),
-                                  makeToolTip(
-                                     Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.hostHolderId.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                     hostPeq.hostHolderId.toString(), wait: true ),
-                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
-                                  ]) );
-         
-         same = hostPeq.hostProjectSub != null && eq( cePeq.hostProjectSub, hostPeq.hostProjectSub );
-         comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
-                                  Container( width: mux*baseWidth, child: makeTableText( appState, "Host Location:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                  makeToolTip(
-                                     Container( width: 1.3*baseWidth, child: makeTableText( appState, cePeq.hostProjectSub.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                     cePeq.hostProjectSub.toString(), wait: true ),
-                                  makeToolTip(
-                                     Container( width: 1.3*baseWidth, child: makeTableText( appState, hostPeq.hostProjectSub.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
-                                     hostPeq.hostProjectSub.toString(), wait: true ),
-                                  same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
-                                  ]) );
-         
       }
+      
+      bool same = !noHost && cePeq.hostIssueTitle == hostPeq.hostIssueTitle;
+      comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                               Container( width: mux*baseWidth, child: makeTableText( appState, "Title:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               Container( width: width, child: makeTableText( appState, cePeq.hostIssueTitle, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               noHost ? spacer : Container( width: width, child: makeTableText( appState, hostPeq.hostIssueTitle, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                               ]) );
+      
+      same = !noHost && cePeq.peqType == hostPeq.peqType;
+      comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                               Container( width: mux*baseWidth, child: makeTableText( appState, "Peq Type:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               Container( width: width, child: makeTableText( appState, enumToStr( cePeq.peqType ), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               noHost ? spacer : Container( width: width, child: makeTableText( appState, enumToStr( hostPeq.peqType ), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                               ]) );
+      
+      same = !noHost && cePeq.ceProjectId == hostPeq.ceProjectId;
+      comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                               Container( width: mux*baseWidth, child: makeTableText( appState, "CE Project Id:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               Container( width: width, child: makeTableText( appState, cePeq.ceProjectId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               noHost ? spacer : Container( width: width, child: makeTableText( appState, hostPeq.ceProjectId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                               ]) );
+      
+      same = !noHost && ( hostPeq.amount != null && (cePeq.amount - hostPeq.amount ).abs() <= 1 );
+      comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                               Container( width: mux*baseWidth, child: makeTableText( appState, "PEQ Amount:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               Container( width: width, child: makeTableText( appState, cePeq.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               noHost ? spacer : Container( width: width, child: makeTableText( appState, hostPeq.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                               ]) );
+      
+      same = !noHost && cePeq.hostRepoId == hostPeq.hostRepoId;
+      comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                               Container( width: mux*baseWidth, child: makeTableText( appState, "Host Repo Id:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               Container( width: width, child: makeTableText( appState, cePeq.hostRepoId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               noHost ? spacer : Container( width: width, child: makeTableText( appState, hostPeq.hostRepoId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                               ]) );
+      
+      same = !noHost && cePeq.hostIssueId == hostPeq.hostIssueId;
+      comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                               Container( width: mux*baseWidth, child: makeTableText( appState, "Host Issue Id:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               Container( width: width, child: makeTableText( appState, cePeq.hostIssueId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               noHost ? spacer : Container( width: width, child: makeTableText( appState, hostPeq.hostIssueId, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                               ]) );
+      
+      same = !noHost && hostPeq.hostHolderId != null && setEquals( cePeq.hostHolderId.toSet(), hostPeq.hostHolderId.toSet() );
+      comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                               Container( width: mux*baseWidth, child: makeTableText( appState, "Host Assignees:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               makeToolTip(
+                                  Container( width: width, child: makeTableText( appState, cePeq.hostHolderId.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  cePeq.hostHolderId.toString(), wait: true ),
+                               noHost ? spacer :
+                               makeToolTip(
+                                  Container( width: width, child: makeTableText( appState, hostPeq.hostHolderId.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  hostPeq.hostHolderId.toString(), wait: true ),
+                               same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                               ]) );
+      
+      same = !noHost && hostPeq.hostProjectSub != null && eq( cePeq.hostProjectSub, hostPeq.hostProjectSub );
+      comparison.add( Wrap( spacing: appState.FAT_PAD, children: [
+                               Container( width: mux*baseWidth, child: makeTableText( appState, "Host Location:", mux*baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                               makeToolTip(
+                                  Container( width: width, child: makeTableText( appState, cePeq.hostProjectSub.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  cePeq.hostProjectSub.toString(), wait: true ),
+                               noHost ? spacer:
+                               makeToolTip(
+                                  Container( width: width, child: makeTableText( appState, hostPeq.hostProjectSub.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 )),
+                                  hostPeq.hostProjectSub.toString(), wait: true ),
+                               same ? Icon( Icons.check_circle_outline, color: Colors.green ) : Icon( Icons.cancel_outlined, color: Colors.red )
+                               ]) );
              
       Widget scrollBody = Column(
          mainAxisSize: MainAxisSize.max,
@@ -333,8 +408,27 @@ class _CEStatusState extends State<CEStatusFrame> {
                              actions: buttons);
                        });
    }
+
+   Widget _peqDetail( context, cp, hp, status ) {
+      void _unsetTitle( PointerEvent event ) {
+         setState(() { appState.hoverChunk = ""; });
+      }
       
-   
+      void _setTitle( PointerEvent event ) {
+         setState(() { appState.hoverChunk = cp.hostIssueTitle; });
+      }
+      
+      return GestureDetector(
+         onTap: () async
+         {
+            print( "Show Detail " + cp.hostIssueTitle );
+            await _detailPopup( context, cp, hp, status ); 
+         },
+         key: Key( 'peqDetail ' + cp.hostIssueId ),
+         child: makeClickTableText( appState, cp.hostIssueTitle,  _setTitle, _unsetTitle, 1.3*baseWidth, false, 1, iw: false )
+         );
+   }
+      
    List<List<Widget>> _getBody( context, cep ) {
       final buttonWidth = 100;
       
@@ -393,25 +487,8 @@ class _CEStatusState extends State<CEStatusFrame> {
                hPeqs[p.hostIssueId] = p;
             });
 
-         void _unsetTitle( PointerEvent event ) {
-            setState(() { appState.hoverChunk = ""; });
-         }
 
          peqs.forEach( (k,v) {
-               void _setTitle( PointerEvent event ) {
-                  setState(() { appState.hoverChunk = v.hostIssueTitle; });
-               }
-               Widget peqDetail = GestureDetector(
-                  onTap: () async
-                  {
-                     print( "Show Detail " + v.hostIssueTitle );
-                     await _detailPopup( context, v, hPeqs[k], "good" );
-                  },
-                  key: Key( 'peqDetail ' + v.hostIssueId ),
-                  child: makeClickTableText( appState, v.hostIssueTitle,  _setTitle, _unsetTitle, 1.3*baseWidth, false, 1, iw: false )
-                  );
-
-
                // XXX shared with approvalFrame
                assert( v.hostProjectSub.length >= 2 );
                List<String> userNames = v.ceHolderId.map( (ceuid) {
@@ -421,18 +498,20 @@ class _CEStatusState extends State<CEStatusFrame> {
                Widget hproj   = Container( width: 1.5*baseWidth, child: makeTableText( appState, v.hostProjectSub[ v.hostProjectSub.length - 2 ], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                Widget peqVal  = Container( width: 0.6*baseWidth, child: makeTableText( appState, v.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                Widget assign  = Container( width: 1.8*baseWidth, child: makeTableText( appState, userNames.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
-               Widget title   = paddedLTRB( peqDetail, 2 * appState.GAP_PAD, 0, 0, 0 );
                
                PEQ? h = hPeqs[k];
                if( !v.active && v.peqType == PeqType.grant ) {
+                  Widget title   = paddedLTRB( _peqDetail( context, v, h, "good" ), 2 * appState.GAP_PAD, 0, 0, 0 );
                   if( gone.length < 1 ) { gone.addAll( peqHeader ); }
                   gone.add( [ empty, title, hproj, peqVal, assign ] );
                }
                else if( _same( v, h ) ) {
+                  Widget title   = paddedLTRB( _peqDetail(context, v, h, "good" ), 2 * appState.GAP_PAD, 0, 0, 0 );
                   if( good.length < 1 ) { good.addAll( peqHeader ); }                  
                   good.add( [ empty, title, hproj, peqVal, assign ] );
                }
                else {
+                  Widget title   = paddedLTRB( _peqDetail(context, v, h, "bad" ), 2 * appState.GAP_PAD, 0, 0, 0 );
                   if( bad.length < 1 ) { bad.addAll( peqHeader ); }
                   bad.add( [ empty, title, hproj, peqVal, assign ] );
                }
@@ -443,7 +522,11 @@ class _CEStatusState extends State<CEStatusFrame> {
             });
       }
 
-      if( bad.length > 0 ) { setState(() => goodStatus = false ); }
+      // Down the road, might want setState if repair takes effect
+      // if( goodStatus && bad.length >  0  ) { setState(() => goodStatus = false ); }
+      // if( !goodStatus && bad.length == 0 ) { setState(() => goodStatus = true ); }
+      if( bad.length >  0  ) { goodStatus = false; }
+      else                   { goodStatus = true; }
 
       int peqLen      = gone.length > 0 ? (gone.length - peqHeader.length) : 0;
       String goneText = peqLen.toString() + " PEQs are granted and in good standing, but no longer visible on the host.";
@@ -455,7 +538,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       gone.insert( 1, [ categoryHDiv, empty, empty, empty, empty ] );      
 
       peqLen         = bad.length > 0 ? (bad.length - peqHeader.length) : 0;
-      String disText = peqLen.toString() + " PEQs are mismatched. Select which version CE MD should use to  make repairs.";
+      String disText = peqLen.toString() + " PEQs are mismatched. Click in to choose how to make repairs.";
       category       = paddedLTRB( makeTitleText( appState, "Needing Repair", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );      
       if( hideBad ) { bad = []; }
       bad.insert( 0, [ empty, category, 
@@ -492,10 +575,11 @@ class _CEStatusState extends State<CEStatusFrame> {
       _loadPeqs( cep! );
 
       List<List<Widget>> pending = [];
-      
-      pending.addAll( _getHeader( cep! ) );
 
       pending.addAll( _getBody( context, cep! ) );
+
+      // header afterwards to get status
+      pending.insertAll( 0, _getHeader( context, cep! ) );
 
       return ScrollConfiguration(
          behavior: MyCustomScrollBehavior(),
@@ -540,7 +624,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       Widget hd    = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
       hdiv         = Wrap( spacing: 0, children: [fatPad, hd] );   
 
-      if( appState.verbose >= 2 ) { print( "STATUS BUILD. " ); }
+      if( appState.verbose >= 4 ) { print( "STATUS BUILD. " ); }
 
       Widget row0 = Container( width: 1.5*baseWidth, child: makeTableText( appState, listHeaders[0], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
       Widget row1 = Container( width: 1.5*baseWidth, child: makeTableText( appState, listHeaders[1], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );

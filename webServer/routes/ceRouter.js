@@ -127,7 +127,8 @@ async function demoteJob( jd ) {
     // This has failed once, during cross repo blast test, when 2 label notifications were sent out
     // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
     // Doubled count, forced depth change, may be sufficient.  If not, change stamp time to next biggest and retry.
-    
+
+    // XXX Can not assert here.  This should instead send notification to builder, then move on.
     assert( oldDelayCount < config.MAX_DELAYS );  
     ceJobs.delay++;
     

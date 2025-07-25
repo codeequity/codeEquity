@@ -34,7 +34,7 @@ Future<void> _makePRawScroll( appState, context, container, pactId, textWidth, k
    
    // Let makeBody handle the json
    Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000, keyTxt: "RawPact"+keyName);
-   popScroll( context, "Raw Host Action:", prw, () => Navigator.of( context ).pop() );
+   popScroll( context, "Raw Host Action:", prw, [() => Navigator.of( context ).pop()] );
 }
 
 

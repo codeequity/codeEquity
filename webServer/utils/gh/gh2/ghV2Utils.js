@@ -200,6 +200,94 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
     }
 }
 
+
+async function getHostLoc( PAT, pid ) {
+    let locData = [];
+    
+    let query = `query loc($nodeId: ID! ) {
+	node( id: $nodeId ) {
+        ... on ProjectV2 {
+            number title id
+            views(first: 1) {
+              edges {
+                node {
+                  ... on ProjectV2View {
+                    name layout 
+                    fields(first: 100) {
+                     edges {
+                       node {
+                         ... on ProjectV2FieldConfiguration {
+                          ... on ProjectV2SingleSelectField {id name options {id name}
+                              }}}}}}}}}
+    }}}`;
+
+    let variables = {"nodeId": pid };
+    query = JSON.stringify({ query, variables });
+
+    try {
+	await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query, "getHostLoc" )
+	    .then( async (raw) => {
+		let project = raw.data.node;
+		let statusId = -1;
+
+		// Loc data only needs to be built once.  Will be the same for every issue.
+		// Note: can not build this from issues below, since we may have empty columns in board view.
+		if( locData.length <= 0 ) {
+		    
+		    // XXX Why process every view?  Plunder the first view to get status (i.e. column) info
+		    let views = project.views;
+		    if( typeof views === 'undefined' ) {
+			console.log( "Warning.  Project views are not defined.  GH2 ceProject with classic project?", pid );
+			statusId = 0;
+			locData = [-1];
+			return;
+		    }
+		    for( let i = 0; i < views.edges.length; i++ ) {
+			// Views does not (yet?) have a fieldByName, which would make it much quicker to find status.
+			const aview = views.edges[i].node;
+			for( let j = 0; j < aview.fields.edges.length; j++ ) {
+			    if( j >= 99 ) { console.log( authData.who, "WARNING.  Detected a very large number of columns, ignoring some." ); }
+			    const pfc = aview.fields.edges[j].node;
+			    if( pfc.name == config.GH_COL_FIELD ) { 
+				statusId = pfc.id;
+				for( let k = 0; k < pfc.options.length; k++ ) {
+				    let datum   = {};
+				    datum.hostProjectName  = project.title;
+				    datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
+				    datum.hostColumnName   = pfc.options[k].name;
+				    datum.hostColumnId     = pfc.options[k].id;
+				    datum.hostUtility      = statusId;
+				    locData.push( datum );
+				}
+			    }
+			}
+		    }
+		    // Build "No Status" by hand, since it corresponds to a null entry
+		    let datum   = {};
+		    datum.hostProjectName  = project.title;
+		    datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
+		    datum.hostColumnName   = config.GH_NO_STATUS; 
+		    datum.hostColumnId     = config.GH_NO_STATUS;    // no status column does not exist in view options above.  special case.
+		    datum.hostUtility      = statusId;
+		    locData.push( datum );
+		}
+		
+		if( statusId == 0 ) { return; }
+		assert( locData.length > 0 );
+		assert( statusId !== -1 );
+
+	    });
+    }
+    catch( e ) {
+	// NO!  This kills references
+	// locData  = [];
+	locData.length  = 0;
+	await ghUtils.errorHandler( "getHostLoc", e, getHostLoc, PAT, pid );
+    }
+    return locData;
+}
+
+
 // aws peqs: amount, hostHolderId, hostIssueId, hostIssueTitle, hostRepoId, hostProjectSub, peqType
 // gh issue: peq labels, assignees, issueId, title, repoId, link:projName,colName, open?  plan.   closed?  label sez pend or accr
 //             issue        issue     link    link   link       link               issue                     
@@ -211,6 +299,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
     if( ghLinks == -1 ) { return retVal; }
     
     let links   = await ghLinks.getLinks( authData, { ceProjId: ceProjId } );
+    if( links === -1 ) { return retVal; }
 
     // Get issue data by repoId.  Build issue map to speed this up.
     let repoIds = [];
@@ -2021,6 +2110,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
 
 export {getHostLinkLoc};
+export {getHostLoc};
 export {getHostPeqs};
 
 export {createIssue};
