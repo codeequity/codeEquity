@@ -109,6 +109,11 @@ Future<List<HostLoc>> getGHLocs( container, CEProject cep, String ghProjectId ) 
    }
 
    Iterable locs = json.decode( utf8.decode( response.bodyBytes ));
+   locs.forEach( (l) {
+         l["ceProjectId"] = cep.ceProjectId;
+         l["active"]      = "true";
+      });
+   
    hostLocs = locs.map( (l) => HostLoc.fromJson( l ) ).toList();
    
    return hostLocs;

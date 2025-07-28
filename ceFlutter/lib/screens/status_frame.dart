@@ -229,14 +229,20 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       // peq: ceProjectId plus hostProjectSub
       // loc: ceProjectId plus hostProjectName, hostColumnName
-      List<HostLoc> awsLocs    = appState.myHostLinks!.locations;  // aws-known host locs 
-      List<HostLoc> activeLocs = [];                              // active locs for CEP on host according to peqs & aws record
+      List<HostLoc> awsLocs        = appState.myHostLinks!.locations;  // aws-known host locs
+      List<HostLoc> activeLocs     = [];                               // active locs for CEP on host according to peqs & aws record
+      List<String>  hostAssignees  = [];
+      List<String>  hostLabels     = [];
+      
       appState.cePeqs[ appState.selectedCEProject ]!.forEach( (p) {
             assert( p.hostProjectSub.length == 2 ); 
             String id  = p.ceProjectId;
             String hpn = p.hostProjectSub[0];
             String hcn = p.hostProjectSub[1];
 
+            hostAssignees.addAll( p.hostHolderId );
+            hostLabels.add( p.amount.toString() );
+            
             // Don't already have loc?
             List<HostLoc> loc = activeLocs.where( (l) => l.ceProjectId == id && l.hostProjectName == hpn && l.hostColumnName == hcn ).toList();
             if( loc.length == 0 ) {
@@ -246,16 +252,42 @@ class _CEStatusState extends State<CEStatusFrame> {
             }
          });
 
-      // XXX make short list of ghProjectId.  For now, choose first
-      print( activeLocs.toString() );
-      
-      // Make sure each activeLoc exists in GH.. cemd router.  have hpid, etc.  
-      List<HostLoc> ghLocs = await getGHLocs( container, cep!, activeLocs[0].hostProjectId );
-      print( ghLocs.toString() );
+      // XXX GH -> host
+      // make short list of ghProjectId, then get host locs
+      List<HostLoc> ghLocs               = [];
+      List< Future<List<HostLoc>> > futs = [];
 
+      List<String> hostProjectIds        = activeLocs.map( (l) => l.hostProjectId ).toSet().toList();
 
+      hostProjectIds.forEach( (hpid) => futs.add( getGHLocs( container, cep!, hpid )) );
+      final res = await Future.wait( futs );
+      res.forEach( (r) => ghLocs.addAll( r ) );
+
+      // Make sure each activeLoc exists in GH
+      bool hostStructGood = true;
+      for( HostLoc a in activeLocs ) {
+         bool found = false; 
+         for( HostLoc h in ghLocs ) {
+            if( h.eq( a ) ) {
+               found = true;
+               break;
+            }
+         }
+         if( !found ) {
+            hostStructGood = false;
+            print( "Host missing " + a.toString() );
+            break;
+         }
+      }
+
+      if( !hostStructGood ) {
+         showToast( "Host project structure is incomplete.  Please fix this before proceeding with repair." );
+         return;
+      }
       
-      // 2) check assignees exist, back out if not
+      
+      // 2) check assignees exist, back out if not.   new type of query... 
+      
       // createLabel for all peq labels
       // deleteIssue with same issueId or issueTitle in same project
       // createIssue for all
@@ -279,7 +311,8 @@ class _CEStatusState extends State<CEStatusFrame> {
    Future<void> _chooseHostPeq( PEQ? p ) async {
       assert( p != null );
       Widget peq = makeBodyText( appState, p!.toString(), 3.0 * baseWidth, true, 6, keyTxt: "chooseHostPeq"+p!.hostIssueId);
-      popScroll( context, "Choose Host PEQ:", peq, [ () => Navigator.of( context ).pop() ] );      
+      final b = new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() );       
+      popScroll( context, "Choose Host PEQ:", peq, [ b ] );      
    }
    void _cancel() {
       print( "Cancel" );

@@ -12,6 +12,7 @@ class HostLoc {
    final String  hostColumnName;
    final String  hostUtility;
    final bool    active;         // ceServer writes in real time, ceFlutter reads after the fact.  May need legacy data during ingest.
+                                 // XXX serves no purpose yet...
 
    HostLoc({required this.ceProjectId, required this.hostProjectId, required this.hostProjectName, required this.hostColumnId, required this.hostColumnName,
             required this.hostUtility, required this.active});
@@ -28,8 +29,22 @@ class HostLoc {
          hostColumnId:      json['hostColumnId'],
          hostColumnName:    json['hostColumnName'],
          hostUtility   :    json['hostUtility'],
-         active:            json['active'] == "true" ? true : false
+         active:            json['active'] == "true" ? true : false 
          );
+   }
+
+   eq( HostLoc l ) {
+      bool same = true;
+      if( this.ceProjectId     != l.ceProjectId     ||
+          this.hostProjectId   != l.hostProjectId   ||
+          this.hostProjectName != l.hostProjectName ||
+          this.hostColumnId    != l.hostColumnId    ||
+          this.hostColumnName  != l.hostColumnName  ||
+          this.hostUtility     != l.hostUtility     ||
+          this.active          != l.active ) {
+         same = false;
+      }
+      return same;
    }
    
    String toString() {
