@@ -230,11 +230,9 @@ async function getHostLoc( PAT, pid ) {
 		let project = raw.data.node;
 		let statusId = -1;
 
-		// Loc data only needs to be built once.  Will be the same for every issue.
-		// Note: can not build this from issues below, since we may have empty columns in board view.
 		if( locData.length <= 0 ) {
 		    
-		    // XXX Why process every view?  Plunder the first view to get status (i.e. column) info
+		    // Why process every view?  Plunder the first view to get status (i.e. column) info
 		    let views = project.views;
 		    if( typeof views === 'undefined' ) {
 			console.log( "Warning.  Project views are not defined.  GH2 ceProject with classic project?", pid );
@@ -282,11 +280,105 @@ async function getHostLoc( PAT, pid ) {
 	// NO!  This kills references
 	// locData  = [];
 	locData.length  = 0;
-	await ghUtils.errorHandler( "getHostLoc", e, getHostLoc, PAT, pid );
+	locData = await ghUtils.errorHandler( "getHostLoc", e, getHostLoc, PAT, pid );
     }
     return locData;
 }
 
+
+async function getHostAssign( PAT, rid, assignees, cursor ) {
+    
+    let query1 = `query assign($nodeId: ID! ) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            assignableUsers( first: 100 ) {
+             pageInfo { hasNextPage, endCursor }
+             edges { node { login id }}}
+    }}}`;
+
+    let queryN = `query assign($nodeId: ID!, $cursor: String! ) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            assignableUsers( first: 100 after: $cursor ) {
+             pageInfo { hasNextPage, endCursor }
+             edges { node { login id }}}
+    }}}`;
+
+    let variables = cursor === -1 ? {"nodeId": rid } : {"nodeId": rid, "cursor": cursor };
+    let query     = cursor === -1 ? query1 : queryN; 
+    query = JSON.stringify({ query, variables });
+
+    // console.log( "GHA", query );
+    try {
+	await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query, "getHostAssign" )
+	    .then( async (raw) => {
+		let repo = raw.data.node;
+		let users = repo.assignableUsers; 
+		for( let i = 0; i < users.edges.length; i++ ) { assignees.push( users.edges[i].node.id ); }
+		// console.log( assignees.toString() );
+
+		// Wait.  Data is modified
+		if( users !== -1 && users.pageInfo.hasNextPage ) { await getHostAssign( PAT, rid, assignees, users.pageInfo.endCursor ); }
+
+	    });
+
+    }
+    catch( e ) {
+	assignees.length  = 0;
+	cursor = -1;
+	await ghUtils.errorHandler( "getHostAssign", e, getHostAssign, PAT, rid, assignees, cursor );
+    }
+}
+
+// Get label amounts from all peq labels in repo
+async function getHostLabels( PAT, rid, labels, cursor ) {
+    
+    let query1 = `query label($nodeId: ID! ) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            labels( first: 100 ) {
+             pageInfo { hasNextPage, endCursor }
+             edges { node { name id description }}}
+    }}}`;
+
+    let queryN = `query label($nodeId: ID!, $cursor: String! ) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            labels( first: 100 after: $cursor ) {
+             pageInfo { hasNextPage, endCursor }
+             edges { node { name id description }}}
+    }}}`;
+
+    let variables = cursor === -1 ? {"nodeId": rid } : {"nodeId": rid, "cursor": cursor };
+    let query     = cursor === -1 ? query1 : queryN; 
+    query = JSON.stringify({ query, variables });
+
+    // XXX should verify peq labels are well-formed here.
+    try {
+	await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query, "getHostLabels" )
+	    .then( async (raw) => {
+		let repo = raw.data.node;
+		let labs = repo.labels;
+		for( let i = 0; i < labs.edges.length; i++ ) {
+		    let lab = labs.edges[i].node;
+		    let labVal = ghUtils.theOnePEQ( [ lab ] );
+		    // console.log( "Checking", lab, labVal );
+		    if( labVal > 0 ) { labels.push( labVal ); }
+		}
+
+		// Wait.  Data is modified
+		if( labs !== -1 && labs.pageInfo.hasNextPage ) { await getHostLabels( PAT, rid, labels, labs.pageInfo.endCursor ); }
+
+	    });
+
+    }
+    catch( e ) {
+	labels.length  = 0;
+	cursor = -1;
+	console.log( e );
+	await ghUtils.errorHandler( "getHostLabels", e, getHostLabels, PAT, rid, labels, cursor );
+    }
+}
 
 // aws peqs: amount, hostHolderId, hostIssueId, hostIssueTitle, hostRepoId, hostProjectSub, peqType
 // gh issue: peq labels, assignees, issueId, title, repoId, link:projName,colName, open?  plan.   closed?  label sez pend or accr
@@ -2111,6 +2203,8 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
 export {getHostLinkLoc};
 export {getHostLoc};
+export {getHostAssign};
+export {getHostLabels};
 export {getHostPeqs};
 
 export {createIssue};

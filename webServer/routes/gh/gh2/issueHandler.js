@@ -527,7 +527,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    pdCopy.actor       = pd.actor;
 		    pdCopy.actorId     = pd.actorId;
 		    pdCopy.reqBody     = pd.reqBody;
-		    awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
+		    awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy, 
 					      config.PACTVERB_CONF, config.PACTACT_DEL,	[ badPeq.PEQId ], config.PACTNOTE_BXFR,
 					      utils.getToday() ); 
 		}

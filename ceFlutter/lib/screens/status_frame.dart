@@ -229,10 +229,11 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       // peq: ceProjectId plus hostProjectSub
       // loc: ceProjectId plus hostProjectName, hostColumnName
-      List<HostLoc> awsLocs        = appState.myHostLinks!.locations;  // aws-known host locs
-      List<HostLoc> activeLocs     = [];                               // active locs for CEP on host according to peqs & aws record
-      List<String>  hostAssignees  = [];
-      List<String>  hostLabels     = [];
+      List<HostLoc> awsLocs         = appState.myHostLinks!.locations;  // aws-known host locs
+      List<HostLoc> activeLocs      = [];                               // active locs for CEP on host according to peqs & aws record
+      List<String>  activeAssignees = [];                               // host user id
+      List<String>  activeRepos     = [];                               // host repo id
+      List<int>     activeLabels    = [];                               // label amounts, really
       
       appState.cePeqs[ appState.selectedCEProject ]!.forEach( (p) {
             assert( p.hostProjectSub.length == 2 ); 
@@ -240,8 +241,9 @@ class _CEStatusState extends State<CEStatusFrame> {
             String hpn = p.hostProjectSub[0];
             String hcn = p.hostProjectSub[1];
 
-            hostAssignees.addAll( p.hostHolderId );
-            hostLabels.add( p.amount.toString() );
+            activeRepos.add( p.hostRepoId );
+            activeAssignees.addAll( p.hostHolderId );
+            activeLabels.add( p.amount );
             
             // Don't already have loc?
             List<HostLoc> loc = activeLocs.where( (l) => l.ceProjectId == id && l.hostProjectName == hpn && l.hostColumnName == hcn ).toList();
@@ -257,7 +259,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<HostLoc> ghLocs               = [];
       List< Future<List<HostLoc>> > futs = [];
 
-      List<String> hostProjectIds        = activeLocs.map( (l) => l.hostProjectId ).toSet().toList();
+      List<String> hostProjectIds = activeLocs.map( (l) => l.hostProjectId ).toSet().toList();
 
       hostProjectIds.forEach( (hpid) => futs.add( getGHLocs( container, cep!, hpid )) );
       final res = await Future.wait( futs );
@@ -286,9 +288,55 @@ class _CEStatusState extends State<CEStatusFrame> {
       }
       
       
-      // 2) check assignees exist, back out if not.   new type of query... 
+      // 2) check assignees exist, back out if not.   new type of query...
+      // there is no need to limit this to the needsRepair list.  If not needs repair, then hostPeqs already have those assignees
+      activeAssignees = activeAssignees.toSet().toList();
+      activeRepos     = activeRepos.toSet().toList();
+
+      List<String> hostAssignees = [];
+      for( String repoId in activeRepos ) {
+         print( "Get Assignees for " + repoId );
+         hostAssignees.addAll( await getGHAssignees( container, cep!, repoId ) );
+      }
+
+      hostAssignees = hostAssignees.toSet().toList();
+      print( "Host Assign " + hostAssignees.toString() );
+      bool hostAssignGood = true;
+      for( String aass in activeAssignees ) {
+         hostAssignGood = hostAssignGood && hostAssignees.contains( aass );
+         if( !hostAssignGood ) {
+            print( "Host missing user: " + aass ); 
+            break;
+         }
+      }
+      if( !hostAssignGood ) {
+         showToast( "Host assignees are incomplete.  Please fix this before proceeding with repair." );
+         return;
+      }
+
+      // XXX Needs to be by repoId.  So activeLabels is also by repoId, else can't create
+      // 3) make sure labels are in good shape.  Create if need be.
+      List<int> hostLabels = [];
+      for( String repoId in activeRepos ) {
+         // print( "Get Labels for " + repoId );
+         hostLabels.addAll( await getGHLabels( container, cep!, repoId ) );
+      }
+      hostLabels = hostLabels.toSet().toList();
+      print( "Host Labels " + hostLabels.toString() );
+
+      /*
+      List<Future<dynamic>> createdLabels = [];
+      for( int v in activeLabels ) {
+         if( !hostLabels.contains( v ) ) {
+            print( "Host missing label " + v.toString());
+            print( "Creating." );
+            createdLabels.add( createGHLabel( container, cep!, repoId, v ) );
+         }
+      }
+      await Future.wait( createdLabels );
+      */
+
       
-      // createLabel for all peq labels
       // deleteIssue with same issueId or issueTitle in same project
       // createIssue for all
    }

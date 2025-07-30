@@ -119,6 +119,71 @@ Future<List<HostLoc>> getGHLocs( container, CEProject cep, String ghProjectId ) 
    return hostLocs;
 }
 
+Future<List<String>> getGHAssignees( container, CEProject cep, String repoId ) async {
+   final appState  = container.state;
+   List<String> assigneeIds = [];
+
+   // XXX Don't keep asking for this.  Store in app state is preferred, not just OK
+   final builderPAT = await getHostPAT( container, cep );
+   if( builderPAT == "" ) { return assigneeIds; }
+   
+   var postData = '{"Endpoint": "ceMD", "Request": "getHAssigns", "PAT": "$builderPAT", "rid": "$repoId" }'; 
+   var response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return assigneeIds;
+   }
+
+   Iterable assigns = json.decode( utf8.decode( response.bodyBytes ));
+   assigneeIds = assigns.map( (a) => a.toString() ).toList();
+   
+   return assigneeIds;
+}
+
+// Get peq label values
+Future<List<int>> getGHLabels( container, CEProject cep, String repoId ) async {
+   final appState  = container.state;
+   List<int> labelVals = [];
+
+   // XXX Don't keep asking for this.  Store in app state is preferred, not just OK
+   final builderPAT = await getHostPAT( container, cep );
+   if( builderPAT == "" ) { return labelVals; }
+   
+   var postData = '{"Endpoint": "ceMD", "Request": "getHLabels", "PAT": "$builderPAT", "rid": "$repoId" }'; 
+   var response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return labelVals;
+   }
+
+   var labs = json.decode( utf8.decode( response.bodyBytes ));
+   if( labs != -1 ) {
+      print( labs.toString() );
+      // labelVals = labs.map( (a) => a as int ).toList();
+      labelVals = List<int>.from( labs );
+   }
+   
+   return labelVals;
+}
+
+// create peq label
+Future<bool> createGHLabel( container, CEProject cep, String repoId, int peqVal ) async {
+   final appState  = container.state;
+
+   // XXX Don't keep asking for this.  Store in app state is preferred, not just OK
+   final builderPAT = await getHostPAT( container, cep );
+   if( builderPAT == "" ) { return false; }
+   
+   var postData = '{"Endpoint": "ceMD", "Request": "createHLabel", "PAT": "$builderPAT", "rid": "$repoId", "peqVal": "$peqVal" }'; 
+   var response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return false;
+   }
+
+   return true;
+}
+
 // This needs to work for both users and orgs
 Future<String> _getOwnerId( PAT, owner ) async {
 
