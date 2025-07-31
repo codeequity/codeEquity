@@ -14,6 +14,10 @@ async function handler( hostLinks, reqBody, res ) {
     else if( reqBody.Request == "getHPeqs" )      { retVal = await ghV2.getHostPeqs( reqBody.PAT, hostLinks, reqBody.cepId ); }
     else if( reqBody.Request == "getHLocs" )      { retVal = await ghV2.getHostLoc( reqBody.PAT, reqBody.pid ); }
     else if( reqBody.Request == "createHLabel" )  { retVal = await ghV2.createPeqLabel( { pat: reqBody.PAT, who: "ceMD" }, reqBody.rid, reqBody.peqVal ); }
+    else if( reqBody.Request == "createHIssue" )  { retVal = await ghV2.createIssue( { pat: reqBody.PAT, who: "ceMD" }, reqBody.rid, reqBody.projId, reqBody.newIss ); }
+    else if( reqBody.Request == "moveHCard" )     { retVal = await ghV2.moveCard( { pat: reqBody.PAT, who: "ceMD" }, reqBody.pid, reqBody.cid, reqBody.util, reqBody.colId ); }
+    else if( reqBody.Request == "closeIssue" )    { retVal = await ghV2.updateIssue( { pat: reqBody.PAT, who: "ceMD" }, reqBody.iid, "state", config.GH_ISSUE_CLOSED ); }
+    else if( reqBody.Request == "remHIssue" )     { retVal = await ghV2.remIssue( { pat: reqBody.PAT }, reqBody.iid ); }
     else if( reqBody.Request == "getHAssigns" )   {
 	retVal = [];
 	await ghV2.getHostAssign( reqBody.PAT, reqBody.rid, retVal, -1 );

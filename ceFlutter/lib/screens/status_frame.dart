@@ -215,7 +215,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
 
 
-   Future<void> _writeAll( String source ) async {
+   Future<void> _writeAll( PEQ p, String source ) async {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
       assert( appState.myHostLinks != null );    // had to select a CEP by now, which runs reloadProjects
@@ -233,7 +233,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<HostLoc> activeLocs      = [];                               // active locs for CEP on host according to peqs & aws record
       List<String>  activeAssignees = [];                               // host user id
       List<String>  activeRepos     = [];                               // host repo id
-      List<int>     activeLabels    = [];                               // label amounts, really
+
+      Map<String,List<int>> activeLabels = {};                          // label amounts per repo
       
       appState.cePeqs[ appState.selectedCEProject ]!.forEach( (p) {
             assert( p.hostProjectSub.length == 2 ); 
@@ -243,7 +244,9 @@ class _CEStatusState extends State<CEStatusFrame> {
 
             activeRepos.add( p.hostRepoId );
             activeAssignees.addAll( p.hostHolderId );
-            activeLabels.add( p.amount );
+
+            if( !activeLabels.containsKey( p.hostRepoId ) ) { activeLabels[ p.hostRepoId ] = []; }
+            activeLabels[p.hostRepoId]!.add( p.amount );
             
             // Don't already have loc?
             List<HostLoc> loc = activeLocs.where( (l) => l.ceProjectId == id && l.hostProjectName == hpn && l.hostColumnName == hcn ).toList();
@@ -314,31 +317,66 @@ class _CEStatusState extends State<CEStatusFrame> {
          return;
       }
 
-      // XXX Needs to be by repoId.  So activeLabels is also by repoId, else can't create
       // 3) make sure labels are in good shape.  Create if need be.
-      List<int> hostLabels = [];
+      bool moddedLabels = false;
+      Map<String, List<dynamic>> hostLabels = {};
       for( String repoId in activeRepos ) {
-         // print( "Get Labels for " + repoId );
-         hostLabels.addAll( await getGHLabels( container, cep!, repoId ) );
-      }
-      hostLabels = hostLabels.toSet().toList();
-      print( "Host Labels " + hostLabels.toString() );
-
-      /*
-      List<Future<dynamic>> createdLabels = [];
-      for( int v in activeLabels ) {
-         if( !hostLabels.contains( v ) ) {
-            print( "Host missing label " + v.toString());
-            print( "Creating." );
-            createdLabels.add( createGHLabel( container, cep!, repoId, v ) );
+         hostLabels[repoId] = await getGHLabels( container, cep!, repoId );
+         List<int> hLabelVals = hostLabels[repoId]!.map( (l) => l[0] as int ).toList();
+         activeLabels[ repoId ] = activeLabels[ repoId ]!.toSet().toList();
+         print( "Got Labels for " + repoId + hostLabels[repoId].toString() );
+         // print( "   active labels: " + activeLabels[ repoId ].toString() );
+         
+         List<Future<dynamic>> createdLabels = [];
+         assert( activeLabels.containsKey( repoId ));
+         for( int v in activeLabels[ repoId ]! ) {
+            if( !hLabelVals.contains( v ) ) {
+               print( "Host missing label " + v.toString());
+               print( "Creating." );
+               createdLabels.add( createGHLabel( container, cep!, repoId, v ) );
+               moddedLabels = true;
+            }
          }
+         await Future.wait( createdLabels );
+         // Get directly from host again.  Could avoid by mapping from ghV2.label to ceMD.label better, but very little value
+         if( moddedLabels ) { hostLabels[repoId] = await getGHLabels( container, cep!, repoId );  }
       }
-      await Future.wait( createdLabels );
-      */
-
       
-      // deleteIssue with same issueId or issueTitle in same project
-      // createIssue for all
+      /*
+      // 4) deleteIssue with same issueId or issueTitle in same project
+      await remGHIssue( container, cep!, p.hostIssueId );
+      print( "Deleted host issue " + p.hostIssueName + " (" + p.hostIssueId + ")");
+
+      // 5) createIssue for all
+      var newIssLabel = hostLabels[p.hostRepoId]!.firstWhere( (l) => l[0] == p.amount ); 
+      var newIssue = {};
+      newIssue['title']     = p.hostIssueTitle;
+      newIssue['labels']    = [ newIssLabel[1] ];
+      newIssue['assignees'] = p.hostHolderId;
+
+      var createdIssue = await createGHIssue( container, cep!, p.hostRepoId, p.hostProjectId, newIssue );
+      assert( createdIssue.length == 3 );
+      assert( createdIssue[0] is String );  // hostIssueId
+      // createdIssue[1] or hostIssueNum is not interesting
+      assert( createdIssue[2] is String );  // hostCardId
+
+
+      // 6) move it to the right spot, then close it if needed
+      // createdIssue is in the host project, but not the correct column.
+
+      HostLoc pLoc = ghLocs.where( (l) => l.ceProjectId == p.ceProjectId && l.hostProjectId == p.hostProjectId && l.hostColumnName == p.hostProjectSub[1] );
+      assert( pLoc.length == 1 );
+      // No need to wait
+      moveGHCard( container, cep!, p.hostProjectId, createdIssue[2], pLoc[0].hostUtility, pLoc[0].hostColumnId );
+
+      // no need to wait
+      if( p.peqType == PeqType.pending || p.peqType == PeqType.grant ) { closeGHIssue( container, cep!, createdIssue[0] ); }
+      
+      // 7) update source with new hostIssueId
+      var pLink = { "PEQId": p.id, "HostIssueId": createdIssue[0] };
+      // no need to wait
+      updateDynamo( context, container,'{ "Endpoint": "UpdatePEQ", "pLink": $pLink }', "UpdatePEQ" ) ;
+      */
    }
       
    
@@ -349,7 +387,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       String msg3 = "Note all historical data, such as comments, will be lost on the Host.";
       List<Widget> buttons = [];
       buttons.add( new TextButton( key: Key( 'Fix one' ), child: new Text("Write one"), onPressed: () => print( "One!" )) );
-      buttons.add( new TextButton( key: Key( 'Fix all' ), child: new Text("Write all"), onPressed: () => _writeAll( "CodeEquity")) );
+      buttons.add( new TextButton( key: Key( 'Fix all' ), child: new Text("Write all"), onPressed: () => _writeAll( p, "CodeEquity")) );
       buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
 
       Widget m = makeBodyText( appState, msg1 + msg2 + msg3, 3.0 * baseWidth, true, 8, keyTxt: "chooseCEPeq"+p.hostIssueId);

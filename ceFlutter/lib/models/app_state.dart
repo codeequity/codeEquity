@@ -78,6 +78,7 @@ class AppState {
    late Linkage?          myHostLinks;           // Current project/column disposition for the selectedCEProject
    late EquityPlan?       myEquityPlan;          // Equity plan for the selectedCEProject
    late List<HostAccount> myHostAccounts;        // all host accounts for current ceUser.
+   late String            myGHPAT;               // GH personal access token for builder, keep for session only.
    
    late bool hostUpdated;
 
@@ -172,7 +173,8 @@ class AppState {
       myEquityPlan   = null;
       myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user
       myHostLinks    = null;
-
+      myGHPAT        = "";
+      
       userPActUpdate = false;
       hoverChunk = "";
       // ingestUpdates = new Map<String, int>();

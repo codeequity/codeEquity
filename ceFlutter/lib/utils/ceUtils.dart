@@ -162,6 +162,7 @@ Future<void> reloadCEVentureOnly( context, container ) async {
                                    
                                    ]);
    appState.myEquityPlan = appState.ceEquityPlans[ceVent];
+   appState.myGHPAT      = "";
    
    if( appState.myEquityPlan == null ) { appState.myEquityPlan = new EquityPlan( ceVentureId: ceVent, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
 
@@ -199,6 +200,7 @@ Future<void> reloadCEProject( context, container ) async {
                                    ]);
    appState.myPEQSummary = appState.cePEQSummaries[ceProj];
    appState.myHostLinks  = appState.ceHostLinks[ceProj];
+   appState.myGHPAT      = "";
    
    if( appState.verbose >= 3 ) {
       print( "Got Links?" ); 

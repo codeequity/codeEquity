@@ -43,7 +43,8 @@ Future<http.Response> _postGH( PAT, postData, name ) async {
 
 Future<String> getHostPAT( container, CEProject cep ) async {
    final appState  = container.state;
-
+   if( appState.myGHPAT != "" ) { return appState.myGHPAT; }
+   
    String host  = cep.hostPlatform;
    assert( host == "GitHub" );
    
@@ -54,6 +55,8 @@ Future<String> getHostPAT( container, CEProject cep ) async {
       return "";
    }
    final builderPAT = json.decode( utf8.decode( response.bodyBytes ));
+   appState.myGHPAT = builderPAT;
+
    return builderPAT;
 }
 
@@ -123,7 +126,6 @@ Future<List<String>> getGHAssignees( container, CEProject cep, String repoId ) a
    final appState  = container.state;
    List<String> assigneeIds = [];
 
-   // XXX Don't keep asking for this.  Store in app state is preferred, not just OK
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return assigneeIds; }
    
@@ -140,12 +142,12 @@ Future<List<String>> getGHAssignees( container, CEProject cep, String repoId ) a
    return assigneeIds;
 }
 
-// Get peq label values
-Future<List<int>> getGHLabels( container, CEProject cep, String repoId ) async {
+// Get peq label values  [ [val, id], ..]
+// Host labels need not be ceMD data type
+Future< List<List<dynamic>> > getGHLabels( container, CEProject cep, String repoId ) async {
    final appState  = container.state;
-   List<int> labelVals = [];
+   List<List<dynamic>> labelVals = [];
 
-   // XXX Don't keep asking for this.  Store in app state is preferred, not just OK
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return labelVals; }
    
@@ -158,9 +160,15 @@ Future<List<int>> getGHLabels( container, CEProject cep, String repoId ) async {
 
    var labs = json.decode( utf8.decode( response.bodyBytes ));
    if( labs != -1 ) {
-      print( labs.toString() );
+      // print( labs.toString() );
       // labelVals = labs.map( (a) => a as int ).toList();
-      labelVals = List<int>.from( labs );
+      // labelVals = List<int>.from( labs );
+      for( var lab in labs ) {
+         List<dynamic> l = [];
+         l.add( lab[0] as int );
+         l.add( lab[1] as String );
+         labelVals.add( l );
+      }
    }
    
    return labelVals;
@@ -170,7 +178,6 @@ Future<List<int>> getGHLabels( container, CEProject cep, String repoId ) async {
 Future<bool> createGHLabel( container, CEProject cep, String repoId, int peqVal ) async {
    final appState  = container.state;
 
-   // XXX Don't keep asking for this.  Store in app state is preferred, not just OK
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return false; }
    
@@ -183,6 +190,85 @@ Future<bool> createGHLabel( container, CEProject cep, String repoId, int peqVal 
 
    return true;
 }
+
+// create GH issue
+Future<List<dynamic>> createGHIssue( container, CEProject cep, String repoId, String projId, newIssue ) async {
+   final appState  = container.state;
+   List<dynamic> issDat = [];
+   
+   final builderPAT = await getHostPAT( container, cep );
+   if( builderPAT == "" ) { return issDat; }
+   
+   var postData = '{"Endpoint": "ceMD", "Request": "createHIssue", "PAT": "$builderPAT", "rid": "$repoId", "projId": "$projId", "newIss": "$newIssue" }'; 
+   var response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return issDat;
+   }
+
+   var issue = json.decode( utf8.decode( response.bodyBytes ));
+   print( "New host issue " + issue.toString() );
+   
+   if( issue.length == 3 ) {
+      issDat.add( issue[0] is String ? issue[0] as String  : -1);
+      issDat.add( issue[1] is String ? issue[1] as String  : -1);
+      issDat.add( issue[2] is String ? issue[2] as String  : -1);
+   }
+   
+   return issDat;
+}
+
+// create peq label
+Future<bool> moveGHCard( container, CEProject cep, String projId, String cardId, String hostUtil, String colId ) async {
+   final appState  = container.state;
+
+   final builderPAT = await getHostPAT( container, cep );
+   if( builderPAT == "" ) { return false; }
+   
+   var postData = '{"Endpoint": "ceMD", "Request": "moveHCard", "PAT": "$builderPAT", "pid": "$projId", "cid": "$cardId", "util": "$hostUtil", "colId": "$colId" }'; 
+   var response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return false;
+   }
+
+   return true;
+}
+
+Future<bool> remGHIssue( container, CEProject cep, String hostIssueId ) async {
+   final appState  = container.state;
+
+   final builderPAT = await getHostPAT( container, cep );
+   if( builderPAT == "" ) { return false; }
+   
+   var postData = '{"Endpoint": "ceMD", "Request": "remHIssue", "PAT": "$builderPAT", "iid": "$hostIssueId" }'; 
+   var response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return false;
+   }
+
+   return true;
+}
+
+Future<bool> closeGHIssue( container, CEProject cep, String hostIssueId ) async {
+   final appState  = container.state;
+
+   final builderPAT = await getHostPAT( container, cep );
+   if( builderPAT == "" ) { return false; }
+   
+   var postData = '{"Endpoint": "ceMD", "Request": "closeHIssue", "PAT": "$builderPAT", "iid": "$hostIssueId" }'; 
+   var response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return false;
+   }
+
+   return true;
+}
+
+
+
 
 // This needs to work for both users and orgs
 Future<String> _getOwnerId( PAT, owner ) async {
@@ -265,7 +351,6 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "false", "pat": "$PAT" }';
    await updateDynamo( context, container, postData, "PutHostA" );
 }
-
 
 
 // Called upon refreshProjects button press.. maybe someday on signin (via app_state_container:finalizeUser)

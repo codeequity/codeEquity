@@ -363,7 +363,7 @@ async function getHostLabels( PAT, rid, labels, cursor ) {
 		    let lab = labs.edges[i].node;
 		    let labVal = ghUtils.theOnePEQ( [ lab ] );
 		    // console.log( "Checking", lab, labVal );
-		    if( labVal > 0 ) { labels.push( labVal ); }
+		    if( labVal > 0 ) { labels.push( [labVal, lab.id] ); }
 		}
 
 		// Wait.  Data is modified

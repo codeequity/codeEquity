@@ -1079,7 +1079,7 @@ async function updatePEQ( pLink ) {
 
     
     // Only props that get updated
-    let props = [ "AccrualDate", "Active", "Amount", "CEGrantorId", "CEHolderId", "HostHolderId", "HostIssueTitle", "HostProjectSub", "PeqType", "VestedPerc" ];
+    let props = [ "AccrualDate", "Active", "Amount", "CEGrantorId", "CEHolderId", "HostHolderId", "HostIssueId", "HostIssueTitle", "HostProjectSub", "PeqType", "VestedPerc" ];
     let updateVals = buildUpdateParams( pLink, props );
     assert( updateVals.length == 2 );
 
