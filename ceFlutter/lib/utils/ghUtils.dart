@@ -228,8 +228,12 @@ Future<List<dynamic>> createGHIssue( container, CEProject cep, String repoId, St
 }
 
 // create peq label
-Future<bool> moveGHCard( container, CEProject cep, String projId, String cardId, String hostUtil, String colId ) async {
+Future<bool> moveGHCard( container, CEProject cep, HostLoc pLoc, String cardId ) async {
    final appState  = container.state;
+
+   String projId   = pLoc.hostProjectId;
+   String hostUtil = pLoc.hostUtility;
+   String colId    = pLoc.hostColumnId;
 
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return false; }
@@ -276,7 +280,46 @@ Future<bool> closeGHIssue( container, CEProject cep, String hostIssueId ) async 
    return true;
 }
 
+// hostLabels are repoId to list of label objects
+Future<void> makeHostIssue( context, container, cep, PEQ p, List<HostLoc> ghLocs, Map<String, List<dynamic>> hostLabels ) async {
 
+   // 1) deleteIssue with same issueId or issueTitle in same project
+   await remGHIssue( container, cep, p.hostIssueId );
+   print( "Deleted host issue " + p.hostIssueTitle + " (" + p.hostIssueId + ")");
+   
+   // 2) create new host Issue that matches peq
+   var newIssLabel = hostLabels[p.hostRepoId]!.firstWhere( (l) => l[0] == p.amount ); 
+   Map<String,dynamic> newIssue = {};
+   newIssue['title']     = p.hostIssueTitle;
+   newIssue['labels']    = [ newIssLabel[1] ];
+   newIssue['assignees'] = p.hostHolderId;
+   
+   List<HostLoc> pLoc = ghLocs.where( (l) => l.ceProjectId == p.ceProjectId && l.hostProjectName == p.hostProjectSub[0] && l.hostColumnName == p.hostProjectSub[1] ).toList();
+   if( pLoc.length != 1 ) {
+      print( p.toString() );
+      print( pLoc.toString() );
+      print( ghLocs.toString() );
+      assert( pLoc.length == 1 );
+   }
+   
+   var createdIssue = await createGHIssue( container, cep, p.hostRepoId, pLoc[0].hostProjectId, newIssue );
+   print( "Created issue " + createdIssue.toString() );
+   assert( createdIssue.length == 3 );
+   assert( createdIssue[0] is String );  // hostIssueId
+   // createdIssue[1] or hostIssueNum is not interesting
+   assert( createdIssue[2] is String );  // hostCardId
+   
+   // 3) move it to the right spot, then close it if needed.  createdIssue is in the host project, but not the correct column.
+   // No need to wait for either
+   moveGHCard( container, cep, pLoc[0], createdIssue[2] );
+
+   if( p.peqType == PeqType.pending || p.peqType == PeqType.grant ) { closeGHIssue( container, cep, createdIssue[0] ); }
+   
+   // 4) update source with new hostIssueId
+   // no need to wait
+   var pLink = { "PEQId": p.id, "HostIssueId": createdIssue[0] };
+   updateDynamo( context, container, json.encode( { "Endpoint": "UpdatePEQ", "pLink": pLink }), "UpdatePEQ" ) ;
+}
 
 
 // This needs to work for both users and orgs
