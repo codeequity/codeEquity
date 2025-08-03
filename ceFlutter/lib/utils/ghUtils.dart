@@ -198,9 +198,18 @@ Future<List<dynamic>> createGHIssue( container, CEProject cep, String repoId, St
    
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return issDat; }
+
+   // XXX wild goose chase.  this is cleaner, and should now work.
+   // var postData = {"Endpoint": "ceMD", "Request": "createHIssue", "PAT": "$builderPAT", "rid": "$repoId", "projId": "$projId", "newIss": newIssue }; 
+
+   var title  = newIssue['title'];
+   var lab    = newIssue['labels'];
+   var assign = newIssue['assignees'];
+   var postData = {"Endpoint": "ceMD", "Request": "createHIssue", "PAT": "$builderPAT", "rid": "$repoId", "projId": "$projId",
+         "issTitle": "$title", "issLabels": lab, "issAssign": assign};
    
-   var postData = '{"Endpoint": "ceMD", "Request": "createHIssue", "PAT": "$builderPAT", "rid": "$repoId", "projId": "$projId", "newIss": "$newIssue" }'; 
-   var response = await postCE( appState, postData );
+   // var response = await postCE( appState, json.encode( postData ) );
+   var response = await postCE( appState, json.encode( postData ) );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
       return issDat;

@@ -9,7 +9,8 @@ import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
-import 'package:ceFlutter/utils/ghUtils.dart';     // to load host peqs for comparison
+import 'package:ceFlutter/utils/awsUtils.dart';
+import 'package:ceFlutter/utils/ghUtils.dart'; 
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEProject.dart';
@@ -220,6 +221,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       assert( cep != null );
       assert( appState.myHostLinks != null );    // had to select a CEP by now, which runs reloadProjects
       assert( appState.cePeqs[ appState.selectedCEProject ] != null );
+      assert( p.ceProjectId == cep!.ceProjectId );
+      assert( p.hostProjectSub.length == 2 );
    
       print( "Overwrite GitHub for " + cep!.name );
 
@@ -342,19 +345,27 @@ class _CEStatusState extends State<CEStatusFrame> {
          if( moddedLabels ) { hostLabels[repoId] = await getGHLabels( container, cep!, repoId );  }
       }
       
-      /*
       // 4) deleteIssue with same issueId or issueTitle in same project
       await remGHIssue( container, cep!, p.hostIssueId );
-      print( "Deleted host issue " + p.hostIssueName + " (" + p.hostIssueId + ")");
+      print( "Deleted host issue " + p.hostIssueTitle + " (" + p.hostIssueId + ")");
 
       // 5) createIssue for all
       var newIssLabel = hostLabels[p.hostRepoId]!.firstWhere( (l) => l[0] == p.amount ); 
-      var newIssue = {};
+      Map<String,dynamic> newIssue = {};
       newIssue['title']     = p.hostIssueTitle;
       newIssue['labels']    = [ newIssLabel[1] ];
       newIssue['assignees'] = p.hostHolderId;
-
-      var createdIssue = await createGHIssue( container, cep!, p.hostRepoId, p.hostProjectId, newIssue );
+      
+      List<HostLoc> pLoc = ghLocs.where( (l) => l.ceProjectId == p.ceProjectId && l.hostProjectName == p.hostProjectSub[0] && l.hostColumnName == p.hostProjectSub[1] ).toList();
+      if( pLoc.length != 1 ) {
+         print( p.toString() );
+         print( pLoc.toString() );
+         print( ghLocs.toString() );
+         assert( pLoc.length == 1 );
+      }
+      
+      var createdIssue = await createGHIssue( container, cep!, p.hostRepoId, pLoc[0].hostProjectId, newIssue );
+      print( "Created issue " + createdIssue.toString() );
       assert( createdIssue.length == 3 );
       assert( createdIssue[0] is String );  // hostIssueId
       // createdIssue[1] or hostIssueNum is not interesting
@@ -364,10 +375,9 @@ class _CEStatusState extends State<CEStatusFrame> {
       // 6) move it to the right spot, then close it if needed
       // createdIssue is in the host project, but not the correct column.
 
-      HostLoc pLoc = ghLocs.where( (l) => l.ceProjectId == p.ceProjectId && l.hostProjectId == p.hostProjectId && l.hostColumnName == p.hostProjectSub[1] );
-      assert( pLoc.length == 1 );
+      // XXX just send ploc
       // No need to wait
-      moveGHCard( container, cep!, p.hostProjectId, createdIssue[2], pLoc[0].hostUtility, pLoc[0].hostColumnId );
+      moveGHCard( container, cep!, pLoc[0].hostProjectId, createdIssue[2], pLoc[0].hostUtility, pLoc[0].hostColumnId );
 
       // no need to wait
       if( p.peqType == PeqType.pending || p.peqType == PeqType.grant ) { closeGHIssue( container, cep!, createdIssue[0] ); }
@@ -375,8 +385,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       // 7) update source with new hostIssueId
       var pLink = { "PEQId": p.id, "HostIssueId": createdIssue[0] };
       // no need to wait
-      updateDynamo( context, container,'{ "Endpoint": "UpdatePEQ", "pLink": $pLink }', "UpdatePEQ" ) ;
-      */
+      updateDynamo( context, container, json.encode( { "Endpoint": "UpdatePEQ", "pLink": pLink }), "UpdatePEQ" ) ;
+
    }
       
    

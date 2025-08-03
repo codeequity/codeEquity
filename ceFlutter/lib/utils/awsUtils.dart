@@ -109,10 +109,12 @@ Future<http.Response> awsPost( String shortName, postData, context, container, {
       print( "\n" );
       print( e );
       String msg = e.toString();  // can't seem to cast as ClientException, the runtimeType, which has a message property
+      // XXX This can trigger if there is a syntax error in the AWS code.  Since this should be caught by regressions, allow "Failed to fetch" to remain, for now.
       if( ( msg.contains( "ClientException: XMLHttpRequest error.," ) || msg.contains( "ClientException: Failed to fetch," ))
           && msg.contains( "amazonaws.com/prod/find" )) {
          // no response.  construct empty.
-         http.Response err = new http.Response("blat", 401 );
+         // print( "XXX " + msg + "XXX" );
+         http.Response err = new http.Response('{\"message\": \"blat\"}', 401 );
          return err;
       }
    }
@@ -129,6 +131,8 @@ Future<bool> checkFailure( response, shortName, context, container ) async {
    final appState  = container.state;
    bool retval     = false;
 
+   print( "RESPONSE: " + response.statusCode.toString() + " " + json.decode(utf8.decode(response.bodyBytes)).toString());
+   
    if( response.statusCode == 401 ) {
       if( !appState.reauthBusy ) {
          bool gotit = await checkReauth( context, container ); 
@@ -214,7 +218,7 @@ Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) asyn
 Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
-   // print( "updateDynamo " + postData );
+   print( "updateDynamo " + shortName + ": " + postData );
 
    /*
    if( peqId != -1 ) {
