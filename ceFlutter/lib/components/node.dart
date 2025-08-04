@@ -15,7 +15,7 @@ import 'package:ceFlutter/components/leaf.dart';
 class Node extends StatelessWidget implements Tree {
       
    final String title;
-   int allocAmount;
+   int allocAmount;     // NOTE: this is not related to old way of recording allocs. This is related to equity plan, directly.
    final IconData? icon;
    
    final double width;
@@ -80,24 +80,14 @@ class Node extends StatelessWidget implements Tree {
      return newNode;
   }
 
-  void addAlloc( int moreAlloc ) { allocAmount += moreAlloc; }
+     void addAlloc( int moreAlloc ) { allocAmount += moreAlloc; assert( false ); }
   
   @override
   String getTitle() { return title; }
 
   @override
   int getAllocAmount() {
-     /*
-     // Unlike the other amounts, which are independently summed, allocations are dependent in a top-down hierarchy.
-     // For example, if githubOps is allocated 2m, and a child card (say, testing) is allocated 500k, the top level allocation is 2m.
-     //              This is because the child card allocation is meant to be a part of the overall alloc for githubOps.
-    var psum = allocAmount;
-    var csum = 0;
-    leaves.forEach((Tree leaf) => csum += leaf.getAllocAmount());
-    return max( psum, csum );
-     */
-     // Now, allocations are declared directly in equity plan.
-     // Allocs within a project are ignored, completely. 
+     // Allocations are declared directly in equity plan.
      return allocAmount;
   }
 

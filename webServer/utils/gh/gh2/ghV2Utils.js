@@ -382,7 +382,6 @@ async function getHostLabels( PAT, rid, labels, cursor ) {
 
 // aws peqs: amount, hostHolderId, hostIssueId, hostIssueTitle, hostRepoId, hostProjectSub, peqType
 // gh issue: peq labels, assignees, issueId, title, repoId, link:projName,colName, open?  plan.   closed?  label sez pend or accr
-//             issue        issue     link    link   link       link               issue                     
 async function getHostPeqs( PAT, ghLinks, ceProjId ) {
     let retVal = [];
     let authData = { pat: PAT, who: "ceMD" };

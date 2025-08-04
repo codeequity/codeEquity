@@ -592,7 +592,8 @@ class _CEStatusState extends State<CEStatusFrame> {
                      assert( appState.cePeople[ceuid] != null );
                      return appState.cePeople[ceuid]!.userName;
                   }).toList();
-               Widget hproj   = Container( width: 1.5*baseWidth, child: makeTableText( appState, v.hostProjectSub[ v.hostProjectSub.length - 2 ], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+               Widget hproj   = Container( width: 1.5*baseWidth,
+                                           child: makeTableText( appState, v.hostProjectSub[ v.hostProjectSub.length - 2 ], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                Widget peqVal  = Container( width: 0.6*baseWidth, child: makeTableText( appState, v.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                Widget assign  = Container( width: 1.8*baseWidth, child: makeTableText( appState, userNames.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                

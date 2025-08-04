@@ -71,7 +71,7 @@ Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
    
    // Have cep, gives me repo name per cepId,  have hostOrg.
    print( cep.repositories.toString() );
-   var postData = '{"Endpoint": "ceMD", "Request": "getHPeqs", "PAT": "$builderPAT", "cepId": "$cepId" }'; 
+   var postData = '{"Endpoint": "ceMD", "Request": "getPeqs", "PAT": "$builderPAT", "cepId": "$cepId" }'; 
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -93,6 +93,7 @@ Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
                               vestedPerc: 0.0, accrualDate: "", peqType: peqType, hostIssueTitle: peq['hostIssueTitle'],
                               hostIssueId: peq['hostIssueId'], hostRepoId: peq['hostRepoId'], active: true ) );
    }
+   print( "XXX Loaded: " + hostPeqs.toString() );
    
    return hostPeqs;
 }
@@ -104,7 +105,7 @@ Future<List<HostLoc>> getGHLocs( container, CEProject cep, String ghProjectId ) 
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return hostLocs; }
    
-   var postData = '{"Endpoint": "ceMD", "Request": "getHLocs", "PAT": "$builderPAT", "pid": "$ghProjectId" }'; 
+   var postData = '{"Endpoint": "ceMD", "Request": "getLocs", "PAT": "$builderPAT", "pid": "$ghProjectId" }'; 
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -129,7 +130,7 @@ Future<List<String>> getGHAssignees( container, CEProject cep, String repoId ) a
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return assigneeIds; }
    
-   var postData = '{"Endpoint": "ceMD", "Request": "getHAssigns", "PAT": "$builderPAT", "rid": "$repoId" }'; 
+   var postData = '{"Endpoint": "ceMD", "Request": "getAssigns", "PAT": "$builderPAT", "rid": "$repoId" }'; 
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -151,7 +152,7 @@ Future< List<List<dynamic>> > getGHLabels( container, CEProject cep, String repo
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return labelVals; }
    
-   var postData = '{"Endpoint": "ceMD", "Request": "getHLabels", "PAT": "$builderPAT", "rid": "$repoId" }'; 
+   var postData = '{"Endpoint": "ceMD", "Request": "getLabels", "PAT": "$builderPAT", "rid": "$repoId" }'; 
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -181,7 +182,7 @@ Future<bool> createGHLabel( container, CEProject cep, String repoId, int peqVal 
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return false; }
    
-   var postData = '{"Endpoint": "ceMD", "Request": "createHLabel", "PAT": "$builderPAT", "rid": "$repoId", "peqVal": "$peqVal" }'; 
+   var postData = '{"Endpoint": "ceMD", "Request": "createLabel", "PAT": "$builderPAT", "rid": "$repoId", "peqVal": "$peqVal" }'; 
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -199,16 +200,12 @@ Future<List<dynamic>> createGHIssue( container, CEProject cep, String repoId, St
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return issDat; }
 
-   // XXX wild goose chase.  this is cleaner, and should now work.
-   // var postData = {"Endpoint": "ceMD", "Request": "createHIssue", "PAT": "$builderPAT", "rid": "$repoId", "projId": "$projId", "newIss": newIssue }; 
-
    var title  = newIssue['title'];
    var lab    = newIssue['labels'];
    var assign = newIssue['assignees'];
-   var postData = {"Endpoint": "ceMD", "Request": "createHIssue", "PAT": "$builderPAT", "rid": "$repoId", "projId": "$projId",
+   var postData = {"Endpoint": "ceMD", "Request": "createIssue", "PAT": "$builderPAT", "rid": "$repoId", "projId": "$projId",
          "issTitle": "$title", "issLabels": lab, "issAssign": assign};
    
-   // var response = await postCE( appState, json.encode( postData ) );
    var response = await postCE( appState, json.encode( postData ) );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -223,7 +220,7 @@ Future<List<dynamic>> createGHIssue( container, CEProject cep, String repoId, St
       issDat.add( issue[1] is String ? issue[1] as String  : -1);
       issDat.add( issue[2] is String ? issue[2] as String  : -1);
    }
-   
+
    return issDat;
 }
 
@@ -238,7 +235,7 @@ Future<bool> moveGHCard( container, CEProject cep, HostLoc pLoc, String cardId )
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return false; }
    
-   var postData = '{"Endpoint": "ceMD", "Request": "moveHCard", "PAT": "$builderPAT", "pid": "$projId", "cid": "$cardId", "util": "$hostUtil", "colId": "$colId" }'; 
+   var postData = '{"Endpoint": "ceMD", "Request": "moveCard", "PAT": "$builderPAT", "pid": "$projId", "cid": "$cardId", "util": "$hostUtil", "colId": "$colId" }'; 
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -254,7 +251,7 @@ Future<bool> remGHIssue( container, CEProject cep, String hostIssueId ) async {
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return false; }
    
-   var postData = '{"Endpoint": "ceMD", "Request": "remHIssue", "PAT": "$builderPAT", "iid": "$hostIssueId" }'; 
+   var postData = '{"Endpoint": "ceMD", "Request": "remIssue", "PAT": "$builderPAT", "iid": "$hostIssueId" }'; 
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -270,8 +267,38 @@ Future<bool> closeGHIssue( container, CEProject cep, String hostIssueId ) async 
    final builderPAT = await getHostPAT( container, cep );
    if( builderPAT == "" ) { return false; }
    
-   var postData = '{"Endpoint": "ceMD", "Request": "closeHIssue", "PAT": "$builderPAT", "iid": "$hostIssueId" }'; 
+   var postData = '{"Endpoint": "ceMD", "Request": "closeIssue", "PAT": "$builderPAT", "iid": "$hostIssueId" }'; 
    var response = await postCE( appState, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return false;
+   }
+
+   return true;
+}
+
+Future<bool> updateLinkage( container, CEProject cep, PEQ p, HostLoc pLoc, List<dynamic> createdIssue ) async {
+   final appState  = container.state;
+
+   final builderPAT = await getHostPAT( container, cep );
+   if( builderPAT == "" ) { return false; }
+
+   var link = {};
+   link["ceProjectId"]     = cep.ceProjectId;
+   // link["hostRepoName"]    = ;
+   link["hostRepoId"]      = p.hostRepoId;
+   link["hostIssueId"]     = createdIssue[0];
+   link["hostIssueNum"]    = createdIssue[1];
+   link["hostProjectId"]   = pLoc.hostProjectId;
+   link["hostProjectName"] = pLoc.hostProjectName;
+   link["hostColumnId"]    = pLoc.hostColumnId;
+   link["hostColumnName"]  = pLoc.hostColumnName;
+   link["hostCardId"]      = createdIssue[2];
+   link["hostIssueName"]   = p.hostIssueTitle;
+   link["hostUtility"]     = pLoc.hostUtility;
+   
+   var postData = {"Endpoint": "ceMD", "Request": "addLinkage", "PAT": "$builderPAT", "link": link }; 
+   var response = await postCE( appState, json.encode( postData ));
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
       return false;
@@ -308,12 +335,15 @@ Future<void> makeHostIssue( context, container, cep, PEQ p, List<HostLoc> ghLocs
    assert( createdIssue[0] is String );  // hostIssueId
    // createdIssue[1] or hostIssueNum is not interesting
    assert( createdIssue[2] is String );  // hostCardId
-   
+
    // 3) move it to the right spot, then close it if needed.  createdIssue is in the host project, but not the correct column.
    // No need to wait for either
    moveGHCard( container, cep, pLoc[0], createdIssue[2] );
 
    if( p.peqType == PeqType.pending || p.peqType == PeqType.grant ) { closeGHIssue( container, cep, createdIssue[0] ); }
+
+   // Update linkage to keep ceServer in sync
+   updateLinkage( container, cep, p, pLoc[0], createdIssue );
    
    // 4) update source with new hostIssueId
    // no need to wait

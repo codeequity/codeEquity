@@ -825,7 +825,6 @@ List<dynamic> _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
    String hpid      = ka == null ? "" : (ka.hostProjectId ?? "");
    
-   assert( ka.allocType != PeqType.allocation );
    _vPrint( appState, 1, "Add assignee: " + pact.subject.last + " " + pactLast );
    
    List<String> curAssign = [ pactLast ]; // hostUserId
@@ -855,7 +854,6 @@ List<dynamic> _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
    String hpid      = ka == null ? "" : (ka.hostProjectId ?? "");
    
-   assert( ka.allocType != PeqType.allocation );
    _vPrint( appState, 1, "Remove assignee: " + pact.subject.last );
    
    int originalSize = assignees.length;
