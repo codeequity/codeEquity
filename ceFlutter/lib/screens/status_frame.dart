@@ -57,16 +57,12 @@ class _CEStatusState extends State<CEStatusFrame> {
    late var      container;
    late AppState appState;
 
-   late double frameMinWidth;
    late double svWidth;
    late double svHeight;
    late double baseWidth;
-   static const frameMinHeight = 300;
    
    late Widget empty;  // XXX formalize
-   late Widget gapPad;
    late Widget fatPad;
-   late Widget midPad;
    late Widget hdiv;
    late Widget vSpace; 
    
@@ -111,7 +107,6 @@ class _CEStatusState extends State<CEStatusFrame> {
    List<List<Widget>> _getHeader( context, cep ) {
       List<List<Widget>> header = [];
 
-      final width = ( frameMinWidth - 2*appState.FAT_PAD ) / 2.0;
       final buttonWidth = 100;
       
       Widget spacer    = Container( height: 1, width: (svWidth - cep.name.length - 2*buttonWidth )/2.0 );
@@ -217,8 +212,7 @@ class _CEStatusState extends State<CEStatusFrame> {
 
    
    // get all hostLinks from aws.  identify which are used in peqs.  Along the way, populate other existing host data
-   Future<bool> _checkHostStruct(container, List<HostLoc> awsLocs, List<HostLoc> activeLocs, List<String> activeAssignees, List<String> activeRepos,
-                                 List<HostLoc> ghLocs, Map<String,List<int>> activeLabels ) async {
+   Future<bool> _checkHostStruct(container, List<String> activeAssignees, List<String> activeRepos, List<HostLoc> hostLocs, Map<String,List<int>> activeLabels ) async {
 
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
@@ -226,6 +220,9 @@ class _CEStatusState extends State<CEStatusFrame> {
       assert( appState.cePeqs[ appState.selectedCEProject ] != null );
 
       print( "Confirming Host project locations exist" );
+
+      List<HostLoc> awsLocs         = appState.myHostLinks!.locations;  // aws-known host locs
+      List<HostLoc> activeLocs      = [];                               // active locs for CEP on host according to peqs known to ceMD
       
       // peq: ceProjectId plus hostProjectSub
       // loc: ceProjectId plus hostProjectName, hostColumnName
@@ -250,20 +247,24 @@ class _CEStatusState extends State<CEStatusFrame> {
             }
          });
 
-      // make short list of ghProjectId, then get host locs
+      // make short list of hostProjectId, then get host locs
       List< Future<List<HostLoc>> > futs = [];
 
       List<String> hostProjectIds = activeLocs.map( (l) => l.hostProjectId ).toSet().toList();
 
-      hostProjectIds.forEach( (hpid) => futs.add( getGHLocs( container, cep!, hpid )) );
+      var getHostLocs = null;
+      if( cep!.hostPlatform == "GitHub" ) { getHostLocs = getGHLocs; }                                       // XXX formalize
+      else                                { print( "Host organization not recognized." ); return false; }
+      
+      hostProjectIds.forEach( (hpid) => futs.add( getHostLocs( container, cep!, hpid )) );
       final res = await Future.wait( futs );
-      res.forEach( (r) => ghLocs.addAll( r ) );
+      res.forEach( (r) => hostLocs.addAll( r ) );
 
-      // Make sure each activeLoc exists in GH
+      // Make sure each activeLoc exists in host
       bool hostStructGood = true;
       for( HostLoc a in activeLocs ) {
          bool found = false; 
-         for( HostLoc h in ghLocs ) {
+         for( HostLoc h in hostLocs ) {
             if( h.eq( a ) ) {
                found = true;
                break;
@@ -272,70 +273,61 @@ class _CEStatusState extends State<CEStatusFrame> {
          if( !found ) {
             hostStructGood = false;
             print( "Host missing " + a.toString() );
+            showToast( "Host project structure is incomplete.  Please fix this before proceeding with repair." );            
             break;
          }
       }
+      
       return hostStructGood;
    }
    
+   // there is no need to limit this to the needsRepair list.  If not needs repair, then hostPeqs already have those assignees
+   Future<bool> _checkHostAssign( container, List<String> activeAssignees, List<String> activeRepos ) async {
+      bool hostAssignGood = true;
 
-   // XXX no 'GH' here, just host.
-   // XXX active and GH used randomly
-   Future<void> _writeAll( PEQ p, String source ) async {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
-      assert( p.ceProjectId == cep!.ceProjectId );
-      assert( p.hostProjectSub.length == 2 );
-   
-      print( "Overwrite GitHub for " + cep!.name );
 
-      List<HostLoc> awsLocs         = appState.myHostLinks!.locations;  // aws-known host locs
-      List<HostLoc> activeLocs      = [];                               // active locs for CEP on host according to peqs & aws record
-      List<String>  activeAssignees = [];                               // host user id
-      List<String>  activeRepos     = [];                               // host repo id
-      List<HostLoc> ghLocs          = [];                               // host locs
-      Map<String,List<int>> activeLabels = {};                          // label amounts per repo
-
-      // 1) check projects & cols, back out if not.  Along the way, collect locs, assignees, repos, etc from aws
-      bool hostStructGood = await _checkHostStruct( container, awsLocs, activeLocs, activeAssignees, activeRepos, ghLocs, activeLabels );
-
-      if( !hostStructGood ) {
-         showToast( "Host project structure is incomplete.  Please fix this before proceeding with repair." );
-         return;
-      }
+      var getHostAssignees = null;
+      if( cep!.hostPlatform == "GitHub" ) { getHostAssignees = getGHAssignees; }                                       // XXX formalize
+      else                                { print( "Host organization not recognized." ); return false; }
       
-      
-      // 2) check assignees exist, back out if not.   new type of query...
-      // there is no need to limit this to the needsRepair list.  If not needs repair, then hostPeqs already have those assignees
-      activeAssignees = activeAssignees.toSet().toList();
-      activeRepos     = activeRepos.toSet().toList();
-
       List<String> hostAssignees = [];
       for( String repoId in activeRepos ) {
          print( "Get Assignees for " + repoId );
-         hostAssignees.addAll( await getGHAssignees( container, cep!, repoId ) );
+         hostAssignees.addAll( await getHostAssignees( container, cep!, repoId ) );
       }
 
       hostAssignees = hostAssignees.toSet().toList();
       print( "Host Assign " + hostAssignees.toString() );
-      bool hostAssignGood = true;
       for( String aass in activeAssignees ) {
          hostAssignGood = hostAssignGood && hostAssignees.contains( aass );
          if( !hostAssignGood ) {
-            print( "Host missing user: " + aass ); 
+            print( "Host missing user: " + aass );
+            showToast( "Host assignees are incomplete.  Please fix this before proceeding with repair." );            
             break;
          }
       }
-      if( !hostAssignGood ) {
-         showToast( "Host assignees are incomplete.  Please fix this before proceeding with repair." );
-         return;
-      }
+      
+      return hostAssignGood;
+   }
 
-      // 3) make sure labels are in good shape.  Create if need be.
+   Future<bool> _makeHostLabels( container, List<String> activeRepos, Map<String,List<int>> activeLabels, Map<String, List<dynamic>> hostLabels ) async {
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+
       bool moddedLabels = false;
-      Map<String, List<dynamic>> hostLabels = {};
+
+      var getHostLabels    = null;
+      var createHostLabel = null;
+      if( cep!.hostPlatform == "GitHub" ) {  // XXX formalize
+         getHostLabels   = getGHLabels;
+         createHostLabel = createGHLabel;
+      }                                      
+      else { print( "Host organization not recognized." ); return false; }
+
       for( String repoId in activeRepos ) {
-         hostLabels[repoId] = await getGHLabels( container, cep!, repoId );
+         hostLabels[repoId] = await getHostLabels( container, cep!, repoId );
          List<int> hLabelVals = hostLabels[repoId]!.map( (l) => l[0] as int ).toList();
          activeLabels[ repoId ] = activeLabels[ repoId ]!.toSet().toList();
          print( "Got Labels for " + repoId + hostLabels[repoId].toString() );
@@ -347,18 +339,50 @@ class _CEStatusState extends State<CEStatusFrame> {
             if( !hLabelVals.contains( v ) ) {
                print( "Host missing label " + v.toString());
                print( "Creating." );
-               createdLabels.add( createGHLabel( container, cep!, repoId, v ) );
+               createdLabels.add( createHostLabel( container, cep!, repoId, v ) );
                moddedLabels = true;
             }
          }
          await Future.wait( createdLabels );
          // Get directly from host again.  Could avoid by mapping from ghV2.label to ceMD.label better, but very little value
-         if( moddedLabels ) { hostLabels[repoId] = await getGHLabels( container, cep!, repoId );  }
+         if( moddedLabels ) { hostLabels[repoId] = await getHostLabels( container, cep!, repoId );  }
       }
+      return moddedLabels;
+   }
+ 
+   Future<void> _writeAll( PEQ p, String source ) async {
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+      assert( p.ceProjectId == cep!.ceProjectId );
+      assert( p.hostProjectSub.length == 2 );
+   
+      print( "Overwrite GitHub for " + cep!.name );
 
+      List<String>  activeAssignees = [];           // all host user ids in peqs that ceMD knows about (i.e. from aws)
+      List<String>  activeRepos     = [];           // all host repo ids  ""
+      List<HostLoc> hostLocs        = [];           // all host locs known to host
+
+      Map<String,List<int>>      activeLabels = {}; // label amounts per repo, according to peqs known to ceMD
+      Map<String, List<dynamic>> hostLabels   = {};
+
+      // 1) check projects & cols, back out if not.  Along the way, collect locs, assignees, repos, etc from aws
+      bool hostStructGood = await _checkHostStruct( container, activeAssignees, activeRepos, hostLocs, activeLabels );
+      if( !hostStructGood ) { return; }
+
+      // This must happen here.. new reference location created
+      activeAssignees = activeAssignees.toSet().toList();
+      activeRepos     = activeRepos.toSet().toList();
+      
+      // 2) check assignees exist, back out if not.   new type of query...
+      bool hostAssignGood = await _checkHostAssign( container, activeAssignees, activeRepos );
+      if( !hostAssignGood ) { return; }
+      
+      // 3) make sure labels are in good shape.  Create if need be.
+      bool moddedLabels = await _makeHostLabels( container, activeRepos, activeLabels, hostLabels );
+      
       // XXX do this for each in needs repair
       // 4) make new issue
-      await makeHostIssue( context, container, cep!, p, ghLocs, hostLabels );
+      await makeHostIssue( context, container, cep!, p, hostLocs, hostLabels );
    }
       
    
@@ -562,7 +586,7 @@ class _CEStatusState extends State<CEStatusFrame> {
 
 
          peqs.forEach( (k,v) {
-               // XXX shared with approvalFrame
+               // 4 widgets here identical with those in approvalFrame.. but not quite sharing to pull out into one location
                assert( v.hostProjectSub.length >= 2 );
                List<String> userNames = v.ceHolderId.map( (ceuid) {
                      assert( appState.cePeople[ceuid] != null );
@@ -676,21 +700,16 @@ class _CEStatusState extends State<CEStatusFrame> {
    @override
    Widget build(BuildContext context) {
 
-      // XXX hdiv, minispace, minierspace,
-      
       container = widget.appContainer;   
       appState  = container.state;
       assert( appState != null );
 
-      frameMinWidth  = appState.MIN_PANE_WIDTH;
       svHeight       = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
       svWidth        = appState.MAX_PANE_WIDTH; 
-      baseWidth      = ( frameMinWidth - 2*appState.FAT_PAD ) / 2.0;
+      baseWidth      = ( appState.MIN_PANE_WIDTH - 2*appState.FAT_PAD ) / 2.0;
       
       empty     = Container( width: 1, height: 1 );
-      gapPad    = Container( width: appState.GAP_PAD*3.0, height: 1 );
       fatPad    = Container( width: appState.FAT_PAD, height: 1 );
-      midPad    = Container( width: appState.MID_PAD, height: 1 );
       vSpace    = Container( width: 1, height: appState!.CELL_HEIGHT * .4 );
       Widget miniHor   = Container( height: 1, width: 1.7 * appState.GAP_PAD );       // XXX
 
