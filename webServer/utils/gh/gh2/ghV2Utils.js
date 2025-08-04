@@ -200,16 +200,198 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
     }
 }
 
+
+async function getHostLoc( PAT, pid ) {
+    let locData = [];
+    
+    let query = `query loc($nodeId: ID! ) {
+	node( id: $nodeId ) {
+        ... on ProjectV2 {
+            number title id
+            views(first: 1) {
+              edges {
+                node {
+                  ... on ProjectV2View {
+                    name layout 
+                    fields(first: 100) {
+                     edges {
+                       node {
+                         ... on ProjectV2FieldConfiguration {
+                          ... on ProjectV2SingleSelectField {id name options {id name}
+                              }}}}}}}}}
+    }}}`;
+
+    let variables = {"nodeId": pid };
+    query = JSON.stringify({ query, variables });
+
+    try {
+	await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query, "getHostLoc" )
+	    .then( async (raw) => {
+		let project = raw.data.node;
+		let statusId = -1;
+
+		if( locData.length <= 0 ) {
+		    
+		    // Why process every view?  Plunder the first view to get status (i.e. column) info
+		    let views = project.views;
+		    if( typeof views === 'undefined' ) {
+			console.log( "Warning.  Project views are not defined.  GH2 ceProject with classic project?", pid );
+			statusId = 0;
+			locData = [-1];
+			return;
+		    }
+		    for( let i = 0; i < views.edges.length; i++ ) {
+			// Views does not (yet?) have a fieldByName, which would make it much quicker to find status.
+			const aview = views.edges[i].node;
+			for( let j = 0; j < aview.fields.edges.length; j++ ) {
+			    if( j >= 99 ) { console.log( authData.who, "WARNING.  Detected a very large number of columns, ignoring some." ); }
+			    const pfc = aview.fields.edges[j].node;
+			    if( pfc.name == config.GH_COL_FIELD ) { 
+				statusId = pfc.id;
+				for( let k = 0; k < pfc.options.length; k++ ) {
+				    let datum   = {};
+				    datum.hostProjectName  = project.title;
+				    datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
+				    datum.hostColumnName   = pfc.options[k].name;
+				    datum.hostColumnId     = pfc.options[k].id;
+				    datum.hostUtility      = statusId;
+				    locData.push( datum );
+				}
+			    }
+			}
+		    }
+		    // Build "No Status" by hand, since it corresponds to a null entry
+		    let datum   = {};
+		    datum.hostProjectName  = project.title;
+		    datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
+		    datum.hostColumnName   = config.GH_NO_STATUS; 
+		    datum.hostColumnId     = config.GH_NO_STATUS;    // no status column does not exist in view options above.  special case.
+		    datum.hostUtility      = statusId;
+		    locData.push( datum );
+		}
+		
+		if( statusId == 0 ) { return; }
+		assert( locData.length > 0 );
+		assert( statusId !== -1 );
+
+	    });
+    }
+    catch( e ) {
+	// NO!  This kills references
+	// locData  = [];
+	locData.length  = 0;
+	locData = await ghUtils.errorHandler( "getHostLoc", e, getHostLoc, PAT, pid );
+    }
+    return locData;
+}
+
+
+async function getHostAssign( PAT, rid, assignees, cursor ) {
+    
+    let query1 = `query assign($nodeId: ID! ) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            assignableUsers( first: 100 ) {
+             pageInfo { hasNextPage, endCursor }
+             edges { node { login id }}}
+    }}}`;
+
+    let queryN = `query assign($nodeId: ID!, $cursor: String! ) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            assignableUsers( first: 100 after: $cursor ) {
+             pageInfo { hasNextPage, endCursor }
+             edges { node { login id }}}
+    }}}`;
+
+    let variables = cursor === -1 ? {"nodeId": rid } : {"nodeId": rid, "cursor": cursor };
+    let query     = cursor === -1 ? query1 : queryN; 
+    query = JSON.stringify({ query, variables });
+
+    // console.log( "GHA", query );
+    try {
+	await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query, "getHostAssign" )
+	    .then( async (raw) => {
+		let repo = raw.data.node;
+		let users = repo.assignableUsers; 
+		for( let i = 0; i < users.edges.length; i++ ) { assignees.push( users.edges[i].node.id ); }
+		// console.log( assignees.toString() );
+
+		// Wait.  Data is modified
+		if( users !== -1 && users.pageInfo.hasNextPage ) { await getHostAssign( PAT, rid, assignees, users.pageInfo.endCursor ); }
+
+	    });
+
+    }
+    catch( e ) {
+	assignees.length  = 0;
+	cursor = -1;
+	await ghUtils.errorHandler( "getHostAssign", e, getHostAssign, PAT, rid, assignees, cursor );
+    }
+}
+
+// Get label amounts from all peq labels in repo
+async function getHostLabels( PAT, rid, labels, cursor ) {
+    
+    let query1 = `query label($nodeId: ID! ) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            labels( first: 100 ) {
+             pageInfo { hasNextPage, endCursor }
+             edges { node { name id description }}}
+    }}}`;
+
+    let queryN = `query label($nodeId: ID!, $cursor: String! ) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            labels( first: 100 after: $cursor ) {
+             pageInfo { hasNextPage, endCursor }
+             edges { node { name id description }}}
+    }}}`;
+
+    let variables = cursor === -1 ? {"nodeId": rid } : {"nodeId": rid, "cursor": cursor };
+    let query     = cursor === -1 ? query1 : queryN; 
+    query = JSON.stringify({ query, variables });
+
+    // XXX should verify peq labels are well-formed here.
+    try {
+	await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query, "getHostLabels" )
+	    .then( async (raw) => {
+		let repo = raw.data.node;
+		let labs = repo.labels;
+		for( let i = 0; i < labs.edges.length; i++ ) {
+		    let lab = labs.edges[i].node;
+		    let labVal = ghUtils.theOnePEQ( [ lab ] );
+		    // console.log( "Checking", lab, labVal );
+		    if( labVal > 0 ) { labels.push( [labVal, lab.id] ); }
+		}
+
+		// Wait.  Data is modified
+		if( labs !== -1 && labs.pageInfo.hasNextPage ) { await getHostLabels( PAT, rid, labels, labs.pageInfo.endCursor ); }
+
+	    });
+
+    }
+    catch( e ) {
+	labels.length  = 0;
+	cursor = -1;
+	console.log( e );
+	await ghUtils.errorHandler( "getHostLabels", e, getHostLabels, PAT, rid, labels, cursor );
+    }
+}
+
 // aws peqs: amount, hostHolderId, hostIssueId, hostIssueTitle, hostRepoId, hostProjectSub, peqType
 // gh issue: peq labels, assignees, issueId, title, repoId, link:projName,colName, open?  plan.   closed?  label sez pend or accr
 //             issue        issue     link    link   link       link               issue                     
 async function getHostPeqs( PAT, ghLinks, ceProjId ) {
     let retVal = [];
     let authData = { pat: PAT, who: "ceMD" };
+    console.log( "Got host peqs" );
 
     if( ghLinks == -1 ) { return retVal; }
     
     let links   = await ghLinks.getLinks( authData, { ceProjId: ceProjId } );
+    if( links === -1 ) { return retVal; }
 
     // Get issue data by repoId.  Build issue map to speed this up.
     let repoIds = [];
@@ -269,7 +451,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			    
 			    // skip non-peq issue
 			    // console.log( "WORKING", iss.title );
-			    if( typeof issues[ iss.id ] === 'undefined' ) { console.log( "YYY skipping non-peq", iss.title ); continue; }
+			    if( typeof issues[ iss.id ] === 'undefined' ) { console.log( " .. skipping non-peq", iss.title ); continue; }
 
 			    // Matching aws peqs, so keep id not name
 			    issues[ iss.id ].hostHolderId =  iss.assignees.edges.map( edge => edge.node.id );
@@ -286,7 +468,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			    // require issue state and col name to be consistent with peq type
 			    const pend = config.PROJ_COLS[ config.PROJ_PEND ];
 			    const accr = config.PROJ_COLS[ config.PROJ_ACCR ];
-			    console.log( iss.title, iss.state, pend, accr, issues[ iss.id ].hostProjectSub[1] );
+			    // console.log( iss.title, iss.state, pend, accr, issues[ iss.id ].hostProjectSub[1] );
 			    if( iss.state == config.GH_ISSUE_OPEN && issues[ iss.id ].hostProjectSub[1] != pend && issues[ iss.id ].hostProjectSub[1] != accr ) {
 				issues[ iss.id ].peqType = config.PEQTYPE_PLAN;
 			    }
@@ -296,6 +478,9 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			    else if( iss.state == config.GH_ISSUE_CLOSED && issues[ iss.id ].hostProjectSub[1] == accr ) {
 				issues[ iss.id ].peqType = config.PEQTYPE_GRANT;
 			    }
+
+			    // remove issues that are untracked
+			    if( amount <= 0 ) { delete issues[ iss.id ]; }
 			    
 			    // console.log( issues[ iss.id ] );
 			}
@@ -309,7 +494,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
     }
 
     Object.values(issues).forEach( v => retVal.push( v ) );
-    console.log( retVal );
+    // console.log( retVal );
 
     return retVal;
 }
@@ -2017,6 +2202,9 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
 
 export {getHostLinkLoc};
+export {getHostLoc};
+export {getHostAssign};
+export {getHostLabels};
 export {getHostPeqs};
 
 export {createIssue};

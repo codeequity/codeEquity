@@ -162,6 +162,7 @@ Future<void> reloadCEVentureOnly( context, container ) async {
                                    
                                    ]);
    appState.myEquityPlan = appState.ceEquityPlans[ceVent];
+   appState.myGHPAT      = "";
    
    if( appState.myEquityPlan == null ) { appState.myEquityPlan = new EquityPlan( ceVentureId: ceVent, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
 
@@ -199,6 +200,7 @@ Future<void> reloadCEProject( context, container ) async {
                                    ]);
    appState.myPEQSummary = appState.cePEQSummaries[ceProj];
    appState.myHostLinks  = appState.ceHostLinks[ceProj];
+   appState.myGHPAT      = "";
    
    if( appState.verbose >= 3 ) {
       print( "Got Links?" ); 
@@ -339,18 +341,24 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
    }
 }
 
-// Active only.
+// remember, active flag is for host, not ceMD
 Future<void> updateCEPeqs( container, context ) async {
    final appState  = container.state;
-
+   
    // Get all peqs for currently selected CEP
    String cep   = appState.selectedCEProject;
    assert( cep != "" );
-
+   
    if( appState.cePeqs[ cep ] == null ) {
       print( "building CE peq data for " + cep );
-      appState.cePeqs[ cep ] = await fetchPEQs( context, container, '{ "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": "$cep", "allAccrued": "true" }}' );
+      appState.cePeqs[ cep ] =
+         await fetchPEQs( context, container, '{ "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": "$cep", "allAccrued": "true" }}' );
    }
+
+   assert( appState.cePeqs[ cep ] != null );
+   
+   // remove truly inactive.  active flag is false, but not granted.
+   appState.cePeqs[ cep ].removeWhere( (p) => !p.active && p.peqType != PeqType.grant );
 
 }
 

@@ -180,7 +180,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     let assignee2F  = await gh2tu.getAssignee( authDataF, ASSIGNEE2 );
     const FcrossLoc = await gh2tu.getFlatLoc( authDataF, FcrossPid, "Cross Proj", "Cross Col" );
     
-    // Create in fail cross project
+    // Create in fail cross project (i.e. create in ce_altTest, xfer to ce_flutTest, delete from ce_flutTest)
     let issDatF = await gh2tu.blastIssue( authDataF, tdF, "CT Blast F", [labF], [assignee1F, assignee2F] );               
     await utils.sleep( 2000 );
 

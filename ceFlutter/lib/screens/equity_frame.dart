@@ -287,7 +287,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                editList( context, appState, popupTitle, lhInternal, [tc, ac, hp], [title, amt, hproj], () => _saveEdit( t, tc, ac, hp ), () => _cancelEdit(), () => _delete(t) );
             },
             key: Key( 'catEditable ' + treeIndex.toString() ),
-            child: makeClickTableText( appState, t.getTitle(), _setTitle, _unsetTitle, width, height - 15, false, 1, mux: (depth+1) * .5 )
+            child: makeClickTableText( appState, t.getTitle(), _setTitle, _unsetTitle, width, false, 1, mux: (depth+1) * .5 )
             );
 
          // print( "Made GD with key: " + 'catEditable ' + treeIndex.toString() );

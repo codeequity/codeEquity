@@ -51,8 +51,8 @@ class AppState {
    late bool loaded;                           // control expensive aspects of state initialization
    late String ceUserId;                       // set during signup, login, refresh, etc.
 
-   late String                          selectedCEVenture;  // always set if seeing equity plan
-   late String                          selectedCEProject;  // always set if seeing summary frame or equity plan
+   late String                          selectedCEVenture;  // always set if seeing equity plan                    cev id
+   late String                          selectedCEProject;  // always set if seeing summary frame or equity plan   cep id
    late String                          selectedHostUID;    // Looking at details for this host user, currently
 
    late Map< String, Map<String, String >> idMapHost;       //  {hostUid: {ceUID: , ceUserName: , hostUserName: }}
@@ -78,6 +78,7 @@ class AppState {
    late Linkage?          myHostLinks;           // Current project/column disposition for the selectedCEProject
    late EquityPlan?       myEquityPlan;          // Equity plan for the selectedCEProject
    late List<HostAccount> myHostAccounts;        // all host accounts for current ceUser.
+   late String            myGHPAT;               // GH personal access token for builder, keep for session only.
    
    late bool hostUpdated;
 
@@ -172,7 +173,8 @@ class AppState {
       myEquityPlan   = null;
       myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user
       myHostLinks    = null;
-
+      myGHPAT        = "";
+      
       userPActUpdate = false;
       hoverChunk = "";
       // ingestUpdates = new Map<String, int>();

@@ -170,7 +170,7 @@ Future<bool> validateFlutProfile( WidgetTester tester ) async {
 
    expect( find.text( 'Host Platform: GitHub' ),          findsOneWidget );
    expect( find.text( '   GH Version 2' ),                findsOneWidget );
-   expect( find.text( '   codeequity\/ceFlutterTester' ), findsOneWidget );
+   expect( find.text( '   codeequity\/ceFlutterTester (R_kgDOLlZyUw)' ), findsOneWidget );
 
    // edit profile
    expect( find.byKey( Key( 'Edit profile' )),    findsOneWidget );

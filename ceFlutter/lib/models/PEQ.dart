@@ -22,6 +22,7 @@ class PEQ {
    String        hostIssueTitle; // actually, issue-or-card title.
 
    bool          active;       // has this PEQ been deliberately deleted, unlabeled or otherwise removed from project?
+                               // see comments in cardHandler.  grant is a set in stone peq, regardless of 'active'
 
    PEQ({ required this.id, required this.ceProjectId, required this.ceHolderId, required this.hostHolderId, required this.ceGrantorId,
             required this.peqType, required this.amount, required this.accrualDate, required this.vestedPerc,

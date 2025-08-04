@@ -101,13 +101,14 @@ const _p29 = { title: "Situated Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks
 
 
 // CROSS PROJ
-// Note these two start in ceTesterConne or ceFlutterConnie, then xfer to flut and to serv.  So there are two active peqs here, different ceprojs from dif. runs
+// Note these two start in ceTesterConnie or ceFlutterConnie, then xfer to flut and to serv.  So there are two active peqs here, different ceprojs from dif. runs
+// created during ceFlutTest
 const _p23 = { title: "CT Blast X", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["eaeIqcqqdp", "yxsklawdpc" ], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Cross Proj", "Cross Col"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
-// no ingest, so no ceHolder
+// no ingest, so no ceHolder, created during ceServerTest
 const _p24 = { title: "CT Blast X", id: "-1", ceProjectId: "CE_ServTest_usda23k425", ceGrantorId:"---",
               ceHolderId: [], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
@@ -196,8 +197,11 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
     awsPeqs = awsPeqs.concat( await awsUtils.getPEQs( authData, { "CEProjectId": cepidX } ));
     awsPeqs = awsPeqs.concat( await awsUtils.getPEQs( authData, { "CEProjectId": cepidM } ));
 
+    awsPeqs = awsPeqs.filter( (p) => p != -1 );
+    
     // rewrite names to remove the random split tag
     awsPeqs.forEach(p => {
+	assert( p != -1 );
 	if( typeof p.HostIssueTitle === 'undefined' ) { console.log( p ); }
 	let loc = p.HostIssueTitle.indexOf( " split:" );      // XXX formalize
 	if( loc != -1 ) { p.HostIssueTitle = p.HostIssueTitle.substring( 0, loc+6 ); }

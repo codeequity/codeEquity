@@ -51,7 +51,8 @@ void showToast(String msg) {
       );
 }
 
-void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
+void popScroll( BuildContext context, scrollHeader, scrollBody, buttons ) {
+      
    showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -59,12 +60,8 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
                     scrollable: true,
                     title: new Text( scrollHeader ),
                     content: scrollBody,
-                    actions: <Widget>[
-                       new TextButton(
-                          key: Key( 'Dismiss' ),
-                          child: new Text("Dismiss"),
-                          onPressed: dismissFunc )
-                       ]);
+                    actions: buttons
+                    );
               });
 }
 
@@ -247,21 +244,41 @@ Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
       );
 }
 
-Widget makeClickTableText( appState, title, hov, nohov, width, height, wrap, lines, { fontSize = 14, mux = 1.0 } ) {
-   return MouseRegion(
-      onEnter: hov,
-      onExit: nohov,
-      cursor: SystemMouseCursors.click,
-      child: Padding(
-      padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
-      child: IntrinsicWidth(
-         key: Key( title ),
-         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                     style: TextStyle(fontSize: fontSize,
-                                      fontWeight: FontWeight.bold,
-                                      color:      title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
-                                      decoration: title == appState.hoverChunk ? TextDecoration.underline : null ))))
+Widget makeClickTableText( appState, title, hov, nohov, width, wrap, lines, { fontSize = 14, mux = 1.0, iw = true } ) {
+   Widget mr = Container( width: 1 );
+   if( iw ) {
+      mr = MouseRegion(
+         onEnter: hov,
+         onExit: nohov,
+         cursor: SystemMouseCursors.click,
+         child: Padding(
+            padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+            child: IntrinsicWidth(
+               key: Key( title ),
+               child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                           style: TextStyle(fontSize: fontSize,
+                                            fontWeight: FontWeight.bold,
+                                            color:      title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
+                                            decoration: title == appState.hoverChunk ? TextDecoration.underline : null ))))
          );
+   }
+   else {
+      mr = MouseRegion(
+         onEnter: hov,
+         onExit: nohov,
+         cursor: SystemMouseCursors.click,
+         child: Padding(
+            padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+            child: Container( width: width,
+               key: Key( title ),
+               child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                           style: TextStyle(fontSize: fontSize,
+                                            fontWeight: FontWeight.bold,
+                                            color:      title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
+                                            decoration: title == appState.hoverChunk ? TextDecoration.underline : null ))))
+         );
+   }
+   return mr;
 }
 
 Widget makeIndentedActionableText( appState, title, hov, nohov, width, wrap, lines ) {
@@ -327,13 +344,13 @@ Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines,
    else                   { return Wrap( spacing: 0, children: [ Text(lead ), mr ] );  }
 }
 
-Widget makeToolTip( child, message, {wait=false} ) {
+Widget makeToolTip( child, message, {wait=false, maxWidth=0} ) {
    final dengdeng = wait ? 2 : 0;
    return new Tooltip(
       child: child,
       message: message,
       preferBelow: true,
-      height: 50,
+      constraints: BoxConstraints( minHeight: 50, minWidth: 50, maxWidth: maxWidth == 0 ? 400 : maxWidth ),
       padding: const EdgeInsets.all(8.0),
       textStyle: const TextStyle( fontSize: 16, color: Colors.blue ),
       decoration: BoxDecoration(
