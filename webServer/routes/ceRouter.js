@@ -302,7 +302,8 @@ router.post('/:location?', async function (req, res) {
     // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
     notificationCount++;
     if( notificationCount % 50 == 0 ) { hostLinks.show(15); }
-    
+    if( notificationCount % 20 == 0 ) { ceNotification.show(); }
+
 
     ceArrivals.add( newStamp );                                                      // how quickly are notifications arriving?
     ceNotification.push( jd.event+" "+jd.action+" "+jd.tag+" "+locator.projPath );   // testing data

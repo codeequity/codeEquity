@@ -165,6 +165,17 @@ async function validatePEQ( authData, ceProjId, issueId, title, rid ) {
     return peq;  
 }
 
+// has aws check for multiple peqs for issueId that might have been created after xfer race condition
+async function checkDuplicate( authData, ceProjId, issueId ) {
+    console.log( authData.who, "Checking aws for duplicate peqs for", ceProjId, issueId );
+
+    let shortName = "CheckDup";
+    let postData  = { "Endpoint": shortName, "CEProjectId": ceProjId, "HostIssueId": issueId };
+
+    let status = await wrappedPostAWS( authData, shortName, postData );
+
+    return status == -1 ? false : true;
+}
 
 // Check for stored PAT.  Not available means public repo that uses ceServer PAT
 async function getStoredPAT( authData, host, actor ) {
@@ -605,6 +616,7 @@ export {getStoredPAT};
 export {show};
 
 export {validatePEQ};
+export {checkDuplicate};
 export {getProjectStatus};
 export {getPEQ};
 export {removePEQ};
