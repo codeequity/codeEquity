@@ -70,7 +70,7 @@ Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
    if( builderPAT == "" ) { return hostPeqs; }
    
    // Have cep, gives me repo name per cepId,  have hostOrg.
-   print( cep.repositories.toString() );
+   // print( cep.repositories.toString() );
    var postData = '{"Endpoint": "ceMD", "Request": "getPeqs", "PAT": "$builderPAT", "cepId": "$cepId" }'; 
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
@@ -93,7 +93,7 @@ Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
                               vestedPerc: 0.0, accrualDate: "", peqType: peqType, hostIssueTitle: peq['hostIssueTitle'],
                               hostIssueId: peq['hostIssueId'], hostRepoId: peq['hostRepoId'], active: true ) );
    }
-   print( "XXX Loaded: " + hostPeqs.toString() );
+   // print( "XXX Loaded: " + hostPeqs.toString() );
    
    return hostPeqs;
 }
@@ -280,12 +280,8 @@ Future<bool> closeGHIssue( container, CEProject cep, String hostIssueId ) async 
 Future<bool> updateLinkage( container, CEProject cep, PEQ p, HostLoc pLoc, List<dynamic> createdIssue ) async {
    final appState  = container.state;
 
-   final builderPAT = await getHostPAT( container, cep );
-   if( builderPAT == "" ) { return false; }
-
    var link = {};
    link["ceProjectId"]     = cep.ceProjectId;
-   // link["hostRepoName"]    = ;
    link["hostRepoId"]      = p.hostRepoId;
    link["hostIssueId"]     = createdIssue[0];
    link["hostIssueNum"]    = createdIssue[1];
@@ -296,8 +292,12 @@ Future<bool> updateLinkage( container, CEProject cep, PEQ p, HostLoc pLoc, List<
    link["hostCardId"]      = createdIssue[2];
    link["hostIssueName"]   = p.hostIssueTitle;
    link["hostUtility"]     = pLoc.hostUtility;
-   
-   var postData = {"Endpoint": "ceMD", "Request": "addLinkage", "PAT": "$builderPAT", "link": link }; 
+
+   var ridx = cep.hostRepoId.indexOf( p.hostRepoId );
+   link["hostRepoName"]    = cep.repositories[ ridx ];
+
+   var cepId = cep.ceProjectId;
+   var postData = {"Endpoint": "ceMD", "Request": "addLinkage", "ceProjId": "$cepId", "link": link }; 
    var response = await postCE( appState, json.encode( postData ));
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );

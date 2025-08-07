@@ -193,7 +193,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res ) {
 	    break;
 	case 'issue' :
 	    {
-		if( validField( jd, "checkDuplicate" ) ) { pd.checkDuplicate = jd.checkDuplicate; }
+		if( utils.validField( jd, "checkDuplicate" ) ) { pd.checkDuplicate = jd.checkDuplicate; }
 		retVal = await gh2Issue.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
 		    .catch( e => console.log( "Error.  Issue Handler failed.", e ));
 	    }

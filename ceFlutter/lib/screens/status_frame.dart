@@ -72,6 +72,8 @@ class _CEStatusState extends State<CEStatusFrame> {
    late bool hideBad; 
    late bool hideGood;
 
+   late bool updateView; 
+   
    late List<List<Widget>> peqHeader;
 
    final listHeaders = ["Issue Title", "Host Project", "PEQ", "Assignee(s)" ];
@@ -84,6 +86,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       hideGone   = true;
       hideBad    = true;
       hideGood   = true;
+      updateView = true;
       peqHeader  = [];
    }
 
@@ -98,7 +101,8 @@ class _CEStatusState extends State<CEStatusFrame> {
                               updateCEPeqs( container, context ),           // get all ce peqs for the currently selected CEP
                               updateHostPeqs( container, cep )             // get all host peqs for the currently selected CEP
                               ]);
-         
+
+         print( "load peqs" );
          setState(() => peqsLoaded = true );
       }
    }
@@ -383,6 +387,15 @@ class _CEStatusState extends State<CEStatusFrame> {
       // XXX do this for each in needs repair
       // 4) make new issue
       await makeHostIssue( context, container, cep!, p, hostLocs, hostLabels );
+
+      // setState( () => updateView = true );
+      setState( () {
+            peqsLoaded = false;
+            updateView = true;
+         });
+      // dismiss writeall popup, and the compare popup
+      Navigator.of( context ).pop();
+      Navigator.of( context ).pop();
    }
       
    
@@ -408,6 +421,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
    void _cancel() {
       print( "Cancel" );
+      updateView = true;
       Navigator.of( context ).pop();
    }
 
@@ -508,10 +522,12 @@ class _CEStatusState extends State<CEStatusFrame> {
 
    Widget _peqDetail( context, cp, hp, status ) {
       void _unsetTitle( PointerEvent event ) {
+         updateView = true;         
          setState(() { appState.hoverChunk = ""; });
       }
       
       void _setTitle( PointerEvent event ) {
+         updateView = true;
          setState(() { appState.hoverChunk = cp.hostIssueTitle; });
       }
       
@@ -530,37 +546,37 @@ class _CEStatusState extends State<CEStatusFrame> {
       final buttonWidth = 100;
       
       Widget expandGone = GestureDetector(
-         onTap: () async { setState(() => hideGone = false ); },
+         onTap: () async { updateView = true; setState(() => hideGone = false ); },
          key: Key( 'hideGone'),
          child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
          );
       
       Widget shrinkGone = GestureDetector(
-         onTap: () async { setState(() => hideGone = true ); },
+         onTap: () async { updateView = true; setState(() => hideGone = true ); },
          key: Key( 'hideGone'),
          child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
          );
       
       Widget expandBad = GestureDetector(
-         onTap: () async { setState(() => hideBad = false ); },
+         onTap: () async { updateView = true; setState(() => hideBad = false ); },
          key: Key( 'hideBad'),
          child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
          );
       
       Widget shrinkBad = GestureDetector(
-         onTap: () async { setState(() => hideBad = true ); },
+         onTap: () async { updateView = true; setState(() => hideBad = true ); },
          key: Key( 'hideBad'),
          child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
          );
       
       Widget expandGood = GestureDetector(
-         onTap: () async { setState(() => hideGood = false ); },
+         onTap: () async { updateView = true; setState(() => hideGood = false ); },
          key: Key( 'hideGood'),
          child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
          );
       
       Widget shrinkGood = GestureDetector(
-         onTap: () async { setState(() => hideGood = true ); },
+         onTap: () async { updateView = true; setState(() => hideGood = true ); },
          key: Key( 'hideGood'),
          child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
          );
@@ -660,7 +676,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       body.addAll( gone );
       body.addAll( bad );
       body.addAll( good );
-      
+
+      updateView = false;
       return body;
    }
    
@@ -674,7 +691,9 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       List<List<Widget>> pending = [];
 
-      pending.addAll( _getBody( context, cep! ) );
+      if( peqsLoaded && updateView ) {   // otherwise loadPeqs set state will rebuild pending
+         pending.addAll( _getBody( context, cep! ) );
+      }
 
       // header afterwards to get status
       pending.insertAll( 0, _getHeader( context, cep! ) );

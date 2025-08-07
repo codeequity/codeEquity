@@ -1148,7 +1148,9 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
    if( ka == null ) {
       bool nonPeqChange = pact.action == PActAction.change && ( pact.note == PActNotes['colRename'] || pact.note == PActNotes['projRename'] );
       bool peqChange    = pact.action == PActAction.add || pact.action == PActAction.delete || pact.action == PActAction.notice;
-      if( !(pact.verb == PActVerb.confirm && ( nonPeqChange || peqChange )) ) { print( "XXX FAIL" ); }
+      if( !( pact.verb == PActVerb.confirm && ( nonPeqChange || peqChange )) ) {
+         print( "XXX FAIL " + nonPeqChange.toString() + " " + peqChange.toString() + " " + enumToStr( pact.verb) );
+      }
       assert( pact.verb == PActVerb.confirm && ( nonPeqChange || peqChange ));
       assignees = peq.hostHolderId;
       if( assignees.length == 0 ) { assignees = [ appState.UNASSIGN ]; } 
