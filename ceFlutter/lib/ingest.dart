@@ -825,7 +825,6 @@ List<dynamic> _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
    String hpid      = ka == null ? "" : (ka.hostProjectId ?? "");
    
-   assert( ka.allocType != PeqType.allocation );
    _vPrint( appState, 1, "Add assignee: " + pact.subject.last + " " + pactLast );
    
    List<String> curAssign = [ pactLast ]; // hostUserId
@@ -855,7 +854,6 @@ List<dynamic> _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
    String hpid      = ka == null ? "" : (ka.hostProjectId ?? "");
    
-   assert( ka.allocType != PeqType.allocation );
    _vPrint( appState, 1, "Remove assignee: " + pact.subject.last );
    
    int originalSize = assignees.length;
@@ -1150,7 +1148,9 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
    if( ka == null ) {
       bool nonPeqChange = pact.action == PActAction.change && ( pact.note == PActNotes['colRename'] || pact.note == PActNotes['projRename'] );
       bool peqChange    = pact.action == PActAction.add || pact.action == PActAction.delete || pact.action == PActAction.notice;
-      if( !(pact.verb == PActVerb.confirm && ( nonPeqChange || peqChange )) ) { print( "XXX FAIL" ); }
+      if( !( pact.verb == PActVerb.confirm && ( nonPeqChange || peqChange )) ) {
+         print( "XXX FAIL " + nonPeqChange.toString() + " " + peqChange.toString() + " " + enumToStr( pact.verb) );
+      }
       assert( pact.verb == PActVerb.confirm && ( nonPeqChange || peqChange ));
       assignees = peq.hostHolderId;
       if( assignees.length == 0 ) { assignees = [ appState.UNASSIGN ]; } 

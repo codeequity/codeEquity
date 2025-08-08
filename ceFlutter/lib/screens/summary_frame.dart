@@ -193,11 +193,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   _vPrint( appState, 1, "... found - move on" );
                   curNode = childNode;
                }
-               else {
-                  _vPrint( appState, 1, "... alloc adding into existing chain" );
-                  assert( alloc.allocType == PeqType.allocation );
-                  (childNode as Node).addAlloc( alloc.amount! );
-               }
+               else { assert( false ); } // was placeholder for old-style allocations that no longer exist
             }
             else { assert( false ); }
          }

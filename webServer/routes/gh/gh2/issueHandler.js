@@ -461,6 +461,25 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	// only xfer between repos 1) owned by same person/org; 2) where you have write access to both
 	
 	{
+	    let newIssueId  = pd.reqBody.changes.new_issue.node_id;
+	    let newRepo     = pd.reqBody.changes.new_repository.full_name;
+	    let newCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, newRepo );
+
+	    if( utils.validField( pd, "checkDuplicate" ) ) {
+		let tdiff = ( Date.now() - pd.checkDuplicate ) / 10.0;
+		console.log( authData.who, " .. checking request for checkDuplicate", newIssueId, tdiff );
+		if( tdiff >= 10 ) {
+		    console.log( authData.who, " - Ready.  Requesting check from aws." );
+		    // No need to wait
+		    awsUtils.checkDuplicate( authData, newCEP, newIssueId );
+		    return;
+		}
+		else {
+		    console.log( authData.who, " - not yet. Wait a bit" );
+		    return "checkDuplicate"; 
+		}
+	    }
+	    
 	    let issueTitle  = pd.reqBody.issue.title;
 	    
 	    let oldIssueId  = pd.reqBody.issue.node_id;
@@ -470,11 +489,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let oldCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, oldRepo );
 	    let oldCEV      = ceProjects.findById( oldCEP ).CEVentureId;
 	    
-	    let newRepo     = pd.reqBody.changes.new_repository.full_name;
 	    let newRepoId   = pd.reqBody.changes.new_repository.node_id;
-	    let newIssueId  = pd.reqBody.changes.new_issue.node_id;
 	    let newIssueNum = pd.reqBody.changes.new_issue.number;
-	    let newCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, newRepo );
 	    let newCEV      = ceProjects.findById( newCEP ).CEVentureId;
 
 	    assert( issueTitle == pd.issueName );
@@ -540,6 +556,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		links = ghLinks.getLinks( authData, { "ceProjId": newCEP, "repo": newRepo, "issueId": newIssueId } );
 		if( links.length == 1 ) {
 		    ghLinks.removeLinkage( { "authData": authData, "ceProjId": newCEP, "issueId": newIssueId } );
+		    console.log( authData.who, "removed extra linkage from spurious label notification" );
 		}
 
 		let newLink = { ...origLink };
@@ -641,6 +658,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		pd.ceProjectId                   = newCEP;
 		pd.issueId                       = newIssueId;
 		ingestUtils.processNewPEQ( authData, ghLinks, pd, content, newLink, { havePeq: true, pact: "justAdd" } );
+
+		// On a good transfer, GH will occasionally send a spurious label notification that can be received
+		// shortly after the xfer notification was received.  In which case, an extra PEQ with same data different id is generated on aws
+		// along with 2 excess pacts.  CheckDup tells ceServer to run as normal for ~10s, then correct this if it has occured.
+		return "checkDuplicate"; 
 	    }
 	    
 	}

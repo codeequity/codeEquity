@@ -105,6 +105,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "UpdateCEP")      { resultPromise = putCEP( rb.ceProject ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
+    else if( endPoint == "CheckDup")       { resultPromise = checkDuplicate( rb.CEProjectId, rb.HostIssueId ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
@@ -1500,6 +1501,46 @@ async function getHostProjs( query ) {
     }
 
     return success( hprojs );
+}
+
+async function checkDuplicates( ceProjId, issueId ) {
+
+    // Get all active peqs ceProjId, issueId
+    const query = { CEProjectId: ceProjId, HostIssueId: issueId, Active: "true" };
+    var peqsWrap = await getEntries( "CEPEQs", query );
+    console.log( "Found peqs, raw:", peqsWrap );
+
+    if( peqsWrap.statusCode != 201 ) { return false; }
+
+    const peqs = JSON.parse( peqsWrap.body );
+    console.log( "Found peqs:", peqs );
+    assert( peqs.length > 0 );
+
+    if( peqs.length <= 1 ) { return true; }
+
+    // Have found a duplicate.  Need pacts to determine which is correct.
+    assert( peqs.length == 2 );
+
+    // NOTE: Need to use hostIssueId here, not peqIds.  Transfered pacts do not include peqId.
+    // XXX buuut.. pacts share same issueId.  oi.  May need to update info in pact.
+    const pacts0Wrap = await getPActsById( ceProjId, [ peqs[0].PEQId ] );
+    if( pacts0Wrap.statusCode != 201 ) { return false; }
+    const pacts0 = JSON.parse( pact0Wrap.body );
+    console.log( "Found pacts for peq:", peq[0].PEQId, pacts0 );
+    
+    const pacts1Wrap = await getPActsById( ceProjId, [ peqs[1].PEQId ] );
+    if( pacts1Wrap.statusCode != 201 ) { return false; }
+    const pacts1 = JSON.parse( pact1Wrap.body );
+    console.log( "Found pacts for peq:", peq[1].PEQId, pacts1 );
+
+    const pacts2Wrap = await getPActsById( ceProjId, [ issueId ] );
+    if( pacts1Wrap.statusCode != 201 ) { return false; }
+    const pacts2 = JSON.parse( pact2Wrap.body );
+    console.log( "Found pacts for issue:", issueId, pacts2 );
+
+    console.log( "Which is the bad little bugger?" );
+
+    return success( true );			
 }
 
 

@@ -1,6 +1,6 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
 
-enum PeqType   { allocation, plan, pending, grant, end } 
+enum PeqType   { plan, pending, grant, end } 
 
 // Legally, only CEUIDs have signed agreements.  ceHolderId is binding.  hostHolderId is just a helpful comment.
 

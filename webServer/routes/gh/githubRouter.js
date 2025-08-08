@@ -193,6 +193,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res ) {
 	    break;
 	case 'issue' :
 	    {
+		if( utils.validField( jd, "checkDuplicate" ) ) { pd.checkDuplicate = jd.checkDuplicate; }
 		retVal = await gh2Issue.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
 		    .catch( e => console.log( "Error.  Issue Handler failed.", e ));
 	    }
@@ -221,6 +222,12 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res ) {
 	if( retVal == "postpone" ) {
 	    // add current job back into queue.
 	    console.log( authData.who, "Delaying this job." );
+	    await ceRouter.demoteJob( jd );
+	}
+	// Rare occurance of race condition on rare transfers
+	else if( retVal == "checkDuplicate" ) {
+	    console.log( authData.who, "Waiting to send checkDuplicate after successful transfer" );
+	    if( !utils.validField( jd, "checkDuplicate" ) ) { jd.checkDuplicate = Date.now(); }
 	    await ceRouter.demoteJob( jd );
 	}
     }
