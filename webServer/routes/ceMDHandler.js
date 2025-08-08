@@ -14,6 +14,7 @@ async function handler( hostLinks, reqBody, res ) {
     let retVal = -1;
     if(      reqBody.Request == "getBuilderPAT" ) { retVal = await ceAuth.getHostPAT( reqBody.host ); }
     else if( reqBody.Request == "addLinkage" )    { retVal = await hostLinks.addLinkage( { who: "ceMD" }, reqBody.ceProjId, reqBody.link ); }
+    else if( reqBody.Request == "removeLinkage" ) { retVal = await hostLinks.removeLinkage( {"authData": { who: "ceMD" }, "ceProjId": reqBody.ceProjId, "issueId": reqBody.issueId } ); }
     else if( reqBody.Request == "getPeqs" )       { retVal = await ghV2.getHostPeqs( reqBody.PAT, hostLinks, reqBody.cepId ); }
     else if( reqBody.Request == "getLocs" )       { retVal = await ghV2.getHostLoc( reqBody.PAT, reqBody.pid ); }
     else if( reqBody.Request == "createLabel" )   { retVal = await ghV2.createPeqLabel( { pat: reqBody.PAT, who: "ceMD" }, reqBody.rid, reqBody.peqVal ); }

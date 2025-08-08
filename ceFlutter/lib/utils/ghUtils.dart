@@ -213,11 +213,11 @@ Future<List<dynamic>> createGHIssue( container, CEProject cep, String repoId, St
    }
 
    var issue = json.decode( utf8.decode( response.bodyBytes ));
-   print( "New host issue " + issue.toString() );
+   // print( "New host issue " + issue.toString() );
    
    if( issue.length == 3 ) {
       issDat.add( issue[0] is String ? issue[0] as String  : -1);
-      issDat.add( issue[1] is String ? issue[1] as String  : -1);
+      issDat.add( issue[1] is int    ? issue[1].toString() : -1);
       issDat.add( issue[2] is String ? issue[2] as String  : -1);
    }
 
@@ -277,9 +277,25 @@ Future<bool> closeGHIssue( container, CEProject cep, String hostIssueId ) async 
    return true;
 }
 
+Future<bool> remLinkage( container, CEProject cep, String issueId ) async {
+   final appState  = container.state;
+
+   var cepId = cep.ceProjectId;
+   var postData = {"Endpoint": "ceMD", "Request": "removeLinkage", "ceProjId": "$cepId", "issueId": issueId }; 
+   var response = await postCE( appState, json.encode( postData ));
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      return false;
+   }
+
+   return true;
+}
+
 Future<bool> updateLinkage( container, CEProject cep, PEQ p, HostLoc pLoc, List<dynamic> createdIssue ) async {
    final appState  = container.state;
 
+   print( "Update linkage with " + createdIssue.toString() );
+          
    var link = {};
    link["ceProjectId"]     = cep.ceProjectId;
    link["hostRepoId"]      = p.hostRepoId;
@@ -310,9 +326,13 @@ Future<bool> updateLinkage( container, CEProject cep, PEQ p, HostLoc pLoc, List<
 // hostLabels are repoId to list of label objects
 Future<void> makeHostIssue( context, container, cep, PEQ p, List<HostLoc> ghLocs, Map<String, List<dynamic>> hostLabels ) async {
 
-   // 1) deleteIssue with same issueId or issueTitle in same project
+   // 1) deleteIssue and link with same issueId in same project
+   //    XXX look for same issueTitle as well?
    await remGHIssue( container, cep, p.hostIssueId );
    print( "Deleted host issue " + p.hostIssueTitle + " (" + p.hostIssueId + ")");
+
+   // Update linkage to keep ceServer in sync  
+   await remLinkage( container, cep, p.hostIssueId );
    
    // 2) create new host Issue that matches peq
    var newIssLabel = hostLabels[p.hostRepoId]!.firstWhere( (l) => l[0] == p.amount ); 
@@ -333,22 +353,21 @@ Future<void> makeHostIssue( context, container, cep, PEQ p, List<HostLoc> ghLocs
    print( "Created issue " + createdIssue.toString() );
    assert( createdIssue.length == 3 );
    assert( createdIssue[0] is String );  // hostIssueId
-   // createdIssue[1] or hostIssueNum is not interesting
+   assert( createdIssue[1] is String );  // hostIssueNum
    assert( createdIssue[2] is String );  // hostCardId
 
    // 3) move it to the right spot, then close it if needed.  createdIssue is in the host project, but not the correct column.
-   // No need to wait for either
-   moveGHCard( container, cep, pLoc[0], createdIssue[2] );
+   // Need to wait, else subsequent load has race condition
+   await moveGHCard( container, cep, pLoc[0], createdIssue[2] );
 
-   if( p.peqType == PeqType.pending || p.peqType == PeqType.grant ) { closeGHIssue( container, cep, createdIssue[0] ); }
+   if( p.peqType == PeqType.pending || p.peqType == PeqType.grant ) { await closeGHIssue( container, cep, createdIssue[0] ); }
 
    // Update linkage to keep ceServer in sync
-   updateLinkage( container, cep, p, pLoc[0], createdIssue );
+   await updateLinkage( container, cep, p, pLoc[0], createdIssue );
    
    // 4) update source with new hostIssueId
-   // no need to wait
    var pLink = { "PEQId": p.id, "HostIssueId": createdIssue[0] };
-   updateDynamo( context, container, json.encode( { "Endpoint": "UpdatePEQ", "pLink": pLink }), "UpdatePEQ" ) ;
+   await updateDynamo( context, container, json.encode( { "Endpoint": "UpdatePEQ", "pLink": pLink }), "UpdatePEQ" ) ;
 }
 
 

@@ -95,14 +95,13 @@ class _CEStatusState extends State<CEStatusFrame> {
       super.dispose();
    }
 
-   void _loadPeqs( CEProject cep ) async {
+   Future<void> _loadPeqs( CEProject cep ) async {
       if( !peqsLoaded ) {
          await Future.wait([
-                              updateCEPeqs( container, context ),           // get all ce peqs for the currently selected CEP
+                              updateCEPeqs( container, context ),          // get all ce peqs for the currently selected CEP
                               updateHostPeqs( container, cep )             // get all host peqs for the currently selected CEP
                               ]);
 
-         print( "load peqs" );
          setState(() => peqsLoaded = true );
       }
    }
@@ -130,7 +129,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<PEQ> planHPeqs = [];
       List<PEQ> pendHPeqs = [];
       List<PEQ> accrHPeqs = [];
-      
+
       if( peqsLoaded ) {
          // appState.cePeqs.keys.forEach( print );
          assert( appState.cePeqs[ cep.ceProjectId ] != null );
@@ -303,7 +302,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       }
 
       hostAssignees = hostAssignees.toSet().toList();
-      print( "Host Assign " + hostAssignees.toString() );
+      // print( "Host Assign " + hostAssignees.toString() );
       for( String aass in activeAssignees ) {
          hostAssignGood = hostAssignGood && hostAssignees.contains( aass );
          if( !hostAssignGood ) {
@@ -334,7 +333,7 @@ class _CEStatusState extends State<CEStatusFrame> {
          hostLabels[repoId] = await getHostLabels( container, cep!, repoId );
          List<int> hLabelVals = hostLabels[repoId]!.map( (l) => l[0] as int ).toList();
          activeLabels[ repoId ] = activeLabels[ repoId ]!.toSet().toList();
-         print( "Got Labels for " + repoId + hostLabels[repoId].toString() );
+         print( "Got Labels for " + repoId );
          // print( "   active labels: " + activeLabels[ repoId ].toString() );
          
          List<Future<dynamic>> createdLabels = [];
@@ -389,8 +388,12 @@ class _CEStatusState extends State<CEStatusFrame> {
       await makeHostIssue( context, container, cep!, p, hostLocs, hostLabels );
 
       // setState( () => updateView = true );
+
+      // Force reload, as core data has changed.
+      peqsLoaded = false;
+      appState.cePeqs.remove( cep!.ceProjectId );
+      await _loadPeqs( cep! );
       setState( () {
-            peqsLoaded = false;
             updateView = true;
          });
       // dismiss writeall popup, and the compare popup
@@ -447,7 +450,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
 
    Future<void> _detailPopup( context, PEQ cePeq, PEQ? hostPeq, String status ) async {
-      print( "Pop! " + status );
+      // print( "Pop! " + status );
       List<Widget> buttons = [];
       if( status == "bad" ) {
          if( cePeq != null )   { buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CodeEquity PEQ"),     onPressed: () => _chooseCEPeq( cePeq ) )); }
