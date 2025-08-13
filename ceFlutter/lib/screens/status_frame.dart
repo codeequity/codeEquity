@@ -189,8 +189,9 @@ class _CEStatusState extends State<CEStatusFrame> {
       res = res && p.peqType != null && p.peqType        == h!.peqType;
       // if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + enumToStr( p.peqType ) + " " + enumToStr( h!.peqType )); }
 
-      // amounts in ceMD may be off by one. there are no fractions, two assignees...
-      res = res && p.amount != null && ( p.amount - h!.amount ).abs() <= 1;
+      // XXX Should no longer see a difference.  True?  remove this comment and line
+      // res = res && p.amount != null && ( p.amount - h!.amount ).abs() <= 1;
+      res = res && p.amount != null && p.amount == h!.amount;
       // if( !res ) { print( "Bad at: " + p.hostIssueTitle + " " + p.amount.toString() + " " + h!.amount.toString() ); }
 
       res = res && p.hostRepoId != null && p.hostRepoId     == h!.hostRepoId;
