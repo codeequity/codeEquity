@@ -537,6 +537,17 @@ void _addMod( context, container, peq, postData, peqMods ) {
    }
 }
 
+bool _checkModded( peqMods, peq, attribute ) {
+
+   bool retVal = true;
+
+   retVal = retVal && peq != null;
+   retVal = retVal && peqMods != null && peqMods.containsKey( peq.id );
+   retVal = retVal && ['amount', 'peqType', 'hostIssueTitle'].contains( attribute );    // add more PEQ properties as needed
+   
+   return retVal;
+}
+
 Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare, Allocation? sourceAlloc, subBase ) async {
    // Once see action accrue, should have already seen peqType.pending
    final appState = container.state;
@@ -612,9 +623,10 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
       peqData['accrualDate'] = peq.accrualDate;
       peqData['ceGrantorId'] = peq.ceGrantorId;
    }
-   
-   // peqData['amount'] = ( assigneeShare * assignees.length ).toInt();
-   peqData['amount'] = ( assigneeShare * assignees.length ).round();
+
+   peqData['amount'] = _checkModded( peqMods, peq, 'amount' ) ? peqMods[peq.id].amount : peq.amount;
+   final computedAmount = ( assigneeShare * assignees.length ).round();
+   assert( ( peqData['amount'] - computedAmount ).abs() <= 1.0 );
    peqData['hostProjectSub'] = peqLoc;
 
    if( peqData['peqType']      != peq.peqType )                  { _vPrint( appState, 1, "_accrue changing peqType to "     + peqData['peqType'] ); }
@@ -820,7 +832,7 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
 }   
 
 // Return newShareAmount.  Internally adjust newAssign.
-List<dynamic> _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
+List<dynamic> _addAssignee( appState, pact, peq, peqMods, assignees, assigneeShare, ka, pactLast ) {
    final sourceType = ka == null ? "" : ka.allocType;
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
    String hpid      = ka == null ? "" : (ka.hostProjectId ?? "");
@@ -833,7 +845,17 @@ List<dynamic> _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
    for( String assign in assignees ) {
       if( assign != appState.UNASSIGN && !curAssign.contains( assign ) ) { curAssign.add( assign ); }
    }
-   final newShareAmount = (assigneeShare * assignees.length).round() / curAssign.length;
+
+   // prevent error creep
+   final amount         = _checkModded( peqMods, peq, 'amount' ) ? peqMods[peq.id].amount : peq.amount;
+   final newShareAmount = amount / curAssign.length;
+   final computedAmount = (assigneeShare * assignees.length).round() / curAssign.length;
+   if( !(( computedAmount - newShareAmount ).abs() <= 1.0 )) {
+      print( peq );
+      print( assignees.length.toString() + " " + curAssign.length.toString() );
+      print( newShareAmount.toString() + " " + computedAmount.toString() + " " + peq.amount.toString() );
+      assert( ( computedAmount - newShareAmount ).abs() <= 1.0 );
+   }
    
    // Remove all old, add all current with new assigneeShares
    for( var assign in assignees ) {
@@ -849,7 +871,7 @@ List<dynamic> _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
 }
 
 // Return newShareAmount.  Internally adjust newAssign.
-List<dynamic> _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
+List<dynamic> _remAssignee( appState, pact, peq, peqMods, assignees, assigneeShare, ka, pactLast ) {
    final sourceType = ka == null ? "" : ka.allocType;
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
    String hpid      = ka == null ? "" : (ka.hostProjectId ?? "");
@@ -869,8 +891,12 @@ List<dynamic> _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, p
    // Remove, then readjust assigneeShare
    assignees.remove( pactLast );
    if( assignees.length == 0 ) { assignees.add( appState.UNASSIGN ); }
-   
-   final newShareAmount  = (assigneeShare * originalSize).round() / assignees.length;
+
+   // Prevent loss of precision over multiple assignee changes.  Prevent out of order failures for peq amount.
+   final amount         = _checkModded( peqMods, peq, 'amount' ) ? peqMods[peq.id].amount : peq.amount;
+   final newShareAmount = amount / assignees.length;
+   final computedAmount = (assigneeShare * originalSize).round() / assignees.length;
+   assert( ( computedAmount - newShareAmount ).abs() <= 1.0 );
    
    for( var assign in assignees ) {
       _vPrint( appState, 1, "Add " + assign + " " + newShareAmount.floor().toString() );
@@ -989,12 +1015,12 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    String pactLast        = _convertNameToId( appState, pact.subject.last );  // if peqValUpdate, this will be an int, but won't be used.
 
    if( pact.note == PActNotes['addAssignee'] ) {
-      var aa  = _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast );
+      var aa  = _addAssignee( appState, pact, peq, peqMods, assignees, assigneeShare, ka, pactLast );
       newShareAmount = aa[0];
       newAssign      = aa[1];
    }
    else if( pact.note == PActNotes['remAssignee'] ) {
-      var aa = _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast ); 
+      var aa = _remAssignee( appState, pact, peq, peqMods, assignees, assigneeShare, ka, pactLast ); 
       newShareAmount = aa[0];
       newAssign      = aa[1];
    }
