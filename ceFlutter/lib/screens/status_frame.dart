@@ -64,8 +64,14 @@ class _CEStatusState extends State<CEStatusFrame> {
    late Widget empty;  // XXX formalize
    late Widget fatPad;
    late Widget hdiv;
-   late Widget vSpace; 
-   
+   late Widget vSpace;
+
+   late Map<String, PEQ> cPeqs;     // codeEquity (as per aws) peqs
+   late Map<String, PEQ> hPeqs;     // host peqs
+   late List<String>     gonePeqs;  // peq ids of peqs in the 'unavailable on host' category
+   late List<String>     badPeqs;   //       "         that don't match
+   late List<String>     goodPeqs;  //       "         that do match
+
    late bool peqsLoaded;
    late bool goodStatus;     
    late bool hideGone; 
@@ -87,7 +93,12 @@ class _CEStatusState extends State<CEStatusFrame> {
       hideBad    = true;
       hideGood   = true;
       updateView = true;
+      cPeqs      = {};
+      hPeqs      = {};
       peqHeader  = [];
+      gonePeqs   = [];
+      badPeqs    = [];
+      goodPeqs   = [];
    }
 
    @override
@@ -109,6 +120,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    // XXX would be interesting to add average latency of last few requests to aws and gh.. small font (43)
    List<List<Widget>> _getHeader( context, cep ) {
       List<List<Widget>> header = [];
+      // print( ' .. getHeader build' );
 
       final buttonWidth = 100;
       
@@ -353,8 +365,9 @@ class _CEStatusState extends State<CEStatusFrame> {
       }
       return moddedLabels;
    }
- 
-   Future<void> _writeAll( PEQ p, String source ) async {
+
+   // XXX need to expand host and update call pattern
+   Future<void> _writeCEtoHost( PEQ p, String source, bool all ) async {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
       assert( p.ceProjectId == cep!.ceProjectId );
@@ -384,19 +397,24 @@ class _CEStatusState extends State<CEStatusFrame> {
       // 3) make sure labels are in good shape.  Create if need be.
       bool moddedLabels = await _makeHostLabels( container, activeRepos, activeLabels, hostLabels );
       
-      // XXX do this for each in needs repair
       // 4) make new issue
-      await makeHostIssue( context, container, cep!, p, hostLocs, hostLabels );
-
-      // setState( () => updateView = true );
+      if( all ) {
+         // XXX these are run serially for now, sloooow.  Host loading, interactions need to be verified before moving to Future.wait
+         for( String badPeq in badPeqs ) {
+            assert( cPeqs.containsKey( badPeq ) );
+            await makeHostIssue( context, container, cep!, cPeqs[badPeq]!, hostLocs, hostLabels );
+         }
+      }
+      else {
+         await makeHostIssue( context, container, cep!, p, hostLocs, hostLabels );
+      }
 
       // Force reload, as core data has changed.
       peqsLoaded = false;
       appState.cePeqs.remove( cep!.ceProjectId );
       await _loadPeqs( cep! );
-      setState( () {
-            updateView = true;
-         });
+      setState( () => updateView = true );
+      
       // dismiss writeall popup, and the compare popup
       Navigator.of( context ).pop();
       Navigator.of( context ).pop();
@@ -409,8 +427,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       String msg2 = "Write All: Overwrite all host PEQs for this Code Equity Project with this PEQ and the others listed under \'Needing Repair\'.\n\n";
       String msg3 = "Note all historical data, such as comments, will be lost on the Host.";
       List<Widget> buttons = [];
-      buttons.add( new TextButton( key: Key( 'Fix one' ), child: new Text("Write one"), onPressed: () => print( "One!" )) );
-      buttons.add( new TextButton( key: Key( 'Fix all' ), child: new Text("Write all"), onPressed: () => _writeAll( p, "CodeEquity")) );
+      buttons.add( new TextButton( key: Key( 'Fix one' ), child: new Text("Write one"), onPressed: () => _writeCEtoHost( p, "CodeEquity", false )) );
+      buttons.add( new TextButton( key: Key( 'Fix all' ), child: new Text("Write all"), onPressed: () => _writeCEtoHost( p, "CodeEquity", true  )) );
       buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
 
       Widget m = makeBodyText( appState, msg1 + msg2 + msg3, 3.0 * baseWidth, true, 8, keyTxt: "chooseCEPeq"+p.hostIssueId);
@@ -426,6 +444,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    void _cancel() {
       print( "Cancel" );
       updateView = true;
+      appState.hoverChunk = "";      
       Navigator.of( context ).pop();
    }
 
@@ -451,10 +470,10 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
 
    Future<void> _detailPopup( context, PEQ cePeq, PEQ? hostPeq, String status ) async {
-      // print( "Pop! " + status );
+      print( "Pop! " + status );
       List<Widget> buttons = [];
       if( status == "bad" ) {
-         if( cePeq != null )   { buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CodeEquity PEQ"),     onPressed: () => _chooseCEPeq( cePeq ) )); }
+         if( cePeq != null )   { buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CodeEquity PEQ"), onPressed: () => _chooseCEPeq( cePeq ) )); }
          if( hostPeq != null ) { buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Host Peq"), onPressed: () => _chooseHostPeq( hostPeq ) )); }
       }
       buttons.add( new TextButton( key: Key( 'Cancel Peq fix' ), child: new Text("Cancel"), onPressed: _cancel ));
@@ -513,7 +532,7 @@ class _CEStatusState extends State<CEStatusFrame> {
          mainAxisAlignment: MainAxisAlignment.spaceBetween,
          children: comparison );
       
-      await showDialog(
+      final retVal = await showDialog(
          context: context,
          builder: (BuildContext context) {
                           return AlertDialog(
@@ -522,6 +541,11 @@ class _CEStatusState extends State<CEStatusFrame> {
                              content: Container( width: 5.0 * baseWidth, child: scrollBody ),
                              actions: buttons);
                        });
+      if( retVal == null ) {
+         // Background clicked, or browser back button
+         updateView = true;
+         appState.hoverChunk = "";      
+      }
    }
 
    Widget _peqDetail( context, cp, hp, status ) {
@@ -548,6 +572,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       
    List<List<Widget>> _getBody( context, cep ) {
       final buttonWidth = 100;
+      // print( ' .. getBody build ' + peqsLoaded.toString() + updateView.toString() );
       
       Widget expandGone = GestureDetector(
          onTap: () async { updateView = true; setState(() => hideGone = false ); },
@@ -590,14 +615,17 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<List<Widget>> bad  = [];
       List<List<Widget>> good = [];
       List<List<Widget>> body = [];
-
+      gonePeqs = [];
+      badPeqs  = [];
+      goodPeqs = [];
+      
       if( peqsLoaded ) {
-         Map<String, PEQ> peqs  = {};
-         Map<String, PEQ> hPeqs = {};
+         cPeqs.clear();
+         hPeqs.clear();
          appState.cePeqs[ cep.ceProjectId ]!.forEach( (p) {
                assert( p.hostIssueId != null );
                // do NOT filter on active, that is a host-specific flag
-               peqs[p.hostIssueId] = p; 
+               cPeqs[p.hostIssueId] = p; 
             });
          appState.hostPeqs[ cep.ceProjectId ]!.forEach( (p) {
                assert( p.hostIssueId != null );
@@ -605,7 +633,7 @@ class _CEStatusState extends State<CEStatusFrame> {
             });
 
 
-         peqs.forEach( (k,v) {
+         cPeqs.forEach( (k,v) {
                // 4 widgets here identical with those in approvalFrame.. but not quite sharing to pull out into one location
                assert( v.hostProjectSub.length >= 2 );
                List<String> userNames = v.ceHolderId.map( (ceuid) {
@@ -622,20 +650,23 @@ class _CEStatusState extends State<CEStatusFrame> {
                   Widget title   = paddedLTRB( _peqDetail( context, v, h, "good" ), 2 * appState.GAP_PAD, 0, 0, 0 );
                   if( gone.length < 1 ) { gone.addAll( peqHeader ); }
                   gone.add( [ empty, title, hproj, peqVal, assign ] );
+                  gonePeqs.add( k );
                }
                else if( _same( v, h ) ) {
                   Widget title   = paddedLTRB( _peqDetail(context, v, h, "good" ), 2 * appState.GAP_PAD, 0, 0, 0 );
                   if( good.length < 1 ) { good.addAll( peqHeader ); }                  
                   good.add( [ empty, title, hproj, peqVal, assign ] );
+                  goodPeqs.add( k );
                }
                else {
                   Widget title   = paddedLTRB( _peqDetail(context, v, h, "bad" ), 2 * appState.GAP_PAD, 0, 0, 0 );
                   if( bad.length < 1 ) { bad.addAll( peqHeader ); }
                   bad.add( [ empty, title, hproj, peqVal, assign ] );
+                  badPeqs.add( k );
                }
             });
          hPeqs.forEach( (k,v) {
-               PEQ? p = peqs[k];
+               PEQ? p = cPeqs[k];
                if( p == null ) { print("Extra host peq: " + v.toString() ); }
             });
       }
@@ -687,6 +718,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    
    Widget getStatus( context ) {
 
+      // print( ' .. getStatus build '  + peqsLoaded.toString() + updateView.toString() );
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       if( cep == null ) { return makeTitleText( appState, "First choose Project from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
 
