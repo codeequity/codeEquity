@@ -226,7 +226,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       return res; 
    }
 
-   
+   // verify that the world according to AWS is present on the host
    // get all hostLinks from aws.  identify which are used in peqs.  Along the way, populate other existing host data
    Future<bool> _checkHostStruct(container, List<String> activeAssignees, List<String> activeRepos, List<HostLoc> hostLocs, Map<String,List<int>> activeLabels ) async {
 
@@ -367,7 +367,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
 
    // XXX need to expand host and update call pattern
-   Future<void> _writeCEtoHost( PEQ p, String source, bool all ) async {
+   Future<void> _writeCEtoHost( PEQ p, bool all ) async {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
       assert( p.ceProjectId == cep!.ceProjectId );
@@ -419,7 +419,29 @@ class _CEStatusState extends State<CEStatusFrame> {
       Navigator.of( context ).pop();
       Navigator.of( context ).pop();
    }
-      
+
+   // will NOT modify CE's accrued peqs
+   // No need to check host infrastructure.
+   Future<void> _writeHostToCE( PEQ p, bool all ) async {
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+
+      // XXX test for CE's accrued peqs is incorrect.
+      // XXX badPeqs starts with aws peqs as base.  This will miss peqs in host that have not made it to aws.  aws can be null as well
+      if( all ) {
+         // host peqs are coming from CEServer, so peqType is correct.
+         appState.hostPeqs[ cep!.ceProjectId ]!.forEach( (hp) {
+               assert( hp.hostIssueId != null );
+               if( hp.peqType != PeqType.grant && badPeqs.contains( hp.id ) ) {
+                  makeCEPeq( context, container, cep!, hp );
+               }
+            });
+      }
+      else {
+         makeCEPeq( context, container, cep!, p );         
+      }
+   }
+
    
    Future<void> _chooseCEPeq( PEQ p ) async {
       assert( p != null );
@@ -427,20 +449,28 @@ class _CEStatusState extends State<CEStatusFrame> {
       String msg2 = "Write All: Overwrite all host PEQs for this Code Equity Project with this PEQ and the others listed under \'Needing Repair\'.\n\n";
       String msg3 = "Note all historical data, such as comments, will be lost on the Host.";
       List<Widget> buttons = [];
-      buttons.add( new TextButton( key: Key( 'Fix one' ), child: new Text("Write one"), onPressed: () => _writeCEtoHost( p, "CodeEquity", false )) );
-      buttons.add( new TextButton( key: Key( 'Fix all' ), child: new Text("Write all"), onPressed: () => _writeCEtoHost( p, "CodeEquity", true  )) );
+      buttons.add( new TextButton( key: Key( 'Write one CE' ), child: new Text("Write one"), onPressed: () => _writeCEtoHost( p, false )) );
+      buttons.add( new TextButton( key: Key( 'Write all CE' ), child: new Text("Write all"), onPressed: () => _writeCEtoHost( p, true  )) );
       buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
 
       Widget m = makeBodyText( appState, msg1 + msg2 + msg3, 3.0 * baseWidth, true, 8, keyTxt: "chooseCEPeq"+p.hostIssueId);
       popScroll( context, "CodeEquity PEQ:", m, buttons );
    }
 
-   Future<void> _chooseHostPeq( PEQ? p ) async {
+   Future<void> _chooseHostPeq( PEQ p ) async {
       assert( p != null );
-      Widget peq = makeBodyText( appState, p!.toString(), 3.0 * baseWidth, true, 6, keyTxt: "chooseHostPeq"+p!.hostIssueId);
-      final b = new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() );       
-      popScroll( context, "Choose Host PEQ:", peq, [ b ] );      
+      String msg1 = "Write One: Write this Host PEQ to CodeEquity, overwriting any PEQ with the same hostIssueId or hostIssueTitle.\n\n";
+      String msg2 = "Write All: Overwrite all CodeEquity PEQs for this Code Equity Project with all host PEQs listed under \'Needing Repair\'.\n\n";
+      String msg3 = "Note that accrued PEQs in CodeEquity will not be modified.";
+      List<Widget> buttons = [];
+      buttons.add( new TextButton( key: Key( 'Write one host' ), child: new Text("Write one"), onPressed: () => _writeHostToCE( p, false )) );
+      buttons.add( new TextButton( key: Key( 'Write all host' ), child: new Text("Write all"), onPressed: () => _writeHostToCE( p, true  )) );
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+
+      Widget m = makeBodyText( appState, msg1 + msg2 + msg3, 3.0 * baseWidth, true, 8, keyTxt: "chooseHostPeq"+p.hostIssueId);
+      popScroll( context, "Host PEQ:", m, buttons );
    }
+   
    void _cancel() {
       print( "Cancel" );
       updateView = true;
@@ -474,7 +504,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<Widget> buttons = [];
       if( status == "bad" ) {
          if( cePeq != null )   { buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CodeEquity PEQ"), onPressed: () => _chooseCEPeq( cePeq ) )); }
-         if( hostPeq != null ) { buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Host Peq"), onPressed: () => _chooseHostPeq( hostPeq ) )); }
+         if( hostPeq != null ) { buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Use Host Peq"), onPressed: () => _chooseHostPeq( hostPeq ) )); }
       }
       buttons.add( new TextButton( key: Key( 'Cancel Peq fix' ), child: new Text("Cancel"), onPressed: _cancel ));
 

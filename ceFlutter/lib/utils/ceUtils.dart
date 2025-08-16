@@ -341,6 +341,72 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
    }
 }
 
+Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p ) async {
+   final appState  = container.state;
+   
+   // Check that p is not overwriting an accrued peq on aws
+   List<PEQ> cPeqs = appState.cePeqs[ cep.ceProjectId ] ?? [];
+   bool setInStone = false;
+   for( PEQ cp in cPeqs ) {
+      if( cp.id == p.id && cp.peqType == PeqType.grant ) {
+         setInStone == true;
+         break;
+      }
+   }
+
+   if( setInStone ) { print( "WARNING.  Attempting to overwrite an accrued PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id ); }
+   else {
+      print( "Creating new PEQ in AWS" );
+      Map<String, dynamic> newP = {};
+      newP["PEQId"]           = p.id;
+      newP["CEProjectId"]     = p.ceProjectId;
+      newP["CEHolderId"]      = p.ceHolderId;    // XXX
+      newP["HostHolderId"]    = p.hostHolderId;
+      newP["CEGrantorId"]     = p.ceGrantorId;   // XXX
+      newP["PeqType"]         = enumToStr( p.peqType );
+      newP["Amount"]          = p.amount;
+      newP["AccrualDate"]     = p.accrualDate;   // XXX
+      newP["VestedPerc"]      = p.vestedPerc;    // XXX
+      newP["HostProjectSub"]  = p.hostProjectSub; 
+      newP["HostRepoId"]      = p.hostRepoId;
+      newP["HostIssueId"]     = p.hostIssueId;
+      newP["HostIssueTitle"]  = p.hostIssueTitle;
+      newP["Active"]          = "true";
+
+      String shortName = "RecordPEQ";
+      String newPs = json.encode( newP );
+      String postData = '{ "Endpoint": $shortName, "newPEQ": $newPs }';
+      await updateDynamo( context, container, postData, shortName );
+   }
+   
+   // send PAct as a notice.
+   print( "Adding PAct" );
+   
+   DateTime now = DateTime.now();
+   String note  = setInStone ? '{"note": "Bad peq repair attempted via CEMD"}' : '{"note": "Repaired peq via CEMD, no raw body present"}';
+
+   Map<String, dynamic> pact  = { };
+   pact["CEUID"]       = appState.ceUserId; 
+   pact["HostUserId"]  = appState.selectedHostUID;   // set when summary frame is clicked into
+   pact["CEProjectId"] = p.ceProjectId;
+   pact["Verb"]        = "confirm";  // XXX formalize
+   pact["Action"]      = "notice";   // XXX formalize
+   pact["Subject"]     = [p.id];
+   pact["Note"]        = "repair PEQ using host"; // XXX formalize
+   pact["Date"]        = now.toString();
+   pact["RawBody"]     = note;
+   pact["Ingested"]    = "false";
+   pact["Locked"]      = "false";
+   pact["TimeStamp"]   = now.toString();
+   
+   String shortName = "RecordPEQAction";
+   String newPAct = json.encode( pact );
+   String postData = '{ "Endpoint": $shortName, "newPAction": $newPAct }';
+   await updateDynamo( context, container, postData, shortName );
+   return !setInStone;
+}
+
+
 // remember, active flag is for host, not ceMD
 Future<void> updateCEPeqs( container, context ) async {
    final appState  = container.state;
