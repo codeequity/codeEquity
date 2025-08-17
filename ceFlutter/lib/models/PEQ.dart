@@ -5,7 +5,7 @@ enum PeqType   { plan, pending, grant, end }
 // Legally, only CEUIDs have signed agreements.  ceHolderId is binding.  hostHolderId is just a helpful comment.
 
 class PEQ {
-   final String  id;
+   String        id;           // can't be final.  peqs from host are id-less, but can be written to aws (with new id)
    String        ceProjectId;
    List<String>  ceHolderId;   // assignees evenly splitting this PEQ, CEUIDs    
    List<String>  hostHolderId; // assignees evenly splitting this PEQ, hostUserNames (yes, names for now not ids.  see ingest:_convert)

@@ -68,7 +68,7 @@ class _CEStatusState extends State<CEStatusFrame> {
 
    late Map<String, PEQ> cPeqs;     // codeEquity (as per aws) peqs
    late Map<String, PEQ> hPeqs;     // host peqs
-   late List<String>     gonePeqs;  // peq ids of peqs in the 'unavailable on host' category
+   late List<String>     gonePeqs;  // hostIssueIds of peqs in the 'unavailable on host' category
    late List<String>     badPeqs;   //       "         that don't match
    late List<String>     goodPeqs;  //       "         that do match
 
@@ -426,20 +426,29 @@ class _CEStatusState extends State<CEStatusFrame> {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
 
-      // XXX test for CE's accrued peqs is incorrect.
-      // XXX badPeqs starts with aws peqs as base.  This will miss peqs in host that have not made it to aws.  aws can be null as well
+      List<PEQ> writeMe = [];
       if( all ) {
-         // host peqs are coming from CEServer, so peqType is correct.
-         appState.hostPeqs[ cep!.ceProjectId ]!.forEach( (hp) {
-               assert( hp.hostIssueId != null );
-               if( hp.peqType != PeqType.grant && badPeqs.contains( hp.id ) ) {
-                  makeCEPeq( context, container, cep!, hp );
-               }
-            });
+         for( PEQ hp in appState.hostPeqs[ cep!.ceProjectId ]! ) {
+            if( badPeqs.contains( hp.hostIssueId )) { writeMe.add( hp ); }
+         }
       }
-      else {
-         makeCEPeq( context, container, cep!, p );         
+      else { writeMe.add( p ); }
+
+      // makeCEPeq will reject request if matching cePeq is ACCR
+      for( PEQ hp in writeMe ) {
+         assert( hp.hostIssueId != null );
+         await makeCEPeq( context, container, cep!, hp, cPeqs );
       }
+
+      // Force reload, as core data has changed.
+      peqsLoaded = false;
+      appState.cePeqs.remove( cep!.ceProjectId );
+      await _loadPeqs( cep! );
+      setState( () => updateView = true );
+      
+      // dismiss writeall popup, and the compare popup
+      Navigator.of( context ).pop();
+      Navigator.of( context ).pop();
    }
 
    

@@ -215,34 +215,27 @@ Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) asyn
 }
    
 // This is primarily an ingest utility.
-Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
+Future<dynamic> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
    print( "updateDynamo " + shortName + ": " + postData );
-
-   /*
-   if( peqId != -1 ) {
-      appState.ingestUpdates[peqId] = appState.ingestUpdates.containsKey( peqId ) ? appState.ingestUpdates[peqId] + 1 : 1;
-   }
-   */
    
    final response = await awsPost( shortName, postData, context, container );
    bool  res      = false;
 
-   if( response.statusCode != 201 ) { print( "OI? " + response.toString() ); }
-   
-   if (response.statusCode == 201) { res = true; }
+   if( response.statusCode != 201 ) {
+      print( "OI? " + response.toString() );
+   }
+   else if (response.statusCode == 201 && shortName == "RecordPEQ" ) {
+      return json.decode(utf8.decode(response.bodyBytes));
+   }
+   else if( response.statusCode == 201 ) {
+      res = true;
+   }
    else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { res = await updateDynamo( context, container, postData, shortName, peqId: peqId ); }
    }
-
-   /*
-   if( peqId != -1 ) {
-      assert( appState.ingestUpdates[peqId] >= 1 );
-      appState.ingestUpdates[peqId] = appState.ingestUpdates[peqId] - 1;
-   }
-   */
    
    return res;
 }
