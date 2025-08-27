@@ -368,11 +368,11 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
       newP["CEProjectId"]     = p.ceProjectId;
       newP["CEHolderId"]      = ceuids;
       newP["HostHolderId"]    = p.hostHolderId;
-      newP["CEGrantorId"]     = p.ceGrantorId;   // Can not overwrite ACCR, so this is empty
+      newP["CEGrantorId"]     = "---";           // Can not overwrite ACCR, so this is empty   XXX formalize
       newP["PeqType"]         = enumToStr( p.peqType );
       newP["Amount"]          = p.amount;
-      newP["AccrualDate"]     = p.accrualDate;   // Can not overwrite ACCR, so this is empty
-      newP["VestedPerc"]      = p.vestedPerc;    // Can not overwrite ACCR, so this is empty
+      newP["AccrualDate"]     = "---";           // Can not overwrite ACCR, so this is empty   XXX formalize
+      newP["VestedPerc"]      = p.vestedPerc;    // Can not overwrite ACCR, so this is 0
       newP["HostProjectSub"]  = p.hostProjectSub; 
       newP["HostRepoId"]      = p.hostRepoId;
       newP["HostIssueId"]     = p.hostIssueId;

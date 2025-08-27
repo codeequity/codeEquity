@@ -449,11 +449,20 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			    let iss = items[i].node;
 			    
 			    // skip non-peq issue
-			    // console.log( "WORKING", iss.title );
+			    // console.log( "WORKING", iss.title, iss.id, iss );
 			    if( typeof issues[ iss.id ] === 'undefined' ) { console.log( " .. skipping non-peq", iss.title ); continue; }
 
 			    // Matching aws peqs, so keep id not name
 			    issues[ iss.id ].hostHolderId =  iss.assignees.edges.map( edge => edge.node.id );
+
+			    // at this point, if hostIssueTitle is "", we have the error case where aws does not contain the related peq,
+			    // so link above is blank.
+			    if( issues[ iss.id ].hostIssueTitle == config.EMPTY ) {
+				let res    = await getCardFromIssue( authData, iss.id );
+				let hpName = getProjectName( authData, ghLinks, ceProjId, res.pid );
+				issues[ iss.id ].hostIssueTitle = iss.title;
+				issues[ iss.id ].hostProjectSub = [ hpName, res.columnName ];
+			    }
 			    
 			    // This code is called when checking on errors between GH and CEServer.
 			    // There should be only 1 peq label, but in case, make a crazy one that status checking will catch
