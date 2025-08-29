@@ -77,6 +77,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    late bool hideGone; 
    late bool hideBad; 
    late bool hideGood;
+   late bool ingestNoticeDisplayed;
 
    late bool updateView; 
    
@@ -99,6 +100,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       gonePeqs   = [];
       badPeqs    = [];
       goodPeqs   = [];
+
+      ingestNoticeDisplayed = false;
    }
 
    @override
@@ -106,8 +109,33 @@ class _CEStatusState extends State<CEStatusFrame> {
       super.dispose();
    }
 
+   // NOTE that popScroll throws overlay on top of current page, greying it out.
+   // This causes project_page to rebuild (gotta change colors), which then causes current tab to rebuild (status frame, in this case).
+   // Unavoidable, so make sure expensive stuff doesn't run twice.
+   Future<void> _ingestNotice( context ) async {
+      List<Widget> buttons = [];
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+      String msg = "There are uningested PEQ actions for this CodeEquity Project.  Please update PEQ summary under the peq summary tab first."; 
+
+      Widget m = makeBodyText( appState, msg, 3.0 * baseWidth, true, 8, keyTxt: "ingestNotice");
+      popScroll( context, "Status unavailable.", m, buttons );
+      ingestNoticeDisplayed = true;
+   }
+
    Future<void> _loadPeqs( CEProject cep ) async {
       if( !peqsLoaded ) {
+
+         bool safe = true;
+         // check for ingested flags, otherwise cePeqs will be out of date on aws.
+         // If ingest is run, re-check ingested.  updateAllocTree is set at end of ingest.
+         if( ingestNoticeDisplayed && !appState.updateAllocTree ) { safe = false; }   // Have already checked allIngested, not yet run ingest
+         else { safe = await allIngested( container, context ); }                     // run allIngested if haven't noticed a problem, or did but just ran ingest.
+
+         if( !safe ) {
+            if( !ingestNoticeDisplayed ) { _ingestNotice( context ); }
+            return;
+         }
+         print( "LoadPeqs running" );
          await Future.wait([
                               updateCEPeqs( container, context ),          // get all ce peqs for the currently selected CEP
                               updateHostPeqs( container, cep )             // get all host peqs for the currently selected CEP
@@ -781,21 +809,19 @@ class _CEStatusState extends State<CEStatusFrame> {
    
    Widget getStatus( context ) {
 
-      // print( ' .. getStatus build '  + peqsLoaded.toString() + updateView.toString() );
+      List<List<Widget>> pending = [];
+
+      print( ' .. getStatus build '  + peqsLoaded.toString() + updateView.toString() + ingestNoticeDisplayed.toString() );
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       if( cep == null ) { return makeTitleText( appState, "First choose Project from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
 
-      if( appState.cePeqs[ cep.ceProjectId ] != null  &&  appState.hostPeqs[ cep.ceProjectId ] != null   ) { peqsLoaded  = true; }     
+      if( appState.cePeqs[ cep.ceProjectId ] != null  &&  appState.hostPeqs[ cep.ceProjectId ] != null   ) { peqsLoaded  = true; }
+      // Note, this runs in a sep thread, so ingest notice can fire before the first build finishes
       _loadPeqs( cep! );
 
-      List<List<Widget>> pending = [];
-
-      if( peqsLoaded && updateView ) {   // otherwise loadPeqs set state will rebuild pending
-         pending.addAll( _getBody( context, cep! ) );
-      }
-
-      // header afterwards to get status
-      pending.insertAll( 0, _getHeader( context, cep! ) );
+      // header afterwards to get status.  If need ingest, don't print header as it will say status is good
+      if( peqsLoaded && updateView && !ingestNoticeDisplayed ) { pending.addAll( _getBody( context, cep! ) ); }
+      if( !ingestNoticeDisplayed )                             { pending.insertAll( 0, _getHeader( context, cep! ) ); }
 
       return ScrollConfiguration(
          behavior: MyCustomScrollBehavior(),
@@ -835,7 +861,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       Widget hd    = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
       hdiv         = Wrap( spacing: 0, children: [fatPad, hd] );   
 
-      if( appState.verbose >= 4 ) { print( "STATUS BUILD. " ); }
+      if( appState.verbose >= 4 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString()); }
 
       Widget row0 = Container( width: 1.5*baseWidth, child: makeTableText( appState, listHeaders[0], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
       Widget row1 = Container( width: 1.5*baseWidth, child: makeTableText( appState, listHeaders[1], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );

@@ -514,6 +514,23 @@ Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
    }
 }
 
+Future<List<dynamic>> fetchDynamo( context, container, shortName, postData ) async {
+
+   final response = await awsPost( shortName, postData, context, container );
+   
+   if (response.statusCode == 201) {
+      Iterable l = json.decode(utf8.decode(response.bodyBytes));
+      return l.toList();
+   } else if( response.statusCode == 204) {
+      print( "Fetch: nothing found" );
+      return [];
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchDynamo( context, container, shortName, postData ); }
+      else { return []; }
+   }
+}
+
 Future<void> writeEqPlan( appState, context, container ) async {
    if( appState.myEquityPlan != null ) {
       print( "WRITE EP " + appState.myEquityPlan!.totalAllocation.toString() );

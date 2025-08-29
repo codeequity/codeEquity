@@ -421,6 +421,19 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
    return !setInStone;
 }
 
+Future<bool> allIngested( container, context ) async {
+   final appState  = container.state;
+   
+   // Get all uningested PActs for currently selected CEP
+   String cep   = appState.selectedCEProject;
+   assert( cep != "" );
+
+   print( "Checking for uningested PActs for " + cep );
+   String query = '{ "Endpoint": "GetEntries", "tableName": "CEPEQActions", "query": { "CEProjectId": "$cep", "Ingested": "false" }}';
+   final res = await fetchDynamo( context, container, "allIngested", query );
+
+   return res.length == 0;
+}
 
 // remember, active flag is for host, not ceMD
 Future<void> updateCEPeqs( container, context ) async {
@@ -440,7 +453,6 @@ Future<void> updateCEPeqs( container, context ) async {
    
    // remove truly inactive.  active flag is false, but not granted.
    appState.cePeqs[ cep ].removeWhere( (p) => !p.active && p.peqType != PeqType.grant );
-
 }
 
 Future<void> updateHostPeqs( container, CEProject cep ) async {
