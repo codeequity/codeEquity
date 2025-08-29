@@ -215,34 +215,27 @@ Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) asyn
 }
    
 // This is primarily an ingest utility.
-Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
+Future<dynamic> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
    print( "updateDynamo " + shortName + ": " + postData );
-
-   /*
-   if( peqId != -1 ) {
-      appState.ingestUpdates[peqId] = appState.ingestUpdates.containsKey( peqId ) ? appState.ingestUpdates[peqId] + 1 : 1;
-   }
-   */
    
    final response = await awsPost( shortName, postData, context, container );
    bool  res      = false;
 
-   if( response.statusCode != 201 ) { print( "OI? " + response.toString() ); }
-   
-   if (response.statusCode == 201) { res = true; }
+   if( response.statusCode != 201 ) {
+      print( "OI? " + response.toString() );
+   }
+   else if (response.statusCode == 201 && shortName == "RecordPEQ" ) {
+      return json.decode(utf8.decode(response.bodyBytes));
+   }
+   else if( response.statusCode == 201 ) {
+      res = true;
+   }
    else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { res = await updateDynamo( context, container, postData, shortName, peqId: peqId ); }
    }
-
-   /*
-   if( peqId != -1 ) {
-      assert( appState.ingestUpdates[peqId] >= 1 );
-      appState.ingestUpdates[peqId] = appState.ingestUpdates[peqId] - 1;
-   }
-   */
    
    return res;
 }
@@ -521,6 +514,23 @@ Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
    }
 }
 
+Future<List<dynamic>> fetchDynamo( context, container, shortName, postData ) async {
+
+   final response = await awsPost( shortName, postData, context, container );
+   
+   if (response.statusCode == 201) {
+      Iterable l = json.decode(utf8.decode(response.bodyBytes));
+      return l.toList();
+   } else if( response.statusCode == 204) {
+      print( "Fetch: nothing found" );
+      return [];
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchDynamo( context, container, shortName, postData ); }
+      else { return []; }
+   }
+}
+
 Future<void> writeEqPlan( appState, context, container ) async {
    if( appState.myEquityPlan != null ) {
       print( "WRITE EP " + appState.myEquityPlan!.totalAllocation.toString() );
@@ -608,3 +618,4 @@ Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async 
       else { return []; }
    }
 }
+

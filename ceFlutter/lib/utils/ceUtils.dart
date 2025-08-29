@@ -60,7 +60,7 @@ String getToday() {
    String date = "";
 
    if( now.month < 10 ) { date += "0"; }
-   date = now.month.toString() + "/";
+   date += now.month.toString() + "/";
 
    if( now.day < 10 ) { date += "0"; }
    date += now.day.toString() + "/";
@@ -341,6 +341,100 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
    }
 }
 
+
+Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PEQ> cPeqs ) async {
+   final appState  = container.state;
+   
+   bool setInStone = false;
+
+   // Check that p is not overwriting an accrued peq on aws
+   // Note that hostPeq does not have a peqId, so matching is done on hostIssueId
+   PEQ? cp = cPeqs[ p.hostIssueId ];
+   assert( cp == null || cp!.id != -1 );
+   if( cp != null && cp!.peqType == PeqType.grant ) { setInStone = true; }
+
+   if( setInStone ) { print( "WARNING.  Attempting to overwrite an accrued PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id ); }
+   else {
+      print( "Creating new PEQ in AWS" );
+
+      List<String> ceuids = [];
+      for( String hhid in p.hostHolderId ) {
+         assert( appState.idMapHost.containsKey( hhid ) );
+         ceuids.add( appState.idMapHost[hhid]!["ceUID"]! );
+      }
+      
+      Map<String, dynamic> newP = {};
+      newP["PEQId"]           = cp == null ? -1 : cp!.id;   
+      newP["CEProjectId"]     = p.ceProjectId;
+      newP["CEHolderId"]      = ceuids;
+      newP["HostHolderId"]    = p.hostHolderId;
+      newP["CEGrantorId"]     = "---";           // Can not overwrite ACCR, so this is empty   XXX formalize
+      newP["PeqType"]         = enumToStr( p.peqType );
+      newP["Amount"]          = p.amount;
+      newP["AccrualDate"]     = "---";           // Can not overwrite ACCR, so this is empty   XXX formalize
+      newP["VestedPerc"]      = p.vestedPerc;    // Can not overwrite ACCR, so this is 0
+      newP["HostProjectSub"]  = p.hostProjectSub; 
+      newP["HostRepoId"]      = p.hostRepoId;
+      newP["HostIssueId"]     = p.hostIssueId;
+      newP["HostIssueTitle"]  = p.hostIssueTitle;
+      newP["Active"]          = "true";
+
+      String shortName = "RecordPEQ";
+      String newPs = json.encode( newP );
+      String postData = '{ "Endpoint": "$shortName", "newPEQ": $newPs }';
+      p.id = await updateDynamo( context, container, postData, shortName );
+   
+      // send PAct as a notice.
+      print( "Adding PAct" );
+      
+      // XXX Consider making this standalone
+      String hostUserId = "";
+      for( HostAccount ha in appState.myHostAccounts ) {
+         if( ha.hostPlatform == "GitHub" && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
+            hostUserId = ha.hostUserId;
+            break;
+         }
+      }
+      
+      DateTime now = DateTime.now();
+      String note  = setInStone ? '{"note": "Bad peq repair attempted via CEMD"}' : '{"note": "Repaired peq via CEMD, no raw body present"}';
+      
+      Map<String, dynamic> pact  = { };
+      pact["CEUID"]       = appState.ceUserId; 
+      pact["HostUserId"]  = hostUserId;
+      pact["CEProjectId"] = p.ceProjectId;
+      pact["Verb"]        = "confirm";               // XXX formalize
+      pact["Action"]      = "notice";                // XXX formalize
+      pact["Subject"]     = [p.id];
+      pact["Note"]        = "repair PEQ using host"; // XXX formalize
+      pact["Date"]        = getToday();
+      pact["RawBody"]     = note;
+      pact["Ingested"]    = "false";
+      pact["Locked"]      = "false";
+      pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
+      
+      shortName       = "RecordPEQAction";
+      String newPAct  = json.encode( pact );
+      postData        = '{ "Endpoint": "$shortName", "newPAction": $newPAct }';
+      await updateDynamo( context, container, postData, shortName );
+   }
+   return !setInStone;
+}
+
+Future<bool> allIngested( container, context ) async {
+   final appState  = container.state;
+   
+   // Get all uningested PActs for currently selected CEP
+   String cep   = appState.selectedCEProject;
+   assert( cep != "" );
+
+   print( "Checking for uningested PActs for " + cep );
+   String query = '{ "Endpoint": "GetEntries", "tableName": "CEPEQActions", "query": { "CEProjectId": "$cep", "Ingested": "false" }}';
+   final res = await fetchDynamo( context, container, "allIngested", query );
+
+   return res.length == 0;
+}
+
 // remember, active flag is for host, not ceMD
 Future<void> updateCEPeqs( container, context ) async {
    final appState  = container.state;
@@ -359,7 +453,6 @@ Future<void> updateCEPeqs( container, context ) async {
    
    // remove truly inactive.  active flag is false, but not granted.
    appState.cePeqs[ cep ].removeWhere( (p) => !p.active && p.peqType != PeqType.grant );
-
 }
 
 Future<void> updateHostPeqs( container, CEProject cep ) async {

@@ -17,6 +17,17 @@ import * as ghcLU from './gh/ghc/linkageUtils.js' ;
 // linkage is { issueId: { cardId: {} }}
 // linkage is NOT stored in dynamo.
 
+// linkage represents the tie between host and server for all valid 'registered' peqs (i.e. in good form on aws).
+// Otherwise would end up polluting ceServer links with 'peqs' that are not (yet) real.
+// What if create e peq on host called 'booger' while ceServer is down, then start ceServer?
+//
+// booger is a 'peq' created on host while ceServer was down.
+// linkageUtils will create and pass up to linkage: a baselinks that has booger, and will populate this.links where all links are wiped of title and proj/col names as above
+//              linkage will then look for aws peqs and use that information to complete this.links.  Except for booger.                                   
+//              the latter occurs because booger is not a peq on aws.
+//
+// getHostPeqs for ceMD initially misses title/proj/col for ceServer to promote aws.  Repopulates it during repair.
+
 // Loc table is projects and columns per repo.
 
 // Loc table contains all proj/col in repo.  linkage table will only have that info where there are PEQs.

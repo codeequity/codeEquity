@@ -85,15 +85,24 @@ Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
       var dynamicHHId = new List<String>.from( peq['hostHolderId'] );
       var dynamicHPS  = new List<String>.from( peq['hostProjectSub'] );
       var peqType     = enumFromStr<PeqType>( peq['peqType'], PeqType.values );
+
+      // PEQs coming from GH will not have ceHolderIds.  Find and add if possible.
+      List<String> ceuids = [];
+      for( String hhid in dynamicHHId ) {
+         if( appState.idMapHost.containsKey( hhid ) ) {
+            assert( appState.idMapHost[hhid].containsKey( "ceUID" ));
+            ceuids.add( appState.idMapHost[hhid]!["ceUID"]! );
+         }
+      }
       
       // print( "WORKING " + peq.toString() + dynamicHHId.toString() );
       
-      hostPeqs.add( new PEQ( id: "", ceProjectId: cepId, ceHolderId: [], hostHolderId: dynamicHHId,
+      hostPeqs.add( new PEQ( id: "", ceProjectId: cepId, ceHolderId: ceuids, hostHolderId: dynamicHHId,
                               ceGrantorId: "", hostProjectSub: dynamicHPS, amount: peq['amount'],
                               vestedPerc: 0.0, accrualDate: "", peqType: peqType, hostIssueTitle: peq['hostIssueTitle'],
                               hostIssueId: peq['hostIssueId'], hostRepoId: peq['hostRepoId'], active: true ) );
    }
-   // print( "XXX Loaded: " + hostPeqs.toString() );
+   // print( "Loaded: " + hostPeqs.toString() );
    
    return hostPeqs;
 }
