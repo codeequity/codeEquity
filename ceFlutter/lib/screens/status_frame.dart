@@ -83,7 +83,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    
    late List<List<Widget>> peqHeader;
 
-   final listHeaders = ["Issue Title", "Host Project", "PEQ", "Assignee(s)" ];
+   final listHeaders = ["Issue Title", "Host Project", "PEQ", "Type", "Assignee(s)" ];
    
    @override
    void initState() {
@@ -714,28 +714,29 @@ class _CEStatusState extends State<CEStatusFrame> {
                      assert( appState.cePeople[ceuid] != null );
                      return appState.cePeople[ceuid]!.userName;
                   }).toList();
-               Widget hproj   = Container( width: 1.5*baseWidth,
+               Widget hproj   = Container( width: 1.4*baseWidth,
                                            child: makeTableText( appState, v.hostProjectSub[ v.hostProjectSub.length - 2 ], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                Widget peqVal  = Container( width: 0.6*baseWidth, child: makeTableText( appState, v.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
-               Widget assign  = Container( width: 1.8*baseWidth, child: makeTableText( appState, userNames.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+               Widget peqType = Container( width: 0.6*baseWidth, child: makeTableText( appState, enumToStr(v.peqType), baseWidth, appState!.CELL_HEIGHT, false, 1 ));               
+               Widget assign  = Container( width: 1.7*baseWidth, child: makeTableText( appState, userNames.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                
                PEQ? h = hPeqs[k];
                if( !v.active && v.peqType == PeqType.grant ) {
                   Widget title   = paddedLTRB( _peqDetail( context, v, h, "good" ), 2 * appState.GAP_PAD, 0, 0, 0 );
                   if( gone.length < 1 ) { gone.addAll( peqHeader ); }
-                  gone.add( [ empty, title, hproj, peqVal, assign ] );
+                  gone.add( [ title, hproj, peqVal, peqType, assign ] );
                   gonePeqs.add( k );
                }
                else if( _same( v, h ) ) {
                   Widget title   = paddedLTRB( _peqDetail(context, v, h, "good" ), 2 * appState.GAP_PAD, 0, 0, 0 );
                   if( good.length < 1 ) { good.addAll( peqHeader ); }                  
-                  good.add( [ empty, title, hproj, peqVal, assign ] );
+                  good.add( [ title, hproj, peqVal, peqType, assign ] );
                   goodPeqs.add( k );
                }
                else {
                   Widget title   = paddedLTRB( _peqDetail(context, v, h, "bad" ), 2 * appState.GAP_PAD, 0, 0, 0 );
                   if( bad.length < 1 ) { bad.addAll( peqHeader ); }
-                  bad.add( [ empty, title, hproj, peqVal, assign ] );
+                  bad.add( [ title, hproj, peqVal, peqType, assign ] );
                   badPeqs.add( k );
                }
             });
@@ -750,13 +751,14 @@ class _CEStatusState extends State<CEStatusFrame> {
                         assert( appState.cePeople[ceuid] != null );
                         return appState.cePeople[ceuid]!.userName;
                      }).toList();
-                  Widget hproj   = Container( width: 1.5*baseWidth,
+                  Widget hproj   = Container( width: 1.4*baseWidth,
                                               child: makeTableText( appState, v.hostProjectSub[ v.hostProjectSub.length - 2 ], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                   Widget peqVal  = Container( width: 0.6*baseWidth, child: makeTableText( appState, v.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+                  Widget peqType = Container( width: 0.6*baseWidth, child: makeTableText( appState, enumToStr(v.peqType), baseWidth, appState!.CELL_HEIGHT, false, 1 ));               
                   Widget assign  = Container( width: 1.8*baseWidth, child: makeTableText( appState, userNames.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                   
                   if( bad.length < 1 ) { bad.addAll( peqHeader ); }
-                  bad.add( [ empty, title, hproj, peqVal, assign ] );
+                  bad.add( [ title, hproj, peqVal, peqType, assign ] );
                   badPeqs.add( k );
                }
             });
@@ -863,15 +865,18 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       if( appState.verbose >= 4 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString()); }
 
-      Widget row0 = Container( width: 1.5*baseWidth, child: makeTableText( appState, listHeaders[0], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
-      Widget row1 = Container( width: 1.5*baseWidth, child: makeTableText( appState, listHeaders[1], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
+      final row0Width = 1.45*baseWidth + 1.7*appState.GAP_PAD; // need to add in left indent in mtt
+      
+      Widget row0 = Container( width: row0Width,     child: makeTableText( appState, listHeaders[0], baseWidth, appState!.CELL_HEIGHT, false, 1, mux: 2.7 ) );
+      Widget row1 = Container( width: 1.4*baseWidth, child: makeTableText( appState, listHeaders[1], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
       Widget row2 = Container( width: 0.6*baseWidth, child: makeTableText( appState, listHeaders[2], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
-      Widget row3 = Container( width: 1.8*baseWidth, child: makeTableText( appState, listHeaders[3], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
+      Widget row3 = Container( width: 0.6*baseWidth, child: makeTableText( appState, listHeaders[3], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
+      Widget row4 = Container( width: 1.7*baseWidth, child: makeTableText( appState, listHeaders[4], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
 
       if( peqHeader.length < 1 ) {
          peqHeader.add( [ vSpace, vSpace, vSpace, vSpace, vSpace ] );
-         peqHeader.add( [ miniHor, row0, row1, row2, row3 ] );
-         peqHeader.add( [ makeHDivider( appState, 3.5 * baseWidth, appState.GAP_PAD*3.5, appState.GAP_PAD * 4.0 ), empty, empty, empty, empty ] );
+         peqHeader.add( [ row0, row1, row2, row3, row4 ] );
+         peqHeader.add( [ makeHDivider( appState, 4 * baseWidth, appState.GAP_PAD*3.5, appState.GAP_PAD * 4.0 ), empty, empty, empty, empty ] );
       }
       
       return getStatus( context );
