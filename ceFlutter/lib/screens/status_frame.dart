@@ -646,9 +646,55 @@ class _CEStatusState extends State<CEStatusFrame> {
          );
    }
 
+   Widget _makeHeader ( int element, _SortType stAsc, _SortType stDsc ) {
+      Widget icon = empty;
+      String key = "togglePos" + element.toString();
+      assert( headerDims.length == listHeaders.length );
+      assert( _SortType.values.length >= 2*element + 1 );
+      double iconWidth = 0.0;
+
+      if( sortType == _SortType.values[ 2 * element ] ) {
+         iconWidth = 20.0;
+         icon = Icon( Icons.arrow_drop_up, size: iconWidth );
+      }
+      else if( sortType == _SortType.values[ 2 * element + 1 ] ) {
+         iconWidth = 20.0;
+         icon = Icon( Icons.arrow_drop_down, size: iconWidth );
+      }
+
+      final mux = element == 0 ? 2.7 : 1.0;
+      final eltWidth = headerDims[element] - iconWidth;
+      return GestureDetector(
+         onTap: () async { updateView = true; setState(() => sortType = ( sortType == stAsc ? stDsc : stAsc )); },
+         key: Key( key ),
+         child: Wrap( spacing: 0,
+                      children: [
+                         Container( width: eltWidth, child: makeTableText( appState, listHeaders[element], baseWidth, appState!.CELL_HEIGHT, false, 1, mux: mux ) ),
+                         icon
+                         ])
+         );
+   }
+   
    List<List<Widget>> _makePeqs( List<List<dynamic>> parts, String status ) {
       List<List<Widget>> retVal = [];
       if( parts.length == 0 ) { return retVal; }
+
+      if( peqHeader.length < 1 || updateView ) {
+         
+         peqHeader = [];
+         final row0Width = 1.45*baseWidth + 1.7*appState.GAP_PAD; // need to add in left indent in mtt
+         headerDims = [ row0Width, 1.4*baseWidth, 0.6*baseWidth, 0.6*baseWidth, 1.7*baseWidth ];
+
+         Widget row0 = _makeHeader( 0, _SortType.titleAsc,  _SortType.titleDsc );
+         Widget row1 = _makeHeader( 1, _SortType.hprojAsc,  _SortType.hprojDsc );
+         Widget row2 = _makeHeader( 2, _SortType.pvalAsc,   _SortType.pvalDsc );
+         Widget row3 = _makeHeader( 3, _SortType.ptypeAsc,  _SortType.ptypeDsc );
+         Widget row4 = _makeHeader( 4, _SortType.assignAsc, _SortType.assignDsc );
+         
+         peqHeader.add( [ vSpace, vSpace, vSpace, vSpace, vSpace ] );
+         peqHeader.add( [ row0, row1, row2, row3, row4 ] );
+         peqHeader.add( [ makeHDivider( appState, 4 * baseWidth, appState.GAP_PAD*3.5, appState.GAP_PAD * 4.0 ), empty, empty, empty, empty ] );
+      }
 
       retVal.addAll( peqHeader );
 
@@ -685,7 +731,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    
    List<List<Widget>> _getBody( context, cep ) {
       final buttonWidth = 100;
-      // print( ' .. getBody build ' + peqsLoaded.toString() + updateView.toString() );
+      print( ' .. getBody build ' + peqsLoaded.toString() + updateView.toString() );
       
       Widget expandGone = GestureDetector(
          onTap: () async { updateView = true; setState(() => hideGone = false ); },
@@ -842,7 +888,7 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       List<List<Widget>> pending = [];
 
-      print( ' .. getStatus build '  + peqsLoaded.toString() + updateView.toString() + ingestNoticeDisplayed.toString() );
+      // print( ' .. getStatus build '  + peqsLoaded.toString() + updateView.toString() + ingestNoticeDisplayed.toString() );
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       if( cep == null ) { return makeTitleText( appState, "First choose Project from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
 
@@ -873,41 +919,6 @@ class _CEStatusState extends State<CEStatusFrame> {
 
    }
 
-   Widget _makeHeader ( int element, _SortType stAsc, _SortType stDsc ) {
-      Widget icon = empty;
-      String key = "togglePos" + element.toString();
-      assert( headerDims.length == listHeaders.length );
-      
-      switch( sortType ) {
-      case _SortType.titleAsc : icon = Icon( Icons.arrow_circle_up );    break;
-      case _SortType.titleDsc : icon = Icon( Icons.arrow_circle_down );  break;
-
-      case _SortType.hprojAsc : icon = Icon( Icons.arrow_circle_up );    break;
-      case _SortType.hprojDsc : icon = Icon( Icons.arrow_circle_down );  break;
-
-      case _SortType.pvalAsc : icon = Icon( Icons.arrow_circle_up );     break;
-      case _SortType.pvalDsc : icon = Icon( Icons.arrow_circle_down );   break;
-
-      case _SortType.ptypeAsc : icon = Icon( Icons.arrow_circle_up );    break;
-      case _SortType.ptypeDsc : icon = Icon( Icons.arrow_circle_down );  break;
-
-      case _SortType.assignAsc : icon = Icon( Icons.arrow_circle_up );   break;
-      case _SortType.assignDsc : icon = Icon( Icons.arrow_circle_down ); break;
-      }
-
-      final mux = element == 0 ? 2.7 : 1.0; 
-      return GestureDetector(
-         onTap: () async { updateView = true; setState(() => sortType = ( sortType == stAsc ? stDsc : stAsc )); },
-         key: Key( key ),
-         child: Wrap( spacing: 0,
-                      children: [
-                         Container( width: headerDims[element], child: makeTableText( appState, listHeaders[element], baseWidth, appState!.CELL_HEIGHT, false, 1, mux: mux ) ),
-                         icon
-                         ])
-         );
-      
-   }
-   
    
    @override
    Widget build(BuildContext context) {
@@ -928,22 +939,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       Widget hd    = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
       hdiv         = Wrap( spacing: 0, children: [fatPad, hd] );   
 
-      if( appState.verbose >= 1 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString() + " " + enumToStr( sortType )); }
-
-      final row0Width = 1.45*baseWidth + 1.7*appState.GAP_PAD; // need to add in left indent in mtt
-      headerDims = [ row0Width, 1.4*baseWidth, 0.6*baseWidth, 0.6*baseWidth, 1.7*baseWidth ];
-
-      Widget row0 = _makeHeader( 0, _SortType.titleAsc,  _SortType.titleDsc );
-      Widget row1 = _makeHeader( 1, _SortType.hprojAsc,  _SortType.hprojDsc );
-      Widget row2 = _makeHeader( 2, _SortType.pvalAsc,   _SortType.pvalDsc );
-      Widget row3 = _makeHeader( 3, _SortType.ptypeAsc,  _SortType.ptypeDsc );
-      Widget row4 = _makeHeader( 4, _SortType.assignAsc, _SortType.assignDsc );
-      
-      if( peqHeader.length < 1 ) {
-         peqHeader.add( [ vSpace, vSpace, vSpace, vSpace, vSpace ] );
-         peqHeader.add( [ row0, row1, row2, row3, row4 ] );
-         peqHeader.add( [ makeHDivider( appState, 4 * baseWidth, appState.GAP_PAD*3.5, appState.GAP_PAD * 4.0 ), empty, empty, empty, empty ] );
-      }
+      if( appState.verbose >= 4 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString() + " " + enumToStr( sortType )); }
       
       return getStatus( context );
    }
