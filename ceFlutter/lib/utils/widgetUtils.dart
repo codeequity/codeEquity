@@ -364,70 +364,64 @@ Widget makeToolTip( child, message, {wait=false, maxWidth=0} ) {
       );
 }
 
-// XXX convert all to IWTitle?
 Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "", sw = null } ) {
-   // Add as encountered.
-   var mux = 1.0;
-   if     ( fontSize == 18 ) { mux = 24.0 / appState.BASE_TXT_HEIGHT; }
-   else if( fontSize == 24 ) { mux = 32.0 / appState.BASE_TXT_HEIGHT; }
-   else if( fontSize == 28 ) { mux = 38.0 / appState.BASE_TXT_HEIGHT; }
-   else if( fontSize == 36 ) { mux = 48.0 / appState.BASE_TXT_HEIGHT; }
 
    String keyName = keyTxt == "" ? title : keyTxt;
    Color color = highlight ? appState.BUTTON_COLOR : Colors.black;
    
-   return Padding(
-      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
-      child: IntrinsicWidth( 
-         key: Key( keyName ),
-         stepWidth: sw,
-         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                     style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: color))));
+   return makeText( appState, title, null, null, wrap, lines, keyTxt: keyName, fontSize: fontSize, color: color, iw: true, sw: sw );
 }
 
 Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "", color = Colors.black } ) {
    // Add as encountered.
-   var mux = 1.0;
-   if     ( fontSize == 18 ) { mux = 24.0 / appState.BASE_TXT_HEIGHT; }
-   else if( fontSize == 24 ) { mux = 32.0 / appState.BASE_TXT_HEIGHT; }
-   else if( fontSize == 28 ) { mux = 38.0 / appState.BASE_TXT_HEIGHT; }
-   else if( fontSize == 36 ) { mux = 48.0 / appState.BASE_TXT_HEIGHT; }
+   var hmux = 1.0;
+   if     ( fontSize == 18 ) { hmux = 24.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 24 ) { hmux = 32.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 28 ) { hmux = 38.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 36 ) { hmux = 48.0 / appState.BASE_TXT_HEIGHT; }
 
+   final height = appState.BASE_TXT_HEIGHT * lines * hmux;
    String keyName = keyTxt == "" ? title : keyTxt;
    Color c = highlight ? appState.BUTTON_COLOR : color;
    
-   return Padding(
-      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
-      child: Container( width: width,
-                        height: appState.BASE_TXT_HEIGHT * lines * mux,
-                        key: Key( keyName ),
-                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: c))));
+   return makeText( appState, title, width, height, wrap, lines, keyTxt: keyName, fontSize: fontSize, color: c );
+}
+
+Widget makeIWTableText( appState, title, width, height, wrap, lines, { fontSize = 14, mux = 1.0, sw = null } ) {
+   return makeText(  appState, title, width, height, wrap, lines, keyTxt: title, fontSize: fontSize, mux: mux, iw: true, sw: sw );
 }
 
 Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 14, mux = 1.0 } ) {
-
-   // print( "    mtt $title w,h,m: $width $height $mux" );
-   return Padding(
-      padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
-      child: Container( width: width,
-                        height: height - appState.GAP_PAD - appState.TINY_PAD,
-                        key: Key( title ),
-                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
+   return makeText( appState, title, width, height - appState.GAP_PAD - appState.TINY_PAD, wrap, lines, keyTxt: title, fontSize: fontSize, mux: mux );
 }
 
 Widget makeBodyText( appState, title, width, wrap, lines, { keyTxt = "" } ) {
    String keyName = keyTxt == "" ? title : keyTxt;
-   return Padding(
-      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
-      child: Container( width: width,
-                        key: Key( keyName ),
-                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(height: 2, fontSize: 14))));
+   return makeText( appState, title, width, null, wrap, lines, keyTxt: keyName, bold: false );
 }
 
-      
+Widget makeText( appState, title, width, height, wrap, lines, { keyTxt = null, fontSize = 14, mux = 1.0, bold = true, iw = false, sw = null, color = Colors.black } ) {
+   if( iw ) {
+      return Padding(
+         padding: EdgeInsets.fromLTRB( mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+         child: IntrinsicWidth(
+            stepWidth: sw,
+            key: keyTxt == null ? null : Key( keyTxt ),
+            child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                                       style: TextStyle(fontSize: fontSize, fontWeight: bold ? FontWeight.bold : null))));
+   }
+   else {
+      return Padding(
+         padding: EdgeInsets.fromLTRB( mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+         child: Container( width: width,
+                           key: keyTxt == null ? null : Key( keyTxt ),
+                           height: height,
+                           child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                                       style: TextStyle(color: color, fontSize: fontSize, fontWeight: bold ? FontWeight.bold : null))));
+   }
+}
+
+
 Widget makeInputField( appState, hintText, obscure, controller, {keyName = "", edit = false} ) {
    TextStyle style     = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
    TextStyle hintStyle = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0, fontStyle: FontStyle.italic);

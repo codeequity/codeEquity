@@ -651,27 +651,21 @@ class _CEStatusState extends State<CEStatusFrame> {
       String key = "togglePos" + element.toString();
       assert( headerDims.length == listHeaders.length );
       assert( _SortType.values.length >= 2*element + 1 );
-      double iconWidth = 0.0;
 
-      if( sortType == _SortType.values[ 2 * element ] ) {
-         iconWidth = 20.0;
-         icon = Icon( Icons.arrow_drop_up, size: iconWidth );
-      }
-      else if( sortType == _SortType.values[ 2 * element + 1 ] ) {
-         iconWidth = 20.0;
-         icon = Icon( Icons.arrow_drop_down, size: iconWidth );
-      }
+      if( sortType == _SortType.values[ 2 * element ] )          { icon = Icon( Icons.arrow_drop_up, size: 20.0 ); }
+      else if( sortType == _SortType.values[ 2 * element + 1 ] ) { icon = Icon( Icons.arrow_drop_down, size: 20.0 ); }
 
       final mux = element == 0 ? 2.7 : 1.0;
-      final eltWidth = headerDims[element] - iconWidth;
       return GestureDetector(
          onTap: () async { updateView = true; setState(() => sortType = ( sortType == stAsc ? stDsc : stAsc )); },
          key: Key( key ),
-         child: Wrap( spacing: 0,
-                      children: [
-                         Container( width: eltWidth, child: makeTableText( appState, listHeaders[element], baseWidth, appState!.CELL_HEIGHT, false, 1, mux: mux ) ),
-                         icon
-                         ])
+         child: Container( width: headerDims[element],
+                           child: Wrap( spacing: 0,
+                                        children: [
+                                           makeIWTableText( appState, listHeaders[element], baseWidth, appState!.CELL_HEIGHT, false, 1, mux: mux),
+                                           icon
+                                           ])
+            )
          );
    }
    
@@ -718,10 +712,10 @@ class _CEStatusState extends State<CEStatusFrame> {
       for( List<dynamic> part in parts ) {
          assert( part.length == 7 );
          Widget title   = paddedLTRB( _peqDetail(context, part[0], part[1], status ), 2 * appState.GAP_PAD, 0, 0, 0 );               
-         Widget hproj   = Container( width: 1.4*baseWidth, child: makeTableText( appState, part[3], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
-         Widget peqVal  = Container( width: 0.6*baseWidth, child: makeTableText( appState, part[4], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
-         Widget peqType = Container( width: 0.6*baseWidth, child: makeTableText( appState, part[5], baseWidth, appState!.CELL_HEIGHT, false, 1 ));               
-         Widget assign  = Container( width: 1.8*baseWidth, child: makeTableText( appState, part[6], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+         Widget hproj   = Container( width: headerDims[1], child: makeTableText( appState, part[3], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+         Widget peqVal  = Container( width: headerDims[2], child: makeTableText( appState, part[4], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+         Widget peqType = Container( width: headerDims[3], child: makeTableText( appState, part[5], baseWidth, appState!.CELL_HEIGHT, false, 1 ));               
+         Widget assign  = Container( width: headerDims[4], child: makeTableText( appState, part[6], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
          retVal.add( [ title, hproj, peqVal, peqType, assign ] );
       }
       return retVal;
@@ -731,7 +725,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    
    List<List<Widget>> _getBody( context, cep ) {
       final buttonWidth = 100;
-      print( ' .. getBody build ' + peqsLoaded.toString() + updateView.toString() );
+      // print( ' .. getBody build ' + peqsLoaded.toString() + updateView.toString() );
       
       Widget expandGone = GestureDetector(
          onTap: () async { updateView = true; setState(() => hideGone = false ); },
@@ -939,7 +933,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       Widget hd    = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
       hdiv         = Wrap( spacing: 0, children: [fatPad, hd] );   
 
-      if( appState.verbose >= 4 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString() + " " + enumToStr( sortType )); }
+      if( appState.verbose >= 1 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString() + " " + enumToStr( sortType )); }
       
       return getStatus( context );
    }
