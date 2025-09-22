@@ -125,6 +125,7 @@ Future<bool> approvalsTabFraming( WidgetTester tester ) async {
    return true;
 }
 
+
 Future<bool> statusTabFraming( WidgetTester tester ) async {
    expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
    final Finder tab = find.byKey( const Key('Status' ));
@@ -132,7 +133,22 @@ Future<bool> statusTabFraming( WidgetTester tester ) async {
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
    await tester.pumpAndSettle();
 
-   expect( find.text( 'CE MD App Testing' ), findsOneWidget );
+   expect( find.text( CEMD_PROJ_NAME ), findsOneWidget );
+   return true;
+}
+
+Future<bool> statusUnavailableFraming( WidgetTester tester ) async {
+   expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
+   final Finder tab = find.byKey( const Key('Status' ));
+   await tester.tap( tab );
+   await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 3 ); // Wait for aws check for uningested flags
+
+   expect( find.text( "Status unavailable." ), findsOneWidget );
+   final Finder dismiss = find.byKey( const Key('Dismiss') );
+   await tester.tap( dismiss );
+   await tester.pumpAndSettle();
    return true;
 }
 
@@ -1114,7 +1130,8 @@ void main() {
          expect( await approvalsTabFraming( tester ),    true );
          expect( await equityPlanTabFraming( tester ),   true );
          expect( await agreementsTabFraming( tester ),   true );
-         expect( await statusTabFraming( tester ), true );
+         // ceFlutterTester was just cleared, so status will complain there are uningested pacts
+         expect( await statusUnavailableFraming( tester ), true );
 
          await logout( tester );         
 

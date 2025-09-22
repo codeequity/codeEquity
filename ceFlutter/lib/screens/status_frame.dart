@@ -51,6 +51,7 @@ class CEStatusFrame extends StatefulWidget {
 
 }
 
+enum _SortType  { titleAsc, titleDsc, hprojAsc, hprojDsc, pvalAsc, pvalDsc, ptypeAsc, ptypeDsc, assignAsc, assignDsc, end }
 
 class _CEStatusState extends State<CEStatusFrame> {
 
@@ -68,9 +69,7 @@ class _CEStatusState extends State<CEStatusFrame> {
 
    late Map<String, PEQ> cPeqs;     // codeEquity (as per aws) peqs
    late Map<String, PEQ> hPeqs;     // host peqs
-   late List<String>     gonePeqs;  // hostIssueIds of peqs in the 'unavailable on host' category
-   late List<String>     badPeqs;   //       "         that don't match
-   late List<String>     goodPeqs;  //       "         that do match
+   late List<String>     badPeqs;   // hostIssueIds of peqs that don't match                        
 
    late bool peqsLoaded;
    late bool goodStatus;     
@@ -83,7 +82,10 @@ class _CEStatusState extends State<CEStatusFrame> {
    
    late List<List<Widget>> peqHeader;
 
-   final listHeaders = ["Issue Title", "Host Project", "PEQ", "Assignee(s)" ];
+   final listHeaders = ["Issue Title", "Host Project", "PEQ", "Type", "Assignee(s)" ];
+   late List<double> headerDims;
+
+   late _SortType sortType;
    
    @override
    void initState() {
@@ -97,9 +99,10 @@ class _CEStatusState extends State<CEStatusFrame> {
       cPeqs      = {};
       hPeqs      = {};
       peqHeader  = [];
-      gonePeqs   = [];
       badPeqs    = [];
-      goodPeqs   = [];
+      headerDims = [];
+
+      sortType   = _SortType.end;
 
       ingestNoticeDisplayed = false;
    }
@@ -642,7 +645,84 @@ class _CEStatusState extends State<CEStatusFrame> {
          child: makeClickTableText( appState, hostIssueTitle,  _setTitle, _unsetTitle, 1.3*baseWidth, false, 1, iw: false )
          );
    }
+
+   Widget _makeHeader ( int element, _SortType stAsc, _SortType stDsc ) {
+      Widget icon = empty;
+      String key = "togglePos" + element.toString();
+      assert( headerDims.length == listHeaders.length );
+      assert( _SortType.values.length >= 2*element + 1 );
+
+      if( sortType == _SortType.values[ 2 * element ] )          { icon = Icon( Icons.arrow_drop_up, size: 20.0 ); }
+      else if( sortType == _SortType.values[ 2 * element + 1 ] ) { icon = Icon( Icons.arrow_drop_down, size: 20.0 ); }
+
+      final mux = element == 0 ? 2.7 : 1.0;
+      return GestureDetector(
+         onTap: () async { updateView = true; setState(() => sortType = ( sortType == stAsc ? stDsc : stAsc )); },
+         key: Key( key ),
+         child: Container( width: headerDims[element],
+                           child: Wrap( spacing: 0,
+                                        children: [
+                                           makeIWTableText( appState, listHeaders[element], baseWidth, appState!.CELL_HEIGHT, false, 1, mux: mux),
+                                           icon
+                                           ])
+            )
+         );
+   }
+   
+   List<List<Widget>> _makePeqs( List<List<dynamic>> parts, String status ) {
+      List<List<Widget>> retVal = [];
+      if( parts.length == 0 ) { return retVal; }
+
+      if( peqHeader.length < 1 || updateView ) {
+         
+         peqHeader = [];
+         final row0Width = 1.45*baseWidth + 1.7*appState.GAP_PAD; // need to add in left indent in mtt
+         headerDims = [ row0Width, 1.4*baseWidth, 0.6*baseWidth, 0.6*baseWidth, 1.7*baseWidth ];
+
+         Widget row0 = _makeHeader( 0, _SortType.titleAsc,  _SortType.titleDsc );
+         Widget row1 = _makeHeader( 1, _SortType.hprojAsc,  _SortType.hprojDsc );
+         Widget row2 = _makeHeader( 2, _SortType.pvalAsc,   _SortType.pvalDsc );
+         Widget row3 = _makeHeader( 3, _SortType.ptypeAsc,  _SortType.ptypeDsc );
+         Widget row4 = _makeHeader( 4, _SortType.assignAsc, _SortType.assignDsc );
+         
+         peqHeader.add( [ vSpace, vSpace, vSpace, vSpace, vSpace ] );
+         peqHeader.add( [ row0, row1, row2, row3, row4 ] );
+         peqHeader.add( [ makeHDivider( appState, 4 * baseWidth, appState.GAP_PAD*3.5, appState.GAP_PAD * 4.0 ), empty, empty, empty, empty ] );
+      }
+
+      retVal.addAll( peqHeader );
+
+      // Sort before building widgets
+      assert( parts[0].length == 7 );      
+      if( sortType == _SortType.titleAsc )  { parts.sort( (a,b) => a[2].compareTo( b[2] )); }
+      if( sortType == _SortType.titleDsc )  { parts.sort( (a,b) => b[2].compareTo( a[2] )); }
+
+      if( sortType == _SortType.hprojAsc )  { parts.sort( (a,b) => a[3].compareTo( b[3] )); }
+      if( sortType == _SortType.hprojDsc )  { parts.sort( (a,b) => b[3].compareTo( a[3] )); }
+
+      if( sortType == _SortType.pvalAsc )   { parts.sort( (a,b) => int.parse( a[4] ).compareTo( int.parse( b[4] ))); }
+      if( sortType == _SortType.pvalDsc )   { parts.sort( (a,b) => int.parse( b[4] ).compareTo( int.parse( a[4] ))); }
+
+      if( sortType == _SortType.ptypeAsc )  { parts.sort( (a,b) => a[5].compareTo( b[5] )); }
+      if( sortType == _SortType.ptypeDsc )  { parts.sort( (a,b) => b[5].compareTo( a[5] )); }
+
+      if( sortType == _SortType.assignAsc ) { parts.sort( (a,b) => a[6].compareTo( b[6] )); }
+      if( sortType == _SortType.assignDsc ) { parts.sort( (a,b) => b[6].compareTo( a[6] )); }
       
+      for( List<dynamic> part in parts ) {
+         assert( part.length == 7 );
+         Widget title   = paddedLTRB( _peqDetail(context, part[0], part[1], status ), 2 * appState.GAP_PAD, 0, 0, 0 );               
+         Widget hproj   = Container( width: headerDims[1], child: makeTableText( appState, part[3], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+         Widget peqVal  = Container( width: headerDims[2], child: makeTableText( appState, part[4], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+         Widget peqType = Container( width: headerDims[3], child: makeTableText( appState, part[5], baseWidth, appState!.CELL_HEIGHT, false, 1 ));               
+         Widget assign  = Container( width: headerDims[4], child: makeTableText( appState, part[6], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
+         retVal.add( [ title, hproj, peqVal, peqType, assign ] );
+      }
+      return retVal;
+   }
+
+
+   
    List<List<Widget>> _getBody( context, cep ) {
       final buttonWidth = 100;
       // print( ' .. getBody build ' + peqsLoaded.toString() + updateView.toString() );
@@ -688,9 +768,11 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<List<Widget>> bad  = [];
       List<List<Widget>> good = [];
       List<List<Widget>> body = [];
-      gonePeqs = [];
+
+      List<List<dynamic>> goneParts = [];  // temp holding to allow sorting
+      List<List<dynamic>> goodParts = [];
+      List<List<dynamic>> badParts  = [];
       badPeqs  = [];
-      goodPeqs = [];
       
       if( peqsLoaded ) {
          cPeqs.clear();
@@ -705,37 +787,24 @@ class _CEStatusState extends State<CEStatusFrame> {
                hPeqs[p.hostIssueId] = p;
             });
 
-
          // Working from cPeqs gives complete 'gone' and 'good' picture, but incomplete 'bad' picture.
          cPeqs.forEach( (k,v) {
                // several widgets here identical with those in approvalFrame.. but not quite enough sharing to refactor
                assert( v.hostProjectSub.length >= 2 );
+               String title   = v.hostIssueTitle;
+               String hproj   = v.hostProjectSub[ v.hostProjectSub.length - 2 ];
+               String peqVal  = v.amount.toString();
+               String peqType = enumToStr(v.peqType);
                List<String> userNames = v.ceHolderId.map( (ceuid) {
                      assert( appState.cePeople[ceuid] != null );
                      return appState.cePeople[ceuid]!.userName;
                   }).toList();
-               Widget hproj   = Container( width: 1.5*baseWidth,
-                                           child: makeTableText( appState, v.hostProjectSub[ v.hostProjectSub.length - 2 ], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
-               Widget peqVal  = Container( width: 0.6*baseWidth, child: makeTableText( appState, v.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
-               Widget assign  = Container( width: 1.8*baseWidth, child: makeTableText( appState, userNames.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                
                PEQ? h = hPeqs[k];
-               if( !v.active && v.peqType == PeqType.grant ) {
-                  Widget title   = paddedLTRB( _peqDetail( context, v, h, "good" ), 2 * appState.GAP_PAD, 0, 0, 0 );
-                  if( gone.length < 1 ) { gone.addAll( peqHeader ); }
-                  gone.add( [ empty, title, hproj, peqVal, assign ] );
-                  gonePeqs.add( k );
-               }
-               else if( _same( v, h ) ) {
-                  Widget title   = paddedLTRB( _peqDetail(context, v, h, "good" ), 2 * appState.GAP_PAD, 0, 0, 0 );
-                  if( good.length < 1 ) { good.addAll( peqHeader ); }                  
-                  good.add( [ empty, title, hproj, peqVal, assign ] );
-                  goodPeqs.add( k );
-               }
+               if( !v.active && v.peqType == PeqType.grant ) { goneParts.add( [ v, h, title, hproj, peqVal, peqType, userNames.toString() ] ); }
+               else if( _same( v, h ) )                      { goodParts.add( [ v, h, title, hproj, peqVal, peqType, userNames.toString() ] ); }
                else {
-                  Widget title   = paddedLTRB( _peqDetail(context, v, h, "bad" ), 2 * appState.GAP_PAD, 0, 0, 0 );
-                  if( bad.length < 1 ) { bad.addAll( peqHeader ); }
-                  bad.add( [ empty, title, hproj, peqVal, assign ] );
+                  badParts.add( [ v, h, title, hproj, peqVal, peqType, userNames.toString() ] );
                   badPeqs.add( k );
                }
             });
@@ -745,21 +814,23 @@ class _CEStatusState extends State<CEStatusFrame> {
          hPeqs.forEach( (k,v) {
                // if there is a cpeq for this hostPeq, then is already in 1 of 3 categories above
                if( cPeqs[k] == null ) {
-                  Widget title   = paddedLTRB( _peqDetail(context, null, v, "bad" ), 2 * appState.GAP_PAD, 0, 0, 0 );
+                  String title   = v.hostIssueTitle;
+                  String hproj   = v.hostProjectSub[ v.hostProjectSub.length - 2 ];
+                  String peqVal  = v.amount.toString();
+                  String peqType = enumToStr(v.peqType);
                   List<String> userNames = v.ceHolderId.map( (ceuid) {
                         assert( appState.cePeople[ceuid] != null );
                         return appState.cePeople[ceuid]!.userName;
                      }).toList();
-                  Widget hproj   = Container( width: 1.5*baseWidth,
-                                              child: makeTableText( appState, v.hostProjectSub[ v.hostProjectSub.length - 2 ], baseWidth, appState!.CELL_HEIGHT, false, 1 ));
-                  Widget peqVal  = Container( width: 0.6*baseWidth, child: makeTableText( appState, v.amount.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
-                  Widget assign  = Container( width: 1.8*baseWidth, child: makeTableText( appState, userNames.toString(), baseWidth, appState!.CELL_HEIGHT, false, 1 ));
                   
-                  if( bad.length < 1 ) { bad.addAll( peqHeader ); }
-                  bad.add( [ empty, title, hproj, peqVal, assign ] );
+                  badParts.add( [ null, v, title, hproj, peqVal, peqType, userNames.toString() ] );
                   badPeqs.add( k );
                }
             });
+
+         gone = _makePeqs( goneParts, "good" );
+         good = _makePeqs( goodParts, "good" );
+         bad  = _makePeqs( badParts,  "bad"  );
       }
 
       // Down the road, might want setState if repair takes effect
@@ -811,7 +882,7 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       List<List<Widget>> pending = [];
 
-      print( ' .. getStatus build '  + peqsLoaded.toString() + updateView.toString() + ingestNoticeDisplayed.toString() );
+      // print( ' .. getStatus build '  + peqsLoaded.toString() + updateView.toString() + ingestNoticeDisplayed.toString() );
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       if( cep == null ) { return makeTitleText( appState, "First choose Project from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
 
@@ -841,6 +912,7 @@ class _CEStatusState extends State<CEStatusFrame> {
                      )))));
 
    }
+
    
    @override
    Widget build(BuildContext context) {
@@ -861,18 +933,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       Widget hd    = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
       hdiv         = Wrap( spacing: 0, children: [fatPad, hd] );   
 
-      if( appState.verbose >= 4 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString()); }
-
-      Widget row0 = Container( width: 1.5*baseWidth, child: makeTableText( appState, listHeaders[0], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
-      Widget row1 = Container( width: 1.5*baseWidth, child: makeTableText( appState, listHeaders[1], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
-      Widget row2 = Container( width: 0.6*baseWidth, child: makeTableText( appState, listHeaders[2], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
-      Widget row3 = Container( width: 1.8*baseWidth, child: makeTableText( appState, listHeaders[3], baseWidth, appState!.CELL_HEIGHT, false, 1 ) );
-
-      if( peqHeader.length < 1 ) {
-         peqHeader.add( [ vSpace, vSpace, vSpace, vSpace, vSpace ] );
-         peqHeader.add( [ miniHor, row0, row1, row2, row3 ] );
-         peqHeader.add( [ makeHDivider( appState, 3.5 * baseWidth, appState.GAP_PAD*3.5, appState.GAP_PAD * 4.0 ), empty, empty, empty, empty ] );
-      }
+      if( appState.verbose >= 1 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString() + " " + enumToStr( sortType )); }
       
       return getStatus( context );
    }
