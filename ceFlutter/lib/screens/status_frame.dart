@@ -410,6 +410,21 @@ class _CEStatusState extends State<CEStatusFrame> {
       return moddedLabels;
    }
 
+   // Force reload, as core data has changed.
+   Future<void> _reset() async {
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+
+      peqsLoaded = false;
+      appState.cePeqs.remove( cep!.ceProjectId );
+      await _loadPeqs( cep! );
+      setState( () => updateModel = true );
+      
+      // dismiss writeall popup, and the compare popup
+      Navigator.of( context ).pop();
+      Navigator.of( context ).pop();
+   }
+   
    // XXX need to expand host and update call pattern
    Future<void> _writeCEtoHost( PEQ p, bool all ) async {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
@@ -453,15 +468,8 @@ class _CEStatusState extends State<CEStatusFrame> {
          await makeHostIssue( context, container, cep!, p, hostLocs, hostLabels );
       }
 
-      // Force reload, as core data has changed.
-      peqsLoaded = false;
-      appState.cePeqs.remove( cep!.ceProjectId );
-      await _loadPeqs( cep! );
-      setState( () => updateModel = true );
-      
-      // dismiss writeall popup, and the compare popup
-      Navigator.of( context ).pop();
-      Navigator.of( context ).pop();
+      await _reset();
+
    }
 
    // will NOT modify CE's accrued peqs
@@ -484,18 +492,42 @@ class _CEStatusState extends State<CEStatusFrame> {
          await makeCEPeq( context, container, cep!, hp, cPeqs );
       }
 
-      // Force reload, as core data has changed.
-      peqsLoaded = false;
-      appState.cePeqs.remove( cep!.ceProjectId );
-      await _loadPeqs( cep! );
-      setState( () => updateModel = true );
-      
-      // dismiss writeall popup, and the compare popup
-      Navigator.of( context ).pop();
-      Navigator.of( context ).pop();
+      await _reset();
    }
 
+   Future<void> _deleteCE( PEQ p, bool all ) async {
+      print( "Oi!  Delete CE peq(s)... all? " + all.toString() );
+      await _reset();
+   }
+   Future<void> _deleteHost( PEQ p, bool all ) async {
+      print( "Oi!  Delete Host peq(s)... all? " + all.toString() );
+      await _reset();
+   }
    
+   Future<void> _chooseDeleteCEPeq( PEQ p ) async {
+      assert( p != null );
+      String msg1 = "Delete One: Delete this CE PEQ.\n\n";
+      String msg2 = "Delete All: Delete all CodeEquity PEQs listed under \'Needing Repair\', including this one.\n\n";
+      List<Widget> buttons = [];
+      buttons.add( new TextButton( key: Key( 'Delete one CE' ), child: new Text("Delete one"), onPressed: () => _deleteCE( p, false )) );
+      buttons.add( new TextButton( key: Key( 'Delete all CE' ), child: new Text("Delete all"), onPressed: () => _deleteCE( p, true  )) );
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+
+      Widget m = makeBodyText( appState, msg1 + msg2, 3.0 * baseWidth, true, 5, keyTxt: "deleteCEPeq"+p.hostIssueId);
+      popScroll( context, "CodeEquity PEQ:", m, buttons );
+   }
+   Future<void> _chooseDeleteHostPeq( PEQ p ) async {
+      assert( p != null );
+      String msg1 = "Delete One: Delete this Host PEQ.\n\n";
+      String msg2 = "Delete All: Delete all Host PEQs listed under \'Needing Repair\', including this one.\n\n";
+      List<Widget> buttons = [];
+      buttons.add( new TextButton( key: Key( 'Delete one host' ), child: new Text("Delete one"), onPressed: () => _deleteHost( p, false )) );
+      buttons.add( new TextButton( key: Key( 'Delete all host' ), child: new Text("Delete all"), onPressed: () => _deleteHost( p, true  )) );
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+
+      Widget m = makeBodyText( appState, msg1 + msg2, 3.0 * baseWidth, true, 5, keyTxt: "deleteHostPeq"+p.hostIssueId);
+      popScroll( context, "Host PEQ:", m, buttons );
+   }
    Future<void> _chooseCEPeq( PEQ p ) async {
       assert( p != null );
       String msg1 = "Write One: Write this CE PEQ to the host, overwriting any host PEQ with the same hostIssueId or hostIssueTitle.\n\n";
@@ -561,6 +593,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       
       List<Widget> buttons = [];
       if( status == "bad" ) {
+         if( !noCE )  { buttons.add( new TextButton( key: Key( 'Delete CE Peq' ), child: new Text("Delete CodeEquity PEQ"), onPressed: () => _chooseDeleteCEPeq( cePeq ) )); }
+         if( !noHost) { buttons.add( new TextButton( key: Key( 'Delete Host Peq' ), child: new Text("Delete Host Peq"), onPressed: () => _chooseDeleteHostPeq( hostPeq ) )); }
          if( !noCE )  { buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CodeEquity PEQ"), onPressed: () => _chooseCEPeq( cePeq ) )); }
          if( !noHost) { buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Use Host Peq"), onPressed: () => _chooseHostPeq( hostPeq ) )); }
       }
@@ -743,7 +777,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    List<List<Widget>> _getBody( context, cep ) {
       final buttonWidth = 100;
       final dummyHeaderCount = 3;
-      print( ' .. getBody build ' + peqsLoaded.toString() + updateView.toString() );
+      // print( ' .. getBody build ' + peqsLoaded.toString() + updateView.toString() );
       
       Widget categoryHDiv = makeHDivider( appState, 4.5 * baseWidth, appState.GAP_PAD*3.0, appState.GAP_PAD * 2.0, tgap: appState.TINY_PAD );
 

@@ -105,7 +105,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "UpdateCEP")      { resultPromise = putCEP( rb.ceProject ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
-    else if( endPoint == "CheckDup")       { resultPromise = checkDuplicate( rb.CEProjectId, rb.HostIssueId ); }
+    else if( endPoint == "CheckDup")       { resultPromise = checkDuplicates( rb.CEProjectId, rb.HostIssueId ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
@@ -1516,8 +1516,9 @@ async function checkDuplicates( ceProjId, issueId ) {
     console.log( "Found peqs:", peqs );
     assert( peqs.length > 0 );
 
-    if( peqs.length <= 1 ) { return true; }
+    if( peqs.length <= 1 ) { return success( true ); }
 
+    // XXX UNTESTED as of 9/2025
     // Have found a duplicate.  Need pacts to determine which is correct.
     assert( peqs.length == 2 );
 
