@@ -382,32 +382,54 @@ async function getHostLabels( PAT, rid, labels, cursor ) {
 
 // aws peqs: amount, hostHolderId, hostIssueId, hostIssueTitle, hostRepoId, hostProjectSub, peqType
 // gh issue: peq labels, assignees, issueId, title, repoId, link:projName,colName, open?  plan.   closed?  label sez pend or accr
-async function getHostPeqs( PAT, ghLinks, ceProjId ) {
+async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
     let retVal = [];
     let authData = { pat: PAT, who: "ceMD" };
-    console.log( "Got host peqs" );
+    console.log( "Get host peqs" );
 
-    if( ghLinks == -1 ) { return retVal; }
-    
-    let links   = await ghLinks.getLinks( authData, { ceProjId: ceProjId } );
-    if( links === -1 ) { return retVal; }
-
-    // Get issue data by repoId.  Build issue map to speed this up.
+    // Need relevant repos.  Pursue 2 paths to get there, either may be incomplete: 1) linkage to aws, 2) aws ceProjects tables
+    // For example, ceProjects may be (should be!) in good shape, while aws linkage may be old.  
     let repoIds = [];
-    let issues = {};
-    links.forEach( link => {
-	// console.log( link );
-	if( !repoIds.includes( link.hostRepoId ) ) { repoIds.push( link.hostRepoId ); }
-	issues[link.hostIssueId] = {
-	    amount:         -1,
-	    hostHolderId:   [],
-	    hostIssueId:    link.hostIssueId,
-	    hostIssueTitle: link.hostIssueName,
-	    hostRepoId:     link.hostRepoId,
-	    hostProjectSub: [ link.hostProjectName, link.hostColumnName ],
-	    peqType:        config.PEQTYPE_END
-	};
-    });
+    let issues  = {};
+    let ceProj  = ceProjects.findById( ceProjId );
+
+    if( ghLinks == -1 ) { console.log( "No relevant linkage in AWS" ); }
+    else {
+	let links   = await ghLinks.getLinks( authData, { ceProjId: ceProjId } );
+	if( links === -1 ) {
+	    console.log( "No relevant links in AWS" );
+	}
+	else {
+	    // Get issue data by repoId.  Build issue map to speed this up.
+	    links.forEach( link => {
+		// console.log( link );
+		if( !repoIds.includes( link.hostRepoId ) ) { repoIds.push( link.hostRepoId ); }
+		issues[link.hostIssueId] = {
+		    amount:         -1,
+		    hostHolderId:   [],
+		    hostIssueId:    link.hostIssueId,
+		    hostIssueTitle: link.hostIssueName,
+		    hostRepoId:     link.hostRepoId,
+		    hostProjectSub: [ link.hostProjectName, link.hostColumnName ],
+		    peqType:        config.PEQTYPE_END
+		};
+	    });
+	}
+    }
+    
+    if( ceProj != config.EMPTY ) {
+	// console.log( "CEPROJ: ", ceProj );
+	if( !( utils.validField( ceProj, "HostParts" ) && utils.validField( ceProj.HostParts, "hostRepositories" )) ) {
+	    console.log( "WARNING.  CEProjects table is missing host data for:", ceProjId );
+	}
+	else {
+	    let repos = ceProj.HostParts.hostRepositories; // [ {repoId: xxx, repoName: xxx }, .. ]
+	    repos.forEach( r => {
+		if( !repoIds.includes( r.repoId ) ) { repoIds.push( r.repoId ); }
+	    });
+	}
+    }
+    // console.log( "repoIds:", repoIds );
 
     // Need to check for multiple pages of issues per repo
     for( let r = 0; r < repoIds.length; r++ ) {
@@ -450,7 +472,19 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			    
 			    // skip non-peq issue
 			    // console.log( "WORKING", iss.title, iss.id, iss );
-			    if( typeof issues[ iss.id ] === 'undefined' ) { console.log( " .. skipping non-peq", iss.title ); continue; }
+
+			    // Use peq label to determine peqiness.  There are links at times, but they can not be depended on.
+			    // This code is called when checking on errors between GH and CEServer.
+			    // There should be only 1 peq label, but in case, make a crazy one that status checking will catch.
+			    // Note this could also be handled by ignoring the issue, but that seems wrong.
+			    let labels = iss.labels.edges.map( edge => edge.node );
+			    let amount = 0;
+			    labels.forEach( label => {
+				amount = amount * 1000000 + ghUtils.parseLabelName( label.name );
+			    });
+			    if( amount < 1 )  { console.log( " .. skipping non-peq", iss.title ); continue; }
+			    if( typeof issues[ iss.id ] === 'undefined' ) { issues[ iss.id ] = {}; }
+			    issues[ iss.id ].amount = amount;
 
 			    // Matching aws peqs, so keep id not name
 			    issues[ iss.id ].hostHolderId =  iss.assignees.edges.map( edge => edge.node.id );
@@ -464,14 +498,6 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 				issues[ iss.id ].hostProjectSub = [ hpName, res.columnName ];
 			    }
 			    
-			    // This code is called when checking on errors between GH and CEServer.
-			    // There should be only 1 peq label, but in case, make a crazy one that status checking will catch
-			    let labels = iss.labels.edges.map( edge => edge.node );
-			    let amount = 0;
-			    labels.forEach( label => {
-				amount = amount * 10 + ghUtils.parseLabelName( label.name );
-			    });
-			    issues[ iss.id ].amount = amount;
 			    
 			    // require issue state and col name to be consistent with peq type
 			    const pend = config.PROJ_COLS[ config.PROJ_PEND ];
@@ -497,7 +523,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			else                                                   { getNextPage = false; }
 		    });
 	    }
-	    catch( e ) { retVal = await ghUtils.errorHandler( "getHostPeqs", e, getHostPeqs, PAT, ghLinks, ceProjId ); }
+	    catch( e ) { retVal = await ghUtils.errorHandler( "getHostPeqs", e, getHostPeqs, PAT, ceProjects, ghLinks, ceProjId ); }
 	}
     }
 
@@ -506,6 +532,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 
     return retVal;
 }
+
 
 // Create in No Status.
 async function cardIssue( authData, pid, issDat ) {

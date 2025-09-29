@@ -278,10 +278,10 @@ async function testStepByStep( authData, testLinks, td ) {
     if( VERBOSE ) { tu.testReport( testStatus, "C" ); }
 
     // 4. add assignee
-    let assignee1 = await gh2tu.getAssignee( authData, ASSIGNEE1 );
-    let assignee2 = await gh2tu.getAssignee( authData, ASSIGNEE2 );
-    await gh2tu.addAssignee( authData, meltData, assignee1 );
+    let assignee1 = await gh2tu.getAssignee( authData, ASSIGNEE1 );  // ari
+    let assignee2 = await gh2tu.getAssignee( authData, ASSIGNEE2 );  // builder
     await gh2tu.addAssignee( authData, meltData, assignee2 );
+    await gh2tu.addAssignee( authData, meltData, assignee1 );
     await utils.sleep( 1000 );
     testStatus = await gh2tu.checkAssignees( authData, td, [ASSIGNEE1, ASSIGNEE2], meltData, testStatus );
     testStatus = await gh2tu.checkPact( authData, testLinks, td, ISS_FLOW, config.PACTVERB_CONF, config.PACTACT_CHAN, config.PACTNOTE_ADDA, testStatus );

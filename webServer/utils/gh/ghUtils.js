@@ -203,7 +203,7 @@ function parseLabelName( name ) {
 	peqValue = (                unit == "k" ) ? peqValue * 1000    : peqValue;
 	
     }
-    return peqValue;
+    return Math.round( peqValue );
 }
 
 

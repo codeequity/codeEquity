@@ -71,6 +71,12 @@ class _CEStatusState extends State<CEStatusFrame> {
    late Map<String, PEQ> hPeqs;     // host peqs
    late List<String>     badPeqs;   // hostIssueIds of peqs that don't match                        
 
+   late List<List<dynamic>> goneParts;  // computed model parts, unsorted and unhighlighted
+   late List<List<dynamic>> goodParts;
+   late List<List<dynamic>> badParts;
+
+   late List<List<Widget>> body;    // view holder
+   
    late bool peqsLoaded;
    late bool goodStatus;     
    late bool hideGone; 
@@ -78,7 +84,8 @@ class _CEStatusState extends State<CEStatusFrame> {
    late bool hideGood;
    late bool ingestNoticeDisplayed;
 
-   late bool updateView; 
+   late bool updateView;           
+   late bool updateModel; 
    
    late List<List<Widget>> peqHeader;
 
@@ -90,19 +97,25 @@ class _CEStatusState extends State<CEStatusFrame> {
    @override
    void initState() {
       super.initState();
-      peqsLoaded = false;
-      goodStatus = true;
-      hideGone   = true;
-      hideBad    = true;
-      hideGood   = true;
-      updateView = true;
-      cPeqs      = {};
-      hPeqs      = {};
-      peqHeader  = [];
-      badPeqs    = [];
-      headerDims = [];
+      peqsLoaded  = false;
+      goodStatus  = true;
+      hideGone    = true;
+      hideBad     = true;
+      hideGood    = true;
+      updateView  = true;
+      updateModel = true;
+      cPeqs       = {};
+      hPeqs       = {};
+      peqHeader   = [];
+      badPeqs     = [];
+      headerDims  = [];
 
-      sortType   = _SortType.end;
+      body        = [];
+      goneParts   = [];
+      goodParts   = [];
+      badParts    = [];
+
+      sortType    = _SortType.end;
 
       ingestNoticeDisplayed = false;
    }
@@ -397,6 +410,21 @@ class _CEStatusState extends State<CEStatusFrame> {
       return moddedLabels;
    }
 
+   // Force reload, as core data has changed.
+   Future<void> _reset() async {
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+
+      peqsLoaded = false;
+      appState.cePeqs.remove( cep!.ceProjectId );
+      await _loadPeqs( cep! );
+      setState( () => updateModel = true );
+      
+      // dismiss writeall popup, and the compare popup
+      Navigator.of( context ).pop();
+      Navigator.of( context ).pop();
+   }
+   
    // XXX need to expand host and update call pattern
    Future<void> _writeCEtoHost( PEQ p, bool all ) async {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
@@ -440,15 +468,8 @@ class _CEStatusState extends State<CEStatusFrame> {
          await makeHostIssue( context, container, cep!, p, hostLocs, hostLabels );
       }
 
-      // Force reload, as core data has changed.
-      peqsLoaded = false;
-      appState.cePeqs.remove( cep!.ceProjectId );
-      await _loadPeqs( cep! );
-      setState( () => updateView = true );
-      
-      // dismiss writeall popup, and the compare popup
-      Navigator.of( context ).pop();
-      Navigator.of( context ).pop();
+      await _reset();
+
    }
 
    // will NOT modify CE's accrued peqs
@@ -471,18 +492,80 @@ class _CEStatusState extends State<CEStatusFrame> {
          await makeCEPeq( context, container, cep!, hp, cPeqs );
       }
 
-      // Force reload, as core data has changed.
-      peqsLoaded = false;
-      appState.cePeqs.remove( cep!.ceProjectId );
-      await _loadPeqs( cep! );
-      setState( () => updateView = true );
-      
-      // dismiss writeall popup, and the compare popup
-      Navigator.of( context ).pop();
-      Navigator.of( context ).pop();
+      await _reset();
    }
 
-   
+   // will NOT modify CE's accrued peqs
+   Future<void> _deleteCE( PEQ p, bool all ) async {
+      print( "Oi!  Delete CE peq(s)... all? " + all.toString() );
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+
+      List<PEQ> removeMe = [];
+      if( all ) {
+         for( PEQ p in appState.cePeqs[ cep!.ceProjectId ]! ) {
+            if( badPeqs.contains( p.hostIssueId )) { removeMe.add( p ); }
+         }
+      }
+      else { removeMe.add( p ); }
+
+      // removeCEPeq will reject request if matching cePeq is ACCR
+      for( PEQ p in removeMe ) {
+         assert( p.hostIssueId != null );
+         await removeCEPeq( context, container, cep!, p, cPeqs );
+      }
+
+      await _reset();
+   }
+
+   Future<void> _deleteHost( PEQ p, bool all ) async {
+      print( "Oi!  Delete Host peq(s)... all? " + all.toString() );
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+
+      List<PEQ> removeMe = [];
+      if( all ) {
+         for( PEQ p in appState.hostPeqs[ cep!.ceProjectId ]! ) {
+            if( badPeqs.contains( p.hostIssueId )) { removeMe.add( p ); }
+         }
+      }
+      else { removeMe.add( p ); }
+
+      for( PEQ p in removeMe ) {
+         assert( p.hostIssueId != null );
+         await remGHIssue( container, cep!, p.hostIssueId );
+      }
+
+      await _reset();
+   }
+
+   // Note that p is built from CE
+   Future<void> _chooseDeleteCEPeq( PEQ p ) async {
+      assert( p != null );
+      String msg1 = "Delete One: Delete this CE PEQ.\n\n";
+      String msg2 = "Delete All: Delete all CodeEquity PEQs listed under \'Needing Repair\', including this one.\n\n";
+      List<Widget> buttons = [];
+      buttons.add( new TextButton( key: Key( 'Delete one CE' ), child: new Text("Delete one"), onPressed: () => _deleteCE( p, false )) );
+      buttons.add( new TextButton( key: Key( 'Delete all CE' ), child: new Text("Delete all"), onPressed: () => _deleteCE( p, true  )) );
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+
+      Widget m = makeBodyText( appState, msg1 + msg2, 3.0 * baseWidth, true, 5, keyTxt: "deleteCEPeq"+p.hostIssueId);
+      popScroll( context, "CodeEquity PEQ:", m, buttons );
+   }
+
+   // Note that p is built from the host
+   Future<void> _chooseDeleteHostPeq( PEQ p ) async {
+      assert( p != null );
+      String msg1 = "Delete One: Delete this Host PEQ.\n\n";
+      String msg2 = "Delete All: Delete all Host PEQs listed under \'Needing Repair\', including this one.\n\n";
+      List<Widget> buttons = [];
+      buttons.add( new TextButton( key: Key( 'Delete one host' ), child: new Text("Delete one"), onPressed: () => _deleteHost( p, false )) );
+      buttons.add( new TextButton( key: Key( 'Delete all host' ), child: new Text("Delete all"), onPressed: () => _deleteHost( p, true  )) );
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+
+      Widget m = makeBodyText( appState, msg1 + msg2, 3.0 * baseWidth, true, 5, keyTxt: "deleteHostPeq"+p.hostIssueId);
+      popScroll( context, "Host PEQ:", m, buttons );
+   }
    Future<void> _chooseCEPeq( PEQ p ) async {
       assert( p != null );
       String msg1 = "Write One: Write this CE PEQ to the host, overwriting any host PEQ with the same hostIssueId or hostIssueTitle.\n\n";
@@ -548,6 +631,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       
       List<Widget> buttons = [];
       if( status == "bad" ) {
+         if( !noCE )  { buttons.add( new TextButton( key: Key( 'Delete CE Peq' ), child: new Text("Delete CodeEquity PEQ"), onPressed: () => _chooseDeleteCEPeq( cePeq ) )); }
+         if( !noHost) { buttons.add( new TextButton( key: Key( 'Delete Host Peq' ), child: new Text("Delete Host Peq"), onPressed: () => _chooseDeleteHostPeq( hostPeq ) )); }
          if( !noCE )  { buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CodeEquity PEQ"), onPressed: () => _chooseCEPeq( cePeq ) )); }
          if( !noHost) { buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Use Host Peq"), onPressed: () => _chooseHostPeq( hostPeq ) )); }
       }
@@ -669,8 +754,12 @@ class _CEStatusState extends State<CEStatusFrame> {
          );
    }
    
-   List<List<Widget>> _makePeqs( List<List<dynamic>> parts, String status ) {
+   List<List<Widget>> _makePeqs( List<List<dynamic>> parts, String status, int dummyCount ) {
       List<List<Widget>> retVal = [];
+      // insert dummy headers to make subsequent construction easier
+      for( int i = 0; i < dummyCount; i++ ) {
+         retVal.add( [ vSpace, empty, empty, empty, empty ] );
+      }
       if( parts.length == 0 ) { return retVal; }
 
       if( peqHeader.length < 1 || updateView ) {
@@ -725,58 +814,25 @@ class _CEStatusState extends State<CEStatusFrame> {
    
    List<List<Widget>> _getBody( context, cep ) {
       final buttonWidth = 100;
+      final dummyHeaderCount = 3;
       // print( ' .. getBody build ' + peqsLoaded.toString() + updateView.toString() );
       
-      Widget expandGone = GestureDetector(
-         onTap: () async { updateView = true; setState(() => hideGone = false ); },
-         key: Key( 'hideGone'),
-         child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
-         );
-      
-      Widget shrinkGone = GestureDetector(
-         onTap: () async { updateView = true; setState(() => hideGone = true ); },
-         key: Key( 'hideGone'),
-         child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
-         );
-      
-      Widget expandBad = GestureDetector(
-         onTap: () async { updateView = true; setState(() => hideBad = false ); },
-         key: Key( 'hideBad'),
-         child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
-         );
-      
-      Widget shrinkBad = GestureDetector(
-         onTap: () async { updateView = true; setState(() => hideBad = true ); },
-         key: Key( 'hideBad'),
-         child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
-         );
-      
-      Widget expandGood = GestureDetector(
-         onTap: () async { updateView = true; setState(() => hideGood = false ); },
-         key: Key( 'hideGood'),
-         child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
-         );
-      
-      Widget shrinkGood = GestureDetector(
-         onTap: () async { updateView = true; setState(() => hideGood = true ); },
-         key: Key( 'hideGood'),
-         child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
-         );
-      
       Widget categoryHDiv = makeHDivider( appState, 4.5 * baseWidth, appState.GAP_PAD*3.0, appState.GAP_PAD * 2.0, tgap: appState.TINY_PAD );
-      List<List<Widget>> gone = [];
-      List<List<Widget>> bad  = [];
-      List<List<Widget>> good = [];
-      List<List<Widget>> body = [];
 
-      List<List<dynamic>> goneParts = [];  // temp holding to allow sorting
-      List<List<dynamic>> goodParts = [];
-      List<List<dynamic>> badParts  = [];
-      badPeqs  = [];
-      
-      if( peqsLoaded ) {
+      List<List<Widget>> gone;
+      List<List<Widget>> bad;
+      List<List<Widget>> good;
+
+      // Load the *parts from hpeqs and cpeqs
+      if( peqsLoaded && updateModel ) {
+         updateView = true;                   // if model changes, update view too
          cPeqs.clear();
          hPeqs.clear();
+         badPeqs   = [];
+         goneParts = [];
+         goodParts = [];
+         badParts  = [];
+
          appState.cePeqs[ cep.ceProjectId ]!.forEach( (p) {
                assert( p.hostIssueId != null );
                // do NOT filter on active, that is a host-specific flag
@@ -828,53 +884,92 @@ class _CEStatusState extends State<CEStatusFrame> {
                }
             });
 
-         gone = _makePeqs( goneParts, "good" );
-         good = _makePeqs( goodParts, "good" );
-         bad  = _makePeqs( badParts,  "bad"  );
+         updateModel = false;
       }
 
-      // Down the road, might want setState if repair takes effect
-      // if( goodStatus && bad.length >  0  ) { setState(() => goodStatus = false ); }
-      // if( !goodStatus && bad.length == 0 ) { setState(() => goodStatus = true ); }
-      if( bad.length >  0  ) { goodStatus = false; }
-      else                   { goodStatus = true; }
+      if( updateView ) {
+         Widget expandGone = GestureDetector(
+            onTap: () async { updateView = true; setState(() => hideGone = false ); },
+            key: Key( 'hideGone'),
+            child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
+            );
+         
+         Widget shrinkGone = GestureDetector(
+            onTap: () async { updateView = true; setState(() => hideGone = true ); },
+            key: Key( 'hideGone'),
+            child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
+            );
+         
+         Widget expandBad = GestureDetector(
+            onTap: () async { updateView = true; setState(() => hideBad = false ); },
+            key: Key( 'hideBad'),
+            child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
+            );
+         
+         Widget shrinkBad = GestureDetector(
+            onTap: () async { updateView = true; setState(() => hideBad = true ); },
+            key: Key( 'hideBad'),
+            child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
+            );
+         
+         Widget expandGood = GestureDetector(
+            onTap: () async { updateView = true; setState(() => hideGood = false ); },
+            key: Key( 'hideGood'),
+            child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
+            );
+         
+         Widget shrinkGood = GestureDetector(
+            onTap: () async { updateView = true; setState(() => hideGood = true ); },
+            key: Key( 'hideGood'),
+            child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
+            );
 
-      int peqLen      = gone.length > 0 ? (gone.length - peqHeader.length) : 0;
-      String goneText = peqLen.toString() + " PEQs are granted and in good standing, but no longer visible on the host.";
-      Widget category = paddedLTRB( makeTitleText( appState, "Unavailable on host", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );
-      if( hideGone ) { gone = []; }
-      gone.insert( 0, [ empty, category,
-                        makeTitleText( appState, goneText, 6*buttonWidth, false, 1 ),
-                        hideGone ? expandGone : shrinkGone, empty ] );
-      gone.insert( 1, [ categoryHDiv, empty, empty, empty, empty ] );      
+         // This is view-centric, involves sorting and title highlighting
+         gone = _makePeqs( goneParts, "good", dummyHeaderCount );  // dummy space for vspace, then actual header 0 and header 1
+         bad  = _makePeqs( badParts,  "bad",  dummyHeaderCount );
+         good = _makePeqs( goodParts, "good", dummyHeaderCount );
 
-      peqLen         = bad.length > 0 ? (bad.length - peqHeader.length) : 0;
-      String disText = peqLen.toString() + " PEQs are mismatched. Click in to choose how to make repairs.";
-      category       = paddedLTRB( makeTitleText( appState, "Needing Repair", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );      
-      if( hideBad ) { bad = []; }
-      bad.insert( 0, [ empty, category, 
-                       makeTitleText( appState, disText, 6*buttonWidth, false, 1 ),
-                       hideBad ? expandBad : shrinkBad, empty ] );
-      bad.insert( 1, [ categoryHDiv, empty, empty, empty, empty ] );      
+         // updateModel is performed first.  gone/good/bad are all be length dummyHeaderCount+ here, with pos 0 being vSpace that need not be overwritten
+         // overwrite old headers
+         assert( gone.length >= dummyHeaderCount );
+         assert( bad.length  >= dummyHeaderCount );
+         assert( good.length >= dummyHeaderCount );
+         
+         if( bad.length >  3  ) { goodStatus = false; }
+         else                   { goodStatus = true; }
+         
+         body = [];
 
-      peqLen         = good.length > 0 ? (good.length - peqHeader.length) : 0;
-      String agrText = peqLen.toString() + " PEQs match. Nothing needs be done here.";
-      category       = paddedLTRB( makeTitleText( appState, "In Agreement", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );            
-      if( hideGood ) { good = []; }
-      good.insert( 0, [ empty, category, 
-                        makeTitleText( appState, agrText, 6*buttonWidth, false, 1 ),
-                        hideGood ? expandGood : shrinkGood, empty ] );
-      good.insert( 1, [ categoryHDiv, empty, empty, empty, empty ] );      
-
-      gone.insert( 0, [ vSpace, empty, empty, empty, empty ] );
-      gone.add( [ vSpace, empty, empty, empty, empty ] );
-      bad.add(  [ vSpace, empty, empty, empty, empty ] );
-      
-      body.addAll( gone );
-      body.addAll( bad );
-      body.addAll( good );
-
-      updateView = false;
+         int peqLen      = gone.length > dummyHeaderCount ? (gone.length - peqHeader.length - dummyHeaderCount) : 0;
+         String goneText = peqLen.toString() + " PEQs are granted and in good standing, but no longer visible on the host.";
+         Widget category = paddedLTRB( makeTitleText( appState, "Unavailable on host", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );
+         gone[1] = [ empty, category,
+                     makeTitleText( appState, goneText, 6*buttonWidth, false, 1 ),
+                     hideGone ? expandGone : shrinkGone, empty ];
+         gone[2] = [ categoryHDiv, empty, empty, empty, empty ];      
+         
+         peqLen         = bad.length > dummyHeaderCount ? (bad.length - peqHeader.length - dummyHeaderCount) : 0;
+         String disText = peqLen.toString() + " PEQs are mismatched. Click in to choose how to make repairs.";
+         category       = paddedLTRB( makeTitleText( appState, "Needing Repair", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );      
+         bad[1] = [ empty, category, 
+                    makeTitleText( appState, disText, 6*buttonWidth, false, 1 ),
+                    hideBad ? expandBad : shrinkBad, empty ];
+         bad[2] = [ categoryHDiv, empty, empty, empty, empty ];      
+         
+         peqLen         = good.length > dummyHeaderCount ? (good.length - peqHeader.length - dummyHeaderCount) : 0;
+         String agrText = peqLen.toString() + " PEQs match. Nothing needs be done here.";
+         category       = paddedLTRB( makeTitleText( appState, "In Agreement", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );            
+         good[1] = [ empty, category, 
+                     makeTitleText( appState, agrText, 6*buttonWidth, false, 1 ),
+                     hideGood ? expandGood : shrinkGood, empty ];
+         good[2] = [ categoryHDiv, empty, empty, empty, empty ];      
+         
+         body.addAll( hideGone ? gone.sublist( 0, 3 ) : gone );
+         body.addAll( hideBad  ? bad.sublist(  0, 3 ) : bad );
+         body.addAll( hideGood ? good.sublist( 0, 3 ) : good );
+         
+         updateView = false;
+      }
       return body;
    }
    
@@ -891,9 +986,13 @@ class _CEStatusState extends State<CEStatusFrame> {
       _loadPeqs( cep! );
 
       // header afterwards to get status.  If need ingest, don't print header as it will say status is good
-      if( peqsLoaded && updateView && !ingestNoticeDisplayed ) { pending.addAll( _getBody( context, cep! ) ); }
-      if( !ingestNoticeDisplayed )                             { pending.insertAll( 0, _getHeader( context, cep! ) ); }
-
+      if( !ingestNoticeDisplayed ) {  
+         if( peqsLoaded && ( updateModel || updateView )) { pending.addAll( _getBody( context, cep! ) ); }
+         else                                             { pending.addAll( body ); }
+         
+         pending.insertAll( 0, _getHeader( context, cep! ) ); 
+      }
+      
       return ScrollConfiguration(
          behavior: MyCustomScrollBehavior(),
          child: SingleChildScrollView(
@@ -933,7 +1032,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       Widget hd    = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
       hdiv         = Wrap( spacing: 0, children: [fatPad, hd] );   
 
-      if( appState.verbose >= 1 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString() + " " + enumToStr( sortType )); }
+      // if( appState.verbose >= 1 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString() + " " + enumToStr( sortType )); }
+      if( appState.verbose >= 4 ) { print( "STATUS BUILD. " + updateView.toString() + " " + updateModel.toString() + " " + enumToStr( sortType )); }
       
       return getStatus( context );
    }
