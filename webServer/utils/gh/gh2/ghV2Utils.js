@@ -387,10 +387,13 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
     let authData = { pat: PAT, who: "ceMD" };
     console.log( "Got host peqs" );
 
-    if( ghLinks == -1 ) { return retVal; }
-    
+    if( ghLinks == -1 ) { console.log( "No linkage?" ); return retVal; }
+
+    // XXX GH and AWS are out of sync, can have PEQ issue lookalikes in GH that are not recorded in AWS.
+    //     In this case, links are -1, no repoIds, no host peqs being passed on.
+    //     workaround: enter fake peq in GH in proper repo, then reload status page.
     let links   = await ghLinks.getLinks( authData, { ceProjId: ceProjId } );
-    if( links === -1 ) { return retVal; }
+    if( links === -1 ) { console.log( "No links?" ); return retVal; }
 
     // Get issue data by repoId.  Build issue map to speed this up.
     let repoIds = [];
@@ -449,7 +452,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			    let iss = items[i].node;
 			    
 			    // skip non-peq issue
-			    // console.log( "WORKING", iss.title, iss.id, iss );
+			    console.log( "WORKING", iss.title, iss.id, iss );
 			    if( typeof issues[ iss.id ] === 'undefined' ) { console.log( " .. skipping non-peq", iss.title ); continue; }
 
 			    // Matching aws peqs, so keep id not name
@@ -490,7 +493,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
 			    // remove issues that are untracked
 			    if( amount <= 0 ) { delete issues[ iss.id ]; }
 			    
-			    // console.log( issues[ iss.id ] );
+			    console.log( issues[ iss.id ] );
 			}
 			
 			if( allItems !== -1 && allItems.pageInfo.hasNextPage ) { cursor = allItems.pageInfo.endCursor; }
@@ -502,7 +505,7 @@ async function getHostPeqs( PAT, ghLinks, ceProjId ) {
     }
 
     Object.values(issues).forEach( v => retVal.push( v ) );
-    // console.log( retVal );
+    console.log( retVal );
 
     return retVal;
 }

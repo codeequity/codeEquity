@@ -267,6 +267,9 @@ Future<bool> remGHIssue( container, CEProject cep, String hostIssueId ) async {
       return false;
    }
 
+   // Update linkage to keep ceServer in sync  
+   await remLinkage( container, cep, hostIssueId );
+
    return true;
 }
 
@@ -340,9 +343,6 @@ Future<void> makeHostIssue( context, container, cep, PEQ p, List<HostLoc> ghLocs
    await remGHIssue( container, cep, p.hostIssueId );
    print( "Deleted host issue " + p.hostIssueTitle + " (" + p.hostIssueId + ")");
 
-   // Update linkage to keep ceServer in sync  
-   await remLinkage( container, cep, p.hostIssueId );
-   
    // 2) create new host Issue that matches peq
    var newIssLabel = hostLabels[p.hostRepoId]!.firstWhere( (l) => l[0] == p.amount ); 
    Map<String,dynamic> newIssue = {};

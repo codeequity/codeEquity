@@ -406,10 +406,10 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
       pact["Verb"]        = "confirm";               // XXX formalize
       pact["Action"]      = "notice";                // XXX formalize
       pact["Subject"]     = [p.id];
-      pact["Note"]        = "repair PEQ using host"; // XXX formalize
+      pact["Note"]        = note;
       pact["Date"]        = getToday();
       pact["RawBody"]     = note;
-      pact["Ingested"]    = "false";
+      pact["Ingested"]    = "true";
       pact["Locked"]      = "false";
       pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
       
@@ -418,6 +418,61 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
       postData        = '{ "Endpoint": "$shortName", "newPAction": $newPAct }';
       await updateDynamo( context, container, postData, shortName );
    }
+   return !setInStone;
+}
+
+Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PEQ> cPeqs ) async {
+   final appState  = container.state;
+
+   bool setInStone = false;
+
+   // Check that p is not an accrued peq on aws.  p was built from aws.
+   assert( p == null || p.id != -1 );
+   if( p != null && p.peqType == PeqType.grant ) { setInStone = true; }
+
+   if( setInStone ) { print( "WARNING.  Attempting to delete an accrued PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id ); }
+   else {
+      print( "Removing PEQ in AWS" );
+
+      String shortName = "RemoveEntries";
+      String pids = json.encode( [[ p.id ]] );  // list of lists in case pkey is not singular
+      String postData = '{ "Endpoint": "$shortName", "tableName": "CEPEQs", "ids": $pids }';
+      bool res = await updateDynamo( context, container, postData, shortName );
+      
+      // send PAct as a notice.
+      print( "Adding PAct" );
+      
+      String hostUserId = "";
+      for( HostAccount ha in appState.myHostAccounts ) {
+         if( ha.hostPlatform == "GitHub" && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
+            hostUserId = ha.hostUserId;
+            break;
+         }
+      }
+      
+      DateTime now = DateTime.now();
+      String note  = setInStone ? '{"note": "Remove accrued attempted via CEMD"}' : '{"note": "Remove peq via CEMD, no raw body present"}';
+      
+      Map<String, dynamic> pact  = { };
+      pact["CEUID"]       = appState.ceUserId; 
+      pact["HostUserId"]  = hostUserId;
+      pact["CEProjectId"] = p.ceProjectId;
+      pact["Verb"]        = "confirm";               // XXX formalize
+      pact["Action"]      = "notice";                // XXX formalize
+      pact["Subject"]     = [p.id];
+      pact["Note"]        = note;
+      pact["Date"]        = getToday();
+      pact["RawBody"]     = note;
+      pact["Ingested"]    = "true";                  // there is no ingest work to do.  additionally, don't want to retrigger ingest notice for status frame.
+      pact["Locked"]      = "false";
+      pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
+      
+      shortName       = "RecordPEQAction";
+      String newPAct  = json.encode( pact );
+      postData        = '{ "Endpoint": "$shortName", "newPAction": $newPAct }';
+      await updateDynamo( context, container, postData, shortName );
+   }
+
    return !setInStone;
 }
 

@@ -495,15 +495,51 @@ class _CEStatusState extends State<CEStatusFrame> {
       await _reset();
    }
 
+   // will NOT modify CE's accrued peqs
    Future<void> _deleteCE( PEQ p, bool all ) async {
       print( "Oi!  Delete CE peq(s)... all? " + all.toString() );
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+
+      List<PEQ> removeMe = [];
+      if( all ) {
+         for( PEQ p in appState.cePeqs[ cep!.ceProjectId ]! ) {
+            if( badPeqs.contains( p.hostIssueId )) { removeMe.add( p ); }
+         }
+      }
+      else { removeMe.add( p ); }
+
+      // removeCEPeq will reject request if matching cePeq is ACCR
+      for( PEQ p in removeMe ) {
+         assert( p.hostIssueId != null );
+         await removeCEPeq( context, container, cep!, p, cPeqs );
+      }
+
       await _reset();
    }
+
    Future<void> _deleteHost( PEQ p, bool all ) async {
       print( "Oi!  Delete Host peq(s)... all? " + all.toString() );
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+
+      List<PEQ> removeMe = [];
+      if( all ) {
+         for( PEQ p in appState.hostPeqs[ cep!.ceProjectId ]! ) {
+            if( badPeqs.contains( p.hostIssueId )) { removeMe.add( p ); }
+         }
+      }
+      else { removeMe.add( p ); }
+
+      for( PEQ p in removeMe ) {
+         assert( p.hostIssueId != null );
+         await remGHIssue( container, cep!, p.hostIssueId );
+      }
+
       await _reset();
    }
-   
+
+   // Note that p is built from CE
    Future<void> _chooseDeleteCEPeq( PEQ p ) async {
       assert( p != null );
       String msg1 = "Delete One: Delete this CE PEQ.\n\n";
@@ -516,6 +552,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       Widget m = makeBodyText( appState, msg1 + msg2, 3.0 * baseWidth, true, 5, keyTxt: "deleteCEPeq"+p.hostIssueId);
       popScroll( context, "CodeEquity PEQ:", m, buttons );
    }
+
+   // Note that p is built from the host
    Future<void> _chooseDeleteHostPeq( PEQ p ) async {
       assert( p != null );
       String msg1 = "Delete One: Delete this Host PEQ.\n\n";
