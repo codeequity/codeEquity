@@ -212,6 +212,8 @@ def runTests( test = "focus" ):
         tsum = runTest( "search_test.dart", False, False, False )
     elif( test == "profile" ):
         tsum = runTest( "profile_test.dart", False, False, False )
+    elif( test == "repair" ):
+        tsum = runTest( "repair_test.dart", False, False, False )
         
 
     resultsSum  += tsum
@@ -264,6 +266,7 @@ def main( cmd ):
     elif( cmd == "equity" ) : summary = runTests( test = "equity" )
     elif( cmd == "search" ) : summary = runTests( test = "search" )
     elif( cmd == "profile" ) : summary = runTests( test = "profile" )
+    elif( cmd == "repair" ) : summary = runTests( test = "repair" )
     else :
         thread = Thread( target=globals()[cmd]( ) )
         thread.start()

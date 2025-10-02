@@ -482,8 +482,15 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 			    labels.forEach( label => {
 				amount = amount * 1000000 + ghUtils.parseLabelName( label.name );
 			    });
-			    if( amount < 1 )  { console.log( " .. skipping non-peq", iss.title ); continue; }
+
+			    // remove issues that are untracked
 			    if( typeof issues[ iss.id ] === 'undefined' ) { issues[ iss.id ] = {}; }
+			    if( amount < 1 )  {
+				console.log( " .. skipping non-peq", iss.title );
+				delete issues[ iss.id ];
+				continue;
+			    }
+			    
 			    issues[ iss.id ].amount = amount;
 
 			    // Matching aws peqs, so keep id not name
@@ -512,9 +519,6 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 			    else if( iss.state == config.GH_ISSUE_CLOSED && issues[ iss.id ].hostProjectSub[1] == accr ) {
 				issues[ iss.id ].peqType = config.PEQTYPE_GRANT;
 			    }
-
-			    // remove issues that are untracked
-			    if( amount <= 0 ) { delete issues[ iss.id ]; }
 			    
 			    // console.log( issues[ iss.id ] );
 			}

@@ -204,10 +204,10 @@ class _CEStatusState extends State<CEStatusFrame> {
       String cePeqs       = peqs.length.toString() + " PEQs: " + cePeqDetail;
       String ceStorage    = "CodeEquity Data (AWS)";
       
-      String hostStorage   = "Host Data: (" + cep.hostPlatform + ")";
+      String hostStorage   = "Host Data (" + cep.hostPlatform + ")";
       String hostPeqDetail = planHPeqs.length.toString() + " planned, " + pendHPeqs.length.toString() + " pending, " + accrHPeqs.length.toString() + " accrued.";
       String hostPeqs      = hPeqs.length.toString() + " PEQs: " + hostPeqDetail; 
-
+      
       Widget t1 = makeTitleText( appState, ceStorage, buttonWidth * 3.0, false, 1, fontSize: 16 );
       Widget t2 = makeTitleText( appState, hostStorage, buttonWidth * 3.0, false, 1, fontSize: 16 );
 
@@ -949,7 +949,7 @@ class _CEStatusState extends State<CEStatusFrame> {
          gone[2] = [ categoryHDiv, empty, empty, empty, empty ];      
          
          peqLen         = bad.length > dummyHeaderCount ? (bad.length - peqHeader.length - dummyHeaderCount) : 0;
-         String disText = peqLen.toString() + " PEQs are mismatched. Click in to choose how to make repairs.";
+         String disText = peqLen.toString() + " PEQs are mismatched.  Click in to choose how to make repairs.";
          category       = paddedLTRB( makeTitleText( appState, "Needing Repair", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );      
          bad[1] = [ empty, category, 
                     makeTitleText( appState, disText, 6*buttonWidth, false, 1 ),
@@ -957,7 +957,7 @@ class _CEStatusState extends State<CEStatusFrame> {
          bad[2] = [ categoryHDiv, empty, empty, empty, empty ];      
          
          peqLen         = good.length > dummyHeaderCount ? (good.length - peqHeader.length - dummyHeaderCount) : 0;
-         String agrText = peqLen.toString() + " PEQs match. Nothing needs be done here.";
+         String agrText = peqLen.toString() + " PEQs match.  Nothing needs be done here.";
          category       = paddedLTRB( makeTitleText( appState, "In Agreement", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );            
          good[1] = [ empty, category, 
                      makeTitleText( appState, agrText, 6*buttonWidth, false, 1 ),

@@ -359,6 +359,30 @@ Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> statusTabFraming( WidgetTester tester ) async {
+   expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
+   final Finder tab = find.byKey( const Key('Status' ));
+   await tester.tap( tab );
+   await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 4 ); // Need time to get peq data
+
+   expect( find.text( CEMD_PROJ_NAME ), findsOneWidget );
+   expect( find.text( "STATUS" ), findsOneWidget );
+   expect( find.text( "CodeEquity Data (AWS)" ), findsOneWidget );
+   expect( find.text( "Host Data (GitHub)" ), findsOneWidget );
+   expect( find.text( "GOOD" ), findsOneWidget );
+   expect( find.text( "37 PEQs: 23 planned, 3 pending, 11 accrued." ), findsOneWidget );
+   expect( find.text( "35 PEQs: 23 planned, 3 pending, 9 accrued." ), findsOneWidget );
+   expect( find.text( "Unavailable on host" ), findsOneWidget );
+   expect( find.text( "Needing Repair" ), findsOneWidget );
+   expect( find.text( "In Agreement" ), findsOneWidget );
+   expect( find.text( "2 PEQs are granted and in good standing, but no longer visible on the host." ), findsOneWidget );
+   expect( find.text( "0 PEQs are mismatched.  Click in to choose how to make repairs." ), findsOneWidget );
+   expect( find.text( "35 PEQs match.  Nothing needs be done here." ), findsOneWidget );
+   return true;
+}
+
 bool isPresent( Finder f ) {
    try {
       expect( f, findsOneWidget );

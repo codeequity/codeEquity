@@ -126,17 +126,6 @@ Future<bool> approvalsTabFraming( WidgetTester tester ) async {
 }
 
 
-Future<bool> statusTabFraming( WidgetTester tester ) async {
-   expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
-   final Finder tab = find.byKey( const Key('Status' ));
-   await tester.tap( tab );
-   await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
-   await tester.pumpAndSettle();
-
-   expect( find.text( CEMD_PROJ_NAME ), findsOneWidget );
-   return true;
-}
-
 Future<bool> statusUnavailableFraming( WidgetTester tester ) async {
    expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
    final Finder tab = find.byKey( const Key('Status' ));
