@@ -365,7 +365,7 @@ Future<bool> statusTabFraming( WidgetTester tester ) async {
    await tester.tap( tab );
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
    await tester.pumpAndSettle();
-   await pumpSettle( tester, 4 ); // Need time to get peq data
+   await pumpSettle( tester, 5 ); // Need time to get peq data
 
    expect( find.text( CEMD_PROJ_NAME ), findsOneWidget );
    expect( find.text( "STATUS" ), findsOneWidget );

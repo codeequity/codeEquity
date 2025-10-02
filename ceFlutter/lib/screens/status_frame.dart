@@ -632,11 +632,11 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<Widget> buttons = [];
       if( status == "bad" ) {
          if( !noCE )  { buttons.add( new TextButton( key: Key( 'Delete CE Peq' ), child: new Text("Delete CodeEquity PEQ"), onPressed: () => _chooseDeleteCEPeq( cePeq ) )); }
-         if( !noHost) { buttons.add( new TextButton( key: Key( 'Delete Host Peq' ), child: new Text("Delete Host Peq"), onPressed: () => _chooseDeleteHostPeq( hostPeq ) )); }
+         if( !noHost) { buttons.add( new TextButton( key: Key( 'Delete Host Peq' ), child: new Text("Delete Host PEQ"), onPressed: () => _chooseDeleteHostPeq( hostPeq ) )); }
          if( !noCE )  { buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CodeEquity PEQ"), onPressed: () => _chooseCEPeq( cePeq ) )); }
-         if( !noHost) { buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Use Host Peq"), onPressed: () => _chooseHostPeq( hostPeq ) )); }
+         if( !noHost) { buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Use Host PEQ"), onPressed: () => _chooseHostPeq( hostPeq ) )); }
       }
-      buttons.add( new TextButton( key: Key( 'Cancel Peq fix' ), child: new Text("Cancel"), onPressed: _cancel ));
+      buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: _cancel ));
 
       List<Widget> comparison = [];
 
