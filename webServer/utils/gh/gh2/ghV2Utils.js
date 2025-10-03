@@ -482,8 +482,15 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 			    labels.forEach( label => {
 				amount = amount * 1000000 + ghUtils.parseLabelName( label.name );
 			    });
-			    if( amount < 1 )  { console.log( " .. skipping non-peq", iss.title ); continue; }
+
+			    // remove issues that are untracked
 			    if( typeof issues[ iss.id ] === 'undefined' ) { issues[ iss.id ] = {}; }
+			    if( amount < 1 )  {
+				console.log( " .. skipping non-peq", iss.title );
+				delete issues[ iss.id ];
+				continue;
+			    }
+			    
 			    issues[ iss.id ].amount = amount;
 
 			    // Matching aws peqs, so keep id not name
@@ -512,9 +519,6 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 			    else if( iss.state == config.GH_ISSUE_CLOSED && issues[ iss.id ].hostProjectSub[1] == accr ) {
 				issues[ iss.id ].peqType = config.PEQTYPE_GRANT;
 			    }
-
-			    // remove issues that are untracked
-			    if( amount <= 0 ) { delete issues[ iss.id ]; }
 			    
 			    // console.log( issues[ iss.id ] );
 			}
@@ -875,6 +879,8 @@ async function getAssignees( authData, issueId ) {
 	try {
 	    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "getAssignee" )
 		.then( raw => {
+		    if( typeof raw.data.node === 'undefined' ) { console.log( "Error.  Missing assignee data.", raw.data ); }
+		    if( typeof raw.errors != 'undefined' ) { console.log( raw.errors, raw.errors[0].message ); }
 		    let assigns = raw.data.node.assignees;
 		    for( let i = 0; i < assigns.edges.length; i++ ) {
 			let a = assigns.edges[i].node;
@@ -885,6 +891,8 @@ async function getAssignees( authData, issueId ) {
 	}
 	catch( e ) { retVal = await ghUtils.errorHandler( "getAssignees", e, getAssignees, authData, issueId ); }
     }
+    // Error handler will return false when faced with unknown error.
+    if( retVal == false ) { retVal = []; }
     return retVal;
 }
 
