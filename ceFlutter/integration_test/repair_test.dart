@@ -209,7 +209,7 @@ Future<bool> verifyLabelDubs( WidgetTester tester ) async {
    final Finder title = find.byKey( const Key( 'LabelTest Dubs' ));
    
    expect( title,                                              findsOneWidget );
-   expect( find.byKey( const Key( 'A Pre-Existing Project' )), findsAtLeast(1) );
+   expect( find.byKey( const Key( 'A Pre-Existing Project Flut' )), findsAtLeast(1) );
    expect( find.byKey( const Key( '500' )),                    findsAtLeast(1) );
    expect( find.byKey( const Key( 'grant' )),                  findsAtLeast(1) );
    expect( find.byKey( const Key( '[ariTester]' )),            findsAtLeast(1) );
@@ -227,7 +227,7 @@ Future<bool> verifyLabelDubs( WidgetTester tester ) async {
    expect( find.byKey( const Key( '500' )),                               findsAtLeast(2) );
    expect( find.byKey( const Key( GH_FLUT_TEST_REPO )),                   findsNWidgets(2) );
    expect( find.byKey( const Key( '[U_kgDOBP2eEw]' )),                    findsNWidgets(2) );
-   expect( find.byKey( const Key( '[A Pre-Existing Project, Accrued]' )), findsNWidgets(2) );
+   expect( find.byKey( const Key( '[A Pre-Existing Project Flut, Accrued]' )), findsNWidgets(2) );
 
    final Finder cancel = find.byKey( const Key( 'Cancel' ));
    await tester.tap( cancel );
@@ -270,28 +270,92 @@ Future<bool> statusPostTesting( WidgetTester tester ) async {
    final Finder title = find.byKey( const Key( 'Issue Title' ));
    await tester.tap( title );
    await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ), findsOneWidget );
-   expect( await verifyAssignTest( tester ), true );
-   expect( await verifyBlast1( tester ), true );
-   expect( await verifyBlast2( tester ), true );
+   expect( find.byIcon( Icons.arrow_drop_up ),    findsOneWidget );
+   expect( await verifyAssignTest( tester ),      true );
+   expect( await verifyBlast1( tester ),          true );
+   expect( await verifyBlast2( tester ),          true );
    expect( find.byKey( const Key( 'Snow melt' )), findsNothing );
 
    // Check sorting on good, descend
    await tester.tap( title );
    await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_down ), findsNWidgets(3) );  // sort, gone, bad
-   expect( await verifySnowMelt( tester ), true );
-   expect( await verifySituatedAccr( tester ), true );
-   expect( await verifyLabelDubs( tester ), true );
+   expect( find.byIcon( Icons.arrow_drop_down ),   findsNWidgets(3) );  // sort, gone, bad
+   expect( await verifySnowMelt( tester ),         true );
+   expect( await verifySituatedAccr( tester ),     true );
+   expect( await verifyLabelDubs( tester ),        true );
    expect( find.byKey( const Key( 'AssignTest' )), findsNothing );
 
-   // Subsequent sorts just check title.
+   // sorts Host Project, just check title.  ascend
    final Finder hp = find.byKey( const Key( 'Host Project' ));
    await tester.tap( hp );
    await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ), findsOneWidget );
-   // XXX XXX
+   expect( find.byIcon( Icons.arrow_drop_up ),                      findsOneWidget );
+   expect( find.byKey( const Key( 'A Pre-Existing Project Flut' )), findsNWidgets( 4 ));
+   expect( find.byKey( const Key( 'Cross Proj' )),                  findsOneWidget );
+   expect( find.byKey( const Key( 'Data Security Flut' )),          findsNWidgets(6) );
+   expect( find.byKey( const Key( 'UnClaimed' )),                   findsNothing );
+
+   // sorts Host Project, just check title.  descend
+   await tester.tap( hp );
+   await tester.pumpAndSettle();
+   expect( find.byIcon( Icons.arrow_drop_up ),                      findsNothing );
+   expect( find.byKey( const Key( 'A Pre-Existing Project Flut' )), findsNothing);
+   expect( find.byKey( const Key( 'Cross Proj' )),                  findsNothing );
+   expect( find.byKey( const Key( 'Data Security Flut' )),          findsNothing );
+   expect( find.byKey( const Key( 'UnClaimed' )),                   findsAtLeast(8) );
    
+   // sorts PEQ, just check title.  ascend
+   final Finder peq = find.byKey( const Key( 'PEQ' ));
+   await tester.tap( peq );
+   await tester.pumpAndSettle();
+   expect( find.byIcon( Icons.arrow_drop_up ), findsOneWidget );
+   expect( find.byKey( const Key( '105' )),    findsOneWidget);
+   expect( find.byKey( const Key( '250' )),    findsNWidgets(2) );
+   expect( find.byKey( const Key( '500' )),    findsNWidgets(4) );
+   expect( find.byKey( const Key( '1000' )),   findsNothing );
+
+   // sorts Host Peq, descend
+   await tester.tap( peq );
+   await tester.pumpAndSettle();
+   expect( find.byIcon( Icons.arrow_drop_up ), findsNothing );
+   expect( find.byKey( const Key( '105' )),    findsNothing);
+   expect( find.byKey( const Key( '250' )),    findsNothing );
+   expect( find.byKey( const Key( '500' )),    findsNothing );
+   expect( find.byKey( const Key( '1000' )),   findsAtLeast(8) );
+
+   // sorts Type.  ascend
+   final Finder type = find.byKey( const Key( 'Type' ));
+   await tester.tap( type );
+   await tester.pumpAndSettle();
+   expect( find.byIcon( Icons.arrow_drop_up ),  findsOneWidget );
+   expect( find.byKey( const Key( 'grant' )),   findsAtLeast(8) );
+   expect( find.byKey( const Key( 'pending' )), findsAtLeast(1) );
+
+   // descend
+   await tester.tap( type );
+   await tester.pumpAndSettle();
+   expect( find.byIcon( Icons.arrow_drop_up ),  findsNothing );
+   expect( find.byKey( const Key( 'grant' )),   findsNothing );
+   expect( find.byKey( const Key( 'pending' )), findsNothing );
+   expect( find.byKey( const Key( 'plan' )),    findsAtLeast(8) );
+
+   // sorts Assignees.  ascend
+   final Finder assn = find.byKey( const Key( 'Assignee(s)' ));
+   await tester.tap( assn );
+   await tester.pumpAndSettle();
+   expect( find.byIcon( Icons.arrow_drop_up ),                    findsOneWidget );
+   expect( find.byKey( const Key( '[]' )),                        findsNWidgets(4) );
+   expect( find.byKey( const Key( '[ariTester, builderCE]' )),    findsNWidgets(7) );
+   expect( find.byKey( const Key( '[connieTester, builderCE]' )), findsNothing );
+
+   // descend
+   await tester.tap( assn );
+   await tester.pumpAndSettle();
+   expect( find.byIcon( Icons.arrow_drop_up ),                    findsNothing );
+   expect( find.byKey( const Key( '[]' )),                        findsNothing );
+   expect( find.byKey( const Key( '[ariTester, builderCE]' )),    findsNothing );
+   expect( find.byKey( const Key( '[connieTester, builderCE]' )), findsOneWidget );
+
    return true;
 }
 

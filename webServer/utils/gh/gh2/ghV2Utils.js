@@ -879,6 +879,8 @@ async function getAssignees( authData, issueId ) {
 	try {
 	    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "getAssignee" )
 		.then( raw => {
+		    if( typeof raw.data.node === 'undefined' ) { console.log( "Error.  Missing assignee data.", raw.data ); }
+		    if( typeof raw.errors != 'undefined' ) { console.log( raw.errors, raw.errors[0].message ); }
 		    let assigns = raw.data.node.assignees;
 		    for( let i = 0; i < assigns.edges.length; i++ ) {
 			let a = assigns.edges[i].node;
@@ -889,6 +891,8 @@ async function getAssignees( authData, issueId ) {
 	}
 	catch( e ) { retVal = await ghUtils.errorHandler( "getAssignees", e, getAssignees, authData, issueId ); }
     }
+    // Error handler will return false when faced with unknown error.
+    if( retVal == false ) { retVal = []; }
     return retVal;
 }
 
