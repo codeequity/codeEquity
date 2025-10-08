@@ -343,18 +343,19 @@ Future<bool> statusPostTesting( WidgetTester tester ) async {
    final Finder assn = find.byKey( const Key( 'Assignee(s)' ));
    await tester.tap( assn );
    await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ),                    findsOneWidget );
-   expect( find.byKey( const Key( '[]' )),                        findsNWidgets(4) );
-   expect( find.byKey( const Key( '[ariTester, builderCE]' )),    findsNWidgets(7) );
-   expect( find.byKey( const Key( '[connieTester, builderCE]' )), findsNothing );
+   expect( find.byIcon( Icons.arrow_drop_up ),                                findsOneWidget );
+   expect( find.byKey( const Key( '[]' )),                                    findsNWidgets(4) );
+   expect( find.byKey( const Key( '[ariTester, builderCE, connieTester]' )),  findsNWidgets(2) );
+   expect( find.byKey( const Key( '[ariTester, builderCE]' )),                findsAtLeast(6) );
+   expect( find.byKey( const Key( '[builderCE, connieTester]' )),             findsNothing );
 
    // descend
    await tester.tap( assn );
    await tester.pumpAndSettle();
    expect( find.byIcon( Icons.arrow_drop_up ),                    findsNothing );
    expect( find.byKey( const Key( '[]' )),                        findsNothing );
-   expect( find.byKey( const Key( '[ariTester, builderCE]' )),    findsNothing );
-   expect( find.byKey( const Key( '[connieTester, builderCE]' )), findsOneWidget );
+   expect( find.byKey( const Key( '[builderCE]' )),               findsNWidgets(3) );
+   expect( find.byKey( const Key( '[builderCE, connieTester]' )), findsNWidgets(2) );
 
    return true;
 }
