@@ -1267,7 +1267,7 @@ void main() {
          await _checkHelper( tester );
 
          // tab out, back in
-         await statusTabFraming( tester );
+         await statusTabNoServer( tester );
          await peqSummaryTabFraming( tester, ignoreAccrued: true, fromBlank: true );
          await _checkHelper( tester );         
          

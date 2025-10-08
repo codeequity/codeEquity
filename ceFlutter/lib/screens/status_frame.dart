@@ -1,7 +1,7 @@
 import 'dart:ui';       // pointerKinds
 import 'dart:convert';  // json encode/decode
 
-import 'package:collection/collection.dart'; // list eq
+import 'package:collection/collection.dart'; // list eq.
 import 'package:flutter/foundation.dart';    // setEquals  
 import 'package:flutter/material.dart';
 
@@ -660,6 +660,17 @@ class _CEStatusState extends State<CEStatusFrame> {
          String msg = noCE ? "NOTE: CodeEquity Peq is not available." : "NOTE: Host Peq is not available.";
          comparison.add( Wrap( spacing: appState.FAT_PAD, children: [ Container( width: w, child: makeTableText( appState, msg, w, appState!.CELL_HEIGHT, false, 1 )) ]) );
       }
+
+      String orderedCEHolderId = "";
+      String orderedHPHolderId = "";
+      if( cePeq != null && cePeq.hostHolderId != null ) {
+         cePeq.hostHolderId.sort( (a,b) => a.compareTo(b) );
+         orderedCEHolderId = cePeq.hostHolderId.toString();
+      }
+      if( hostPeq != null && hostPeq.hostHolderId != null ) {
+         hostPeq.hostHolderId.sort( (a,b) => a.compareTo(b) );
+         orderedHPHolderId = hostPeq.hostHolderId.toString();
+      }
       
       bool same = !noCE && !noHost && cePeq.hostIssueTitle == hostPeq.hostIssueTitle;
       comparison.add( _makeCompare( same, noHost, noCE, "Title:", cePeq?.hostIssueTitle ?? "", hostPeq?.hostIssueTitle ?? "" ) );
@@ -680,7 +691,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       comparison.add( _makeCompare( same, noHost, noCE, "Host Issue Id:", cePeq?.hostIssueId ?? "", hostPeq?.hostIssueId ?? "" ));
       
       same = !noCE && !noHost && hostPeq.hostHolderId != null && setEquals( cePeq.hostHolderId.toSet(), hostPeq.hostHolderId.toSet() );
-      comparison.add( _makeCompare( same, noHost, noCE, "Host Assignees:", (cePeq?.hostHolderId ?? "").toString(), (hostPeq?.hostHolderId ?? "").toString() ));
+      comparison.add( _makeCompare( same, noHost, noCE, "Host Assignees:", orderedCEHolderId, orderedHPHolderId ));
 
       same = !noCE && !noHost && hostPeq.hostProjectSub != null && eq( cePeq.hostProjectSub, hostPeq.hostProjectSub );
       comparison.add( _makeCompare( same, noHost, noCE, "Host Location:", (cePeq?.hostProjectSub ?? "").toString(), (hostPeq?.hostProjectSub ?? "").toString() ));
@@ -753,6 +764,35 @@ class _CEStatusState extends State<CEStatusFrame> {
             )
          );
    }
+
+   // stable sort based on the idx'th component of the list l.
+   // Needed otherwise when hover over title, a regularly sorted list can change order.
+   _stableSort( List<List<dynamic>> parts, idx, bool ascending, { isInt = false } ) {
+
+      // MapEntry is an entry in a map.  a 'pair' in many senses.  Create a list of pairs (string, original_index)
+      final List< MapEntry<List<dynamic>, int> > indexedList = [];
+      for (int i = 0; i < parts.length; i++) {
+         indexedList.add( MapEntry( parts[i], i) );
+      }
+      
+      // Sort, use original index for tie-breaking to ensure stability.
+      indexedList.sort((a, b) {
+            var comp = 0;
+
+            if( !isInt ) { comp = ascending ? a.key[idx].compareTo( b.key[idx] ) : b.key[idx].compareTo( a.key[idx] ); }
+            else         { comp = ascending ?
+                  int.parse( a.key[idx] ).compareTo( int.parse( b.key[idx] ) ) :
+                  int.parse( b.key[idx] ).compareTo( int.parse( a.key[idx] ) );
+            }
+            if( comp != 0 ) { return comp; }
+            return a.value.compareTo( b.value );
+         });
+      
+      // Reconstruct the stable-sorted list of strings
+      final List<List<dynamic>> stableSortedList = indexedList.map((entry) => entry.key).toList();
+      return stableSortedList;
+   }
+
    
    List<List<Widget>> _makePeqs( List<List<dynamic>> parts, String status, int dummyCount ) {
       List<List<Widget>> retVal = [];
@@ -782,21 +822,22 @@ class _CEStatusState extends State<CEStatusFrame> {
       retVal.addAll( peqHeader );
 
       // Sort before building widgets
-      assert( parts[0].length == 7 );      
-      if( sortType == _SortType.titleAsc )  { parts.sort( (a,b) => a[2].compareTo( b[2] )); }
-      if( sortType == _SortType.titleDsc )  { parts.sort( (a,b) => b[2].compareTo( a[2] )); }
+      assert( parts[0].length == 7 );
 
-      if( sortType == _SortType.hprojAsc )  { parts.sort( (a,b) => a[3].compareTo( b[3] )); }
-      if( sortType == _SortType.hprojDsc )  { parts.sort( (a,b) => b[3].compareTo( a[3] )); }
+      if( sortType == _SortType.titleAsc )  { parts = _stableSort( parts, 2, true ); }  
+      if( sortType == _SortType.titleDsc )  { parts = _stableSort( parts, 2, false ); } 
 
-      if( sortType == _SortType.pvalAsc )   { parts.sort( (a,b) => int.parse( a[4] ).compareTo( int.parse( b[4] ))); }
-      if( sortType == _SortType.pvalDsc )   { parts.sort( (a,b) => int.parse( b[4] ).compareTo( int.parse( a[4] ))); }
+      if( sortType == _SortType.hprojAsc )  { parts = _stableSort( parts, 3, true ); }  
+      if( sortType == _SortType.hprojDsc )  { parts = _stableSort( parts, 3, false ); } 
 
-      if( sortType == _SortType.ptypeAsc )  { parts.sort( (a,b) => a[5].compareTo( b[5] )); }
-      if( sortType == _SortType.ptypeDsc )  { parts.sort( (a,b) => b[5].compareTo( a[5] )); }
+      if( sortType == _SortType.pvalAsc )   { parts = _stableSort( parts, 4, true,  isInt: true ); } 
+      if( sortType == _SortType.pvalDsc )   { parts = _stableSort( parts, 4, false, isInt: true ); }
 
-      if( sortType == _SortType.assignAsc ) { parts.sort( (a,b) => a[6].compareTo( b[6] )); }
-      if( sortType == _SortType.assignDsc ) { parts.sort( (a,b) => b[6].compareTo( a[6] )); }
+      if( sortType == _SortType.ptypeAsc )  { parts = _stableSort( parts, 5, true ); } 
+      if( sortType == _SortType.ptypeDsc )  { parts = _stableSort( parts, 5, false ); }
+
+      if( sortType == _SortType.assignAsc ) { parts = _stableSort( parts, 6, true ); }
+      if( sortType == _SortType.assignDsc ) { parts = _stableSort( parts, 6, false ); }
       
       for( List<dynamic> part in parts ) {
          assert( part.length == 7 );
@@ -855,6 +896,7 @@ class _CEStatusState extends State<CEStatusFrame> {
                      assert( appState.cePeople[ceuid] != null );
                      return appState.cePeople[ceuid]!.userName;
                   }).toList();
+               userNames.sort( (a,b) => a.compareTo(b) );
                
                PEQ? h = hPeqs[k];
                if( !v.active && v.peqType == PeqType.grant ) { goneParts.add( [ v, h, title, hproj, peqVal, peqType, userNames.toString() ] ); }
@@ -878,6 +920,7 @@ class _CEStatusState extends State<CEStatusFrame> {
                         assert( appState.cePeople[ceuid] != null );
                         return appState.cePeople[ceuid]!.userName;
                      }).toList();
+                  userNames.sort( (a,b) => a.compareTo(b) );
                   
                   badParts.add( [ null, v, title, hproj, peqVal, peqType, userNames.toString() ] );
                   badPeqs.add( k );
