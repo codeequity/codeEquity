@@ -411,7 +411,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
 
    // Force reload, as core data has changed.
-   Future<void> _reset() async {
+   Future<void> _reset({pop = true}) async {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
 
@@ -421,8 +421,10 @@ class _CEStatusState extends State<CEStatusFrame> {
       setState( () => updateModel = true );
       
       // dismiss writeall popup, and the compare popup
-      Navigator.of( context ).pop();
-      Navigator.of( context ).pop();
+      if( pop ) {
+         Navigator.of( context ).pop();
+         Navigator.of( context ).pop();
+      }
    }
    
    // XXX need to expand host and update call pattern
@@ -606,7 +608,9 @@ class _CEStatusState extends State<CEStatusFrame> {
       final width = 1.3 * baseWidth;
       final spacer = Container( width: width );
 
-      return Wrap( spacing: appState.FAT_PAD, children: [
+      return Wrap( spacing: appState.FAT_PAD,
+                   key: Key( "Wrap"+cat ),
+                   children: [
                       Container( width: baseWidth, child: makeTableText( appState, cat, baseWidth, appState!.CELL_HEIGHT, false, 1 )),
 
                       noCE ?
@@ -1010,6 +1014,17 @@ class _CEStatusState extends State<CEStatusFrame> {
          body.addAll( hideGone ? gone.sublist( 0, 3 ) : gone );
          body.addAll( hideBad  ? bad.sublist(  0, 3 ) : bad );
          body.addAll( hideGood ? good.sublist( 0, 3 ) : good );
+
+         body.addAll( [[Container( width: appState.GAP_PAD*1.8 ),
+                        makeActionButtonFixed(
+                               appState,
+                               "Update Status?",
+                               buttonWidth, 
+                               () async {
+                                  showToast( "Updated." );
+                                  _reset( pop: false ); 
+                               }),
+                        empty, empty, empty ]] );
          
          updateView = false;
       }

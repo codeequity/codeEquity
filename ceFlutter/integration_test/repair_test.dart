@@ -10,6 +10,9 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'package:ceFlutter/utils/awsUtils.dart';
+import 'package:ceFlutter/models/PEQ.dart';
+
 import 'package:ceFlutter/customIcons.dart';
 import 'utils.dart';
 
@@ -360,6 +363,68 @@ Future<bool> statusPostTesting( WidgetTester tester ) async {
    return true;
 }
 
+// XXX context not used for awsUtils.. kill it.
+Future<bool> statusModAWS( WidgetTester tester ) async {
+
+   // change peq value of snow melt on aws using awsUtils:updatePeqMods
+   // peq = blah
+   // peqMods = {};
+   // peqMods[ peq.id ] = peq;
+   // peqMods[peq.id].set( 'amount', 1001 );
+   // String pmods = json.encode( peqMods );
+   // String postData = '{ "Endpoint": "PutPeqMods", "CEProjectId": "$ceProjId", "PeqMods": $pmods }';
+   // updateDynamoPeqMods( context, container, postData, "PutPeqMods" ); 
+
+   /*
+   // get HostIssueId
+   final Finder good = find.byKey( const Key('hideGood' ));
+   await tester.tap( good );
+   await tester.pumpAndSettle(); 
+   expect( find.byIcon( Icons.arrow_drop_down ),        findsNWidgets(2) );
+   expect( find.byIcon( Icons.arrow_drop_down_circle ), findsOneWidget );
+   // Sort descending to get snow
+   final Finder title = find.byKey( const Key( 'Issue Title' ));
+   await tester.tap( title );
+   await tester.pumpAndSettle();
+   await tester.tap( title );
+   await tester.pumpAndSettle();
+   // get detail popup
+   final Finder snow = find.byKey( const Key( 'Snow melt' ));
+   expect( snow, findsOneWidget );
+   await tester.tap( snow );
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+   // deconstruct wrap .. check getElt in project_test
+   final Finder wrap = find.byKey( const Key( "WrapHost Issue Id" ));
+   expect( wrap, findsOneWidget );
+   */
+   
+   /*
+     1. getPAT from ceMD handler.. needed?
+     2. get issueID from statusFrame:details popup (probably will need to break down Widget)
+     3. getPeq from ceMD handler
+     4. build peqMod
+     5. build ghV2 method for ceMD to use.  will hit awsDynamo:putPeqMods
+
+     final       pd = { "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": CEMD_PROJ_ID, "HostIssueTitle": "Snow Melt" }};
+   List<PEQ> snow = await fetchPEQs( null, container, pd );
+   print( "OI! XXX" );
+   print( snow );
+   */
+   
+   // update status frame
+   // verify error state
+   // write one from host
+
+   // change title, write one from aws
+
+   // change back to orig, write 1
+   
+
+   return true;
+}
+
+
 
 void main() {
 
@@ -393,10 +458,12 @@ void main() {
          expect( await verifyOnProjectPage( tester ), true );
 
          // Head to status page
-         await statusTabFraming( tester );
+         expect( await statusTabFraming( tester ), true );
 
-         await statusPostTesting( tester );
+         expect( await statusPostTesting( tester ), true );
 
+         expect( await statusModAWS( tester ), true );
+         
          // test statusUnavailable
          // make 1 aws peq, make separate gh peq (make normal, then rem aws part?  or just remove aws part?)
          // test overwrite 1, all on both ends.  Can 'make' by destroying a bit..
