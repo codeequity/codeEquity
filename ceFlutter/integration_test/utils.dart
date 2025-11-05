@@ -15,6 +15,8 @@ import 'package:ceFlutter/app_state_container.dart';
 
 // import 'package:http/http.dart' as http;  // XXX makeNote   
 
+const CESERVER_ENDPOINT = "http://127.0.0.1:3000/ceServer/ceMD";
+   
 const TESTER_NAME   = "ariTester";
 const TESTER2_NAME  = "connieTester";     // READ ONLY account for these tests
 const TESTER_PASSWD = "passWD123";

@@ -1,13 +1,17 @@
 import assert from 'assert';
 
-import * as config   from '../config.js';
+import * as config  from '../config.js';
 
 import * as ceAuth  from '../auth/ceAuth.js';
 
 import * as ghV2    from '../utils/gh/gh2/ghV2Utils.js';
 
+import * as aws     from '../utils/awsUtils.js';
 
-async function handler( hostLinks, ceProjects, reqBody, res ) {
+
+// Note: ghV2 utilities control access to GH.  awsUtils utilities control access to AWS.
+
+async function handler( authData, hostLinks, ceProjects, reqBody, res ) {
 
     assert( reqBody.hasOwnProperty( "Request" ) );
 
@@ -43,6 +47,7 @@ async function handler( hostLinks, ceProjects, reqBody, res ) {
 	retVal = [];
 	await ghV2.getHostLabels( reqBody.PAT, reqBody.rid, retVal, -1 );
     }
+    else if( reqBody.Request = "getAWSPeq" )      { retVal = await aws.getPEQ( authData, reqBody.ceProjId, reqBody.hostIssueId );  }
     else {
 	console.log( "WARNING.  CE MD Handler request not recognized" );
     }

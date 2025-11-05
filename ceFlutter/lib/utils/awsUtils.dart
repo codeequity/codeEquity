@@ -197,8 +197,6 @@ Future<String> fetchString( context, container, postData, shortName ) async {
 
 // This is primarily an ingest utility.
 Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) async {
-   final appState  = container.state;
-
    print( "updateDynamoPeqMods " );
 
    
