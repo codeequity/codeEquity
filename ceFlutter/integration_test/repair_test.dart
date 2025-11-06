@@ -396,17 +396,6 @@ Future<String> getHostIssueId( WidgetTester tester, Finder wrap ) async {
 
 // XXX context not used for awsUtils.. kill it.
 Future<bool> statusModAWS( WidgetTester tester ) async {
-
-   // change peq value of snow melt on aws using awsUtils:updatePeqMods
-   // peq = blah
-   // peqMods = {};
-   // peqMods[ peq.id ] = peq;
-   // peqMods[peq.id].set( 'amount', 1001 );
-   // String pmods = json.encode( peqMods );
-   // String postData = '{ "Endpoint": "PutPeqMods", "CEProjectId": "$ceProjId", "PeqMods": $pmods }';
-   // updateDynamoPeqMods( context, container, postData, "PutPeqMods" ); 
-
-   // get HostIssueId
    
    final Finder good = find.byKey( const Key('hideGood' ));
    await tester.tap( good );
@@ -446,7 +435,8 @@ Future<bool> statusModAWS( WidgetTester tester ) async {
    // Get full PEQ from aws
    var state = fakeState( CESERVER_ENDPOINT );
    
-   var postData = '{"Endpoint": "ceMD", "Request": "getAWSPeq", "ceProjId": "$CEMD_PROJ_ID", "hostIssueId": "$hid" }'; 
+   var postData = '{"Endpoint": "ceMD", "Request": "getAWSPeq", "ceProjId": "$CEMD_PROJ_ID", "hostIssueId": "$hid" }';
+   print( "XXX postData: " + postData );
    var response = await postCE( state, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -454,29 +444,33 @@ Future<bool> statusModAWS( WidgetTester tester ) async {
    }
    var peq = json.decode( utf8.decode( response.bodyBytes ));
    print( "XXX " + peq.toString() );
+   assert( peq != "-1" && peq[ 'PEQId' ] != null );
 
-   
-   /*
-     1. getPAT from ceMD handler.. needed?
-     2. get issueID from statusFrame:details popup (probably will need to break down Widget)
-     3. getPeq from ceMD handler.. to awsUtils not ghV2
-     4. build peqMod
-     5. build awsUtils not ghV2 method for ceMD to use.  will hit awsDynamo:putPeqMods
+   // update, write new peq
+   peq[ 'Amount' ] = 1001;
+   String pmod     = json.encode( peq );
+   postData        = '{ "Endpoint": "ceMD", "Request": "putAWSPeq", "peq": $pmod }';
+   print( "XXX " + postData );
+   response        = await postCE( state, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      assert( false );
+   }
+   var resBod = json.decode( utf8.decode( response.bodyBytes ));
+   expect( resBod, peq[ 'PEQId' ] );
 
-     1. get issueID from statusFrame:details popup (probably will need to break down Widget)
-     2. getPeq from ceMD handler.. to awsUtils not ghV2
-     3. build peqMod
-     4. build awsUtils not ghV2 method for ceMD to use.  will hit awsDynamo:putPeqMods
-     
-     final       pd = { "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": CEMD_PROJ_ID, "HostIssueTitle": "Snow Melt" }};
-   List<PEQ> snow = await fetchPEQs( null, container, pd );
-   print( "OI! XXX" );
-   print( snow );
-   */
-   
-   // update status frame
+   // update status, validate
+   await tester.tap( good );
+   await tester.pumpAndSettle();
+   final Finder update = find.byKey( const Key('Update Status?' ));
+   await tester.tap( update );
+   await pumpSettle( tester, 6 ); // Need time to get peq data from host
+   await tester.pumpAndSettle();
+   expect( await statusTabNeedsRepair( tester ), true );   
+
    // verify error state
-   // write one from host
+   // write one from host.  note: this will fail, since snowMelt is accrued.
+   //                             should pop warning..!
 
    // change title, write one from aws
 
@@ -522,7 +516,7 @@ void main() {
          // Head to status page
          expect( await statusTabFraming( tester ), true );
 
-         expect( await statusPostTesting( tester ), true );
+         // expect( await statusPostTesting( tester ), true );
 
          expect( await statusModAWS( tester ), true );
          

@@ -209,8 +209,9 @@ async function getProjectStatus( authData, ceProjId ) {
 
 // XXX inconsistent caps
 async function getPEQ( authData, ceProjId, issueId, checkActive ) {
-    // console.log( authData.who, "Get PEQ from issueId:", ceProjId, issueId );
+    console.log( authData.who, "Get PEQ from issueId:", ceProjId, issueId );
     let active = true;
+    if( typeof issueId === 'undefined' )     { return -1; }  
     if( typeof checkActive !== 'undefined' ) { active = checkActive; }
 
     let shortName = "GetEntry";

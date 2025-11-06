@@ -47,12 +47,12 @@ async function handler( authData, hostLinks, ceProjects, reqBody, res ) {
 	retVal = [];
 	await ghV2.getHostLabels( reqBody.PAT, reqBody.rid, retVal, -1 );
     }
-    else if( reqBody.Request = "getAWSPeq" )      { retVal = await aws.getPEQ( authData, reqBody.ceProjId, reqBody.hostIssueId );  }
+    else if( reqBody.Request == "putAWSPeq" )     { retVal = await aws.recordPEQ( authData, reqBody.peq );  }                        // TESTING ONLY
+    else if( reqBody.Request == "getAWSPeq" )     { retVal = await aws.getPEQ( authData, reqBody.ceProjId, reqBody.hostIssueId );  } // TESTING ONLY
     else {
 	console.log( "WARNING.  CE MD Handler request not recognized" );
     }
 
-    // console.log( "XXX ceMD handler returns", retVal );
     return res
 	.status(201)
 	.json( retVal );
