@@ -635,10 +635,10 @@ class _CEStatusState extends State<CEStatusFrame> {
       
       List<Widget> buttons = [];
       if( status == "bad" ) {
-         if( !noCE )  { buttons.add( new TextButton( key: Key( 'Delete CE Peq' ), child: new Text("Delete CodeEquity PEQ"), onPressed: () => _chooseDeleteCEPeq( cePeq ) )); }
-         if( !noHost) { buttons.add( new TextButton( key: Key( 'Delete Host Peq' ), child: new Text("Delete Host PEQ"), onPressed: () => _chooseDeleteHostPeq( hostPeq ) )); }
-         if( !noCE )  { buttons.add( new TextButton( key: Key( 'Choose CE Peq' ), child: new Text("Use CodeEquity PEQ"), onPressed: () => _chooseCEPeq( cePeq ) )); }
-         if( !noHost) { buttons.add( new TextButton( key: Key( 'Choose Host Peq' ), child: new Text("Use Host PEQ"), onPressed: () => _chooseHostPeq( hostPeq ) )); }
+         if( !noCE )  { buttons.add( new TextButton( key: Key( 'Delete CodeEquity PEQ' ), child: new Text("Delete CodeEquity PEQ"), onPressed: () => _chooseDeleteCEPeq( cePeq ) )); }
+         if( !noHost) { buttons.add( new TextButton( key: Key( 'Delete Host PEQ' ), child: new Text("Delete Host PEQ"), onPressed: () => _chooseDeleteHostPeq( hostPeq ) )); }
+         if( !noCE )  { buttons.add( new TextButton( key: Key( 'Use CodeEquity PEQ' ), child: new Text("Use CodeEquity PEQ"), onPressed: () => _chooseCEPeq( cePeq ) )); }
+         if( !noHost) { buttons.add( new TextButton( key: Key( 'Use Host PEQ' ), child: new Text("Use Host PEQ"), onPressed: () => _chooseHostPeq( hostPeq ) )); }
       }
       buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: _cancel ));
 
@@ -685,7 +685,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       same = !noCE && !noHost && cePeq.ceProjectId == hostPeq.ceProjectId;
       comparison.add( _makeCompare( same, noHost, noCE, "CE Project Id:", cePeq?.ceProjectId ?? "", hostPeq?.ceProjectId ?? "" ));
       
-      same = !noCE && !noHost && ( hostPeq.amount != null && (cePeq.amount - hostPeq.amount ).abs() <= 1 );
+      same = !noCE && !noHost && ( hostPeq.amount != null && (cePeq.amount - hostPeq.amount ).abs() < 1 );
       comparison.add( _makeCompare( same, noHost, noCE, "PEQ Amount:", (cePeq?.amount ?? -1).toString(), (hostPeq?.amount ?? -1).toString() ));
       
       same = !noCE && !noHost && cePeq.hostRepoId == hostPeq.hostRepoId;

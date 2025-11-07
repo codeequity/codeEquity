@@ -43,10 +43,37 @@ Future<bool> goodDetailFraming( WidgetTester tester ) async {
    expect( find.byKey( const Key( 'Host Location:' )),  findsOneWidget );
    
    expect( cancel,                                      findsOneWidget );
-   expect( find.byKey( const Key( 'Choose CE Peq' )),   findsNothing );
-   expect( find.byKey( const Key( 'Choose Host Peq' )), findsNothing );
-   expect( find.byKey( const Key( 'Delete CE Peq' )),   findsNothing );
-   expect( find.byKey( const Key( 'Delete Host Peq' )), findsNothing );
+   expect( find.byKey( const Key( 'Use CodeEquity PEQ' )), findsNothing );
+   expect( find.byKey( const Key( 'Use Host PEQ' )),       findsNothing );
+   expect( find.byKey( const Key( 'Delete CodeEquity PEQ' )), findsNothing );
+   expect( find.byKey( const Key( 'Delete Host PEQ' )),    findsNothing );
+   
+   return true;
+}
+
+Future<bool> badDetailFraming( WidgetTester tester ) async {
+
+   final Finder cancel = find.byKey( const Key( 'Cancel' ));
+
+   expect( find.text( 'CodeEquity vs Host PEQ Data' ),  findsOneWidget );
+   expect( find.byKey( const Key( 'CodeEquity Data' )), findsOneWidget );
+   expect( find.byKey( const Key( 'Host Data' )),       findsOneWidget );
+   expect( find.byIcon( Icons.check_circle_outline ),   findsNWidgets(7) );
+   expect( find.byIcon( Icons.cancel_outlined ),        findsOneWidget );
+   expect( find.byKey( const Key( 'Title:' )),          findsOneWidget );
+   expect( find.byKey( const Key( 'Peq Type:' )),       findsOneWidget );
+   expect( find.byKey( const Key( 'CE Project Id:' )),  findsOneWidget );
+   expect( find.byKey( const Key( 'PEQ Amount:' )),     findsOneWidget );
+   expect( find.byKey( const Key( 'Host Repo Id:' )),   findsOneWidget );
+   expect( find.byKey( const Key( 'Host Issue Id:' )),  findsOneWidget );
+   expect( find.byKey( const Key( 'Host Assignees:' )), findsOneWidget );
+   expect( find.byKey( const Key( 'Host Location:' )),  findsOneWidget );
+   
+   expect( cancel,                                      findsOneWidget );
+   expect( find.byKey( const Key( 'Use CodeEquity PEQ' )), findsOneWidget );
+   expect( find.byKey( const Key( 'Use Host PEQ' )),       findsOneWidget );
+   expect( find.byKey( const Key( 'Delete CodeEquity PEQ' )), findsOneWidget );
+   expect( find.byKey( const Key( 'Delete Host PEQ' )),    findsOneWidget );
    
    return true;
 }
@@ -115,6 +142,41 @@ Future<bool> verifyBlast1( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> verifyBlast1BadAmount( WidgetTester tester, { dismiss = true } ) async {
+
+   final Finder title = find.byKey( const Key( 'Blast 1' ));
+   
+   expect( title,                                   findsOneWidget );
+   expect( find.byKey( const Key( 'UnClaimed' )),   findsAtLeast(1) );
+   expect( find.byKey( const Key( '606' )),         findsAtLeast(1) );
+   expect( find.byKey( const Key( 'plan' )),        findsAtLeast(1) );
+   expect( find.byKey( const Key( '[ariTester]' )), findsAtLeast(1) );
+
+   await tester.tap( title );
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+   expect( await goodDetailFraming( tester ), true );
+
+   // peq agreement means 2 of each type, but we are seeing through to peqs in the background.
+   // issue id changes every time, don't bother trying to check
+   expect( find.byKey( const Key( 'Blast 1' )),                 findsAtLeast(2) );
+   expect( find.byKey( const Key( 'plan' )),                    findsAtLeast(2) );
+   expect( find.byKey( const Key( CEMD_PROJ_ID )),              findsNWidgets(2) );
+   expect( find.byKey( const Key( '604' )),                     findsAtLeast(1) );
+   expect( find.byKey( const Key( '606' )),                     findsAtLeast(1) );
+   expect( find.byKey( const Key( GH_FLUT_TEST_REPO )),         findsNWidgets(2) );
+   expect( find.byKey( const Key( '[U_kgDOBP2eEw]' )),          findsNWidgets(2) );
+   expect( find.byKey( const Key( '[UnClaimed, UnClaimed]' )),  findsNWidgets(2) );
+   
+   if( dismiss == null || dismiss ) {
+      final Finder cancel = find.byKey( const Key( 'Cancel' ));
+      await tester.tap( cancel );
+      await tester.pumpAndSettle();
+   }
+   
+   return true;
+}
+
 
 Future<bool> verifyBlast2( WidgetTester tester ) async {
 
@@ -176,6 +238,41 @@ Future<bool> verifySnowMelt( WidgetTester tester ) async {
    final Finder cancel = find.byKey( const Key( 'Cancel' ));
    await tester.tap( cancel );
    await tester.pumpAndSettle();
+   
+   return true;
+}
+
+Future<bool> verifySnowMeltBadAmount( WidgetTester tester, {dismiss = true} ) async {
+
+   final Finder title = find.byKey( const Key( 'Snow melt' ));
+   
+   expect( title,                                              findsOneWidget );
+   expect( find.byKey( const Key( 'Data Security Flut' )),     findsAtLeast(1) );
+   expect( find.byKey( const Key( '1001' )),                   findsAtLeast(1) );
+   expect( find.byKey( const Key( 'grant' )),                  findsAtLeast(1) );
+   expect( find.byKey( const Key( '[ariTester, builderCE]' )), findsAtLeast(1) );
+
+   await tester.tap( title );
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+   expect( await badDetailFraming( tester ), true );
+
+   // peq agreement means 2 of each type, but we are seeing through to peqs in the background.
+   // issue id changes every time, don't bother trying to check
+   expect( find.byKey( const Key( 'Snow melt' )),                     findsAtLeast(2) );
+   expect( find.byKey( const Key( 'grant' )),                         findsAtLeast(2) );
+   expect( find.byKey( const Key( CEMD_PROJ_ID )),                    findsNWidgets(2) );
+   expect( find.byKey( const Key( '1000' )),                          findsAtLeast(1) ); // overlay, underlay
+   expect( find.byKey( const Key( '1001' )),                          findsAtLeast(1) );
+   expect( find.byKey( const Key( GH_FLUT_TEST_REPO )),               findsNWidgets(2) );
+   expect( find.byKey( const Key( '[U_kgDOBP2eEw, U_kgDOBqJgmQ]' )),  findsNWidgets(2) );
+   expect( find.byKey( const Key( '[Data Security Flut, Accrued]' )), findsNWidgets(2) );
+
+   if( dismiss == null || dismiss ) {
+      final Finder cancel = find.byKey( const Key( 'Cancel' ));
+      await tester.tap( cancel );
+      await tester.pumpAndSettle();
+   }
    
    return true;
 }
@@ -394,33 +491,24 @@ Future<String> getHostIssueId( WidgetTester tester, Finder wrap ) async {
    return hid;
 }
 
-// XXX context not used for awsUtils.. kill it.
-Future<bool> statusModAWS( WidgetTester tester ) async {
-   
-   final Finder good = find.byKey( const Key('hideGood' ));
-   await tester.tap( good );
-   await tester.pumpAndSettle();
 
-   // Make sure title is descending
-   final Finder title = find.byKey( const Key( 'Issue Title' ));
-   await tester.tap( title );
+Future<bool> sortDesc( WidgetTester tester, Finder col ) async {
+   // Make sure column is descending
+   expect( col, findsOneWidget );
+   await tester.tap( col );
    await tester.pumpAndSettle();
    try{
       expect( find.byIcon( Icons.arrow_drop_down ),   findsNWidgets(3) );  // sort, gone, bad
    }
    catch( e ) {
-      await tester.tap( title );
+      await tester.tap( col );
       await tester.pumpAndSettle();
       expect( find.byIcon( Icons.arrow_drop_down ),   findsNWidgets(3) );  // sort, gone, bad
    }
+   return true;
+}
 
-   // get detail popup
-   final Finder snow = find.byKey( const Key( 'Snow melt' ));
-   expect( snow, findsOneWidget );
-   await tester.tap( snow );
-   await tester.pumpAndSettle();
-   await pumpSettle( tester, 2 );
-
+Future<Map<String, dynamic>> getPeqFromDetail( WidgetTester tester, fakeState state ) async {
    // deconstruct wrap .. check getElt in project_test
    final Finder wrap = find.byKey( const Key( "WrapHost Issue Id:" ));
    expect( wrap, findsOneWidget );
@@ -433,8 +521,6 @@ Future<bool> statusModAWS( WidgetTester tester ) async {
    await tester.pumpAndSettle();
 
    // Get full PEQ from aws
-   var state = fakeState( CESERVER_ENDPOINT );
-   
    var postData = '{"Endpoint": "ceMD", "Request": "getAWSPeq", "ceProjId": "$CEMD_PROJ_ID", "hostIssueId": "$hid" }';
    print( "XXX postData: " + postData );
    var response = await postCE( state, postData );
@@ -445,19 +531,70 @@ Future<bool> statusModAWS( WidgetTester tester ) async {
    var peq = json.decode( utf8.decode( response.bodyBytes ));
    print( "XXX " + peq.toString() );
    assert( peq != "-1" && peq[ 'PEQId' ] != null );
+   return peq;
+}
 
-   // update, write new peq
-   peq[ 'Amount' ] = 1001;
+Future<bool> writePeq( WidgetTester tester, fakeState state, Map<String, dynamic> peq ) async {
    String pmod     = json.encode( peq );
-   postData        = '{ "Endpoint": "ceMD", "Request": "putAWSPeq", "peq": $pmod }';
+   var postData    = '{ "Endpoint": "ceMD", "Request": "putAWSPeq", "peq": $pmod }';
    print( "XXX " + postData );
-   response        = await postCE( state, postData );
+   var response    = await postCE( state, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
       assert( false );
    }
    var resBod = json.decode( utf8.decode( response.bodyBytes ));
    expect( resBod, peq[ 'PEQId' ] );
+   return true;
+}
+
+Future<bool> writeOneFromHost( WidgetTester tester ) async {
+   await pumpSettle( tester, 2 );
+   final Finder useHost = find.byKey( const Key( 'Use Host PEQ' ) );
+   expect( useHost, findsOneWidget );
+   await tester.tap( useHost );
+   await tester.pumpAndSettle(); 
+   await pumpSettle( tester, 2 ); 
+
+   expect( find.text( 'Host PEQ:' ),                   findsOneWidget );
+   final Finder writeOne = find.byKey( const Key( 'Write one host' ));
+   expect( writeOne,                                   findsOneWidget );
+   expect( find.byKey( const Key( 'Write all host' )), findsOneWidget );
+   expect( find.byKey( const Key( 'Dismiss' )),        findsOneWidget );
+   await tester.tap( writeOne );
+   await tester.pumpAndSettle(); 
+   await pumpSettle( tester, 4 );
+
+   final Finder update = find.byKey( const Key('Update Status?' ));
+   await tester.tap( update );
+   await pumpSettle( tester, 6 ); // Need time to get peq data from host
+   return true;
+}
+
+// XXX context not used for awsUtils.. kill it.
+//  modify accr peq in aws directly, test attempt to rewrite using host - fail.     recover.
+Future<bool> statusModAWSAccr( WidgetTester tester ) async {
+   
+   final Finder good = find.byKey( const Key('hideGood' ));
+   await tester.tap( good );
+   await tester.pumpAndSettle();
+
+   // Make sure title is descending
+   final Finder title = find.byKey( const Key( 'Issue Title' ));
+   expect( await sortDesc( tester, title ), true );
+   
+   // get detail popup
+   final Finder snow = find.byKey( const Key( 'Snow melt' ));
+   expect( snow, findsOneWidget );
+   await tester.tap( snow );
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+
+   // Get peq, update it, write it.
+   var state = fakeState( CESERVER_ENDPOINT );
+   var peq   = await getPeqFromDetail( tester, state );
+   peq[ 'Amount' ] = 1001;
+   expect( await writePeq( tester, state, peq ), true );
 
    // update status, validate
    await tester.tap( good );
@@ -469,17 +606,93 @@ Future<bool> statusModAWS( WidgetTester tester ) async {
    expect( await statusTabNeedsRepair( tester ), true );   
 
    // verify error state
-   // write one from host.  note: this will fail, since snowMelt is accrued.
-   //                             should pop warning..!
+   final Finder bad = find.byKey( const Key('hideBad' ));
+   await tester.tap( bad );
+   await tester.pumpAndSettle();
+   expect( await verifySnowMeltBadAmount( tester, dismiss: false ), true );
 
-   // change title, write one from aws
-
-   // change back to orig, write 1
+   // Write from host.  Will fail.. accrued.
+   expect( await writeOneFromHost( tester ), true );
+   expect( await verifySnowMeltBadAmount( tester ), true );
    
+   // Fix accrued snow
+   // XXX use writePeq
+   peq[ 'Amount' ] = 1000;
+   var pmod            = json.encode( peq );
+   var postData        = '{ "Endpoint": "ceMD", "Request": "putAWSPeq", "peq": $pmod }';
+   var response        = await postCE( state, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      assert( false );
+   }
+   var resBod = json.decode( utf8.decode( response.bodyBytes ));
+   expect( resBod, peq[ 'PEQId' ] );
+
+   // update, verify
+   await tester.tap( update );
+   await pumpSettle( tester, 6 ); // Need time to get peq data from host
+   await tester.tap( bad );       // close
+   await tester.pumpAndSettle(); 
+   await tester.tap( good );      // open
+   await tester.pumpAndSettle(); 
+   expect( await verifySnowMelt( tester ), true );
+   await tester.tap( good );      // close
+   await tester.pumpAndSettle(); 
 
    return true;
 }
 
+// modify plan peq in aws directly, test attempt to rewrite using host - succeed.  recover.
+Future<bool> statusModAWSPlan( WidgetTester tester ) async {
+   
+   final Finder good = find.byKey( const Key('hideGood' ));
+   await tester.tap( good );        // open
+   await tester.pumpAndSettle();
+
+   // Make sure title is descending
+   final Finder title = find.byKey( const Key( 'Issue Title' ));
+   expect( await sortDesc( tester, title ), true );
+   
+   // get detail popup
+   final Finder blast = find.byKey( const Key( 'Blast 1' ));
+   expect( blast, findsOneWidget );
+   await tester.tap( blast );
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+
+   // Get peq, update it, write it.
+   var state = fakeState( CESERVER_ENDPOINT );
+   var peq   = await getPeqFromDetail( tester, state );
+   peq[ 'Amount' ] = 606;
+   expect( await writePeq( tester, state, peq ), true );
+
+   // update status, validate
+   await tester.tap( good );      // close
+   await tester.pumpAndSettle();
+   final Finder update = find.byKey( const Key('Update Status?' ));
+   await tester.tap( update );
+   await pumpSettle( tester, 6 ); // Need time to get peq data from host
+   await tester.pumpAndSettle();
+   expect( await statusTabNeedsRepair( tester ), true );   
+
+   // verify error state
+   final Finder bad = find.byKey( const Key('hideBad' ));
+   await tester.tap( bad );       // open
+   await tester.pumpAndSettle();
+   expect( await verifyBlast1BadAmount( tester, dismiss: false ), true );
+   
+   // Write from host.  Will succeed.
+   expect( await writeOneFromHost( tester ), true );
+   await tester.tap( bad );       // close
+   await tester.pumpAndSettle();
+   await tester.tap( good );      // open
+   await tester.pumpAndSettle();
+   expect( await verifyBlast1( tester ), true );
+
+   await tester.tap( good );      // close
+   await tester.pumpAndSettle(); 
+   return true;
+}
 
 
 void main() {
@@ -518,7 +731,11 @@ void main() {
 
          // expect( await statusPostTesting( tester ), true );
 
-         expect( await statusModAWS( tester ), true );
+         // Snow Melt
+         expect( await statusModAWSAccr( tester ), true );
+
+         // Blast 1
+         expect( await statusModAWSPlan( tester ), true );
          
          // test statusUnavailable
          // make 1 aws peq, make separate gh peq (make normal, then rem aws part?  or just remove aws part?)
