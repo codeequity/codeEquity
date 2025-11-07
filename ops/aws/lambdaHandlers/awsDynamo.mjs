@@ -96,6 +96,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
     else if( endPoint == "PutProfImg")     { resultPromise = putProfileImage( rb.NewPSum ); }
     else if( endPoint == "AddPSumLock")    { resultPromise = addPSumLock( rb.ceProjId ); }
+    else if( endPoint == "SetTestLock")    { resultPromise = setTestLock( rb.ceProjId, rb.val ); }
     else if( endPoint == "PutEqPlan")      { resultPromise = putEqPlan( rb.NewPlan ); }
     else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
     else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId, rb.HostPlatform ); }
@@ -276,7 +277,7 @@ function buildConjScanParams( obj, props ) {
     return [filterExpr, attrVals];
 }
 
-async function setLock( table, keyName, keyVal, lockVal ) {
+async function setLock( table, keyName, keyVal, lockName, lockVal ) {
     console.log( "Locking", table, keyName, keyVal, lockVal );
 
     let keyPhrase = {};
@@ -284,7 +285,7 @@ async function setLock( table, keyName, keyVal, lockVal ) {
     const params = {
 	TableName: table,
 	Key: keyPhrase,
-	UpdateExpression: 'set Locked = :lockVal',
+	UpdateExpression: 'set ' + lockName + ' = :lockVal',
 	ExpressionAttributeValues: { ':lockVal': lockVal }};
 
     console.log( "SLParams", params );
@@ -876,7 +877,7 @@ async function getUnPActions( ceProjId ) {
 	    
 	    // XXX Fire these off, consider waiting, with Promises.all
 	    //     would be expensive for multiple uningested.  where oh where is updateWhere
-	    pacts.forEach( function(pact) { setLock( "CEPEQActions", "PEQActionId", pact.PEQActionId, "true" );   });
+	    pacts.forEach( function(pact) { setLock( "CEPEQActions", "PEQActionId", pact.PEQActionId, "Locked", "true" );   });
 	    return pacts;
 	})
 	.then(( pacts ) => {
@@ -1253,7 +1254,7 @@ async function addPSumLock( ceProjId ) {
 	assert( ps.length == 1 );
 	console.log( "peq summary exists.." );
 	if( typeof ps[0].Locked === 'undefined' || ps[0].Locked == "true" ) {
-	    await setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "false" );
+	    await setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "Locked", "false" );
 	    console.log( "..unlocked" );
 	}
     }
@@ -1305,7 +1306,7 @@ async function putPeqMods( pmods, ceProjId ) {
 	    skip = true;
 	}
 	else {
-	    setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "true" );
+	    setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "Locked", "true" );
 	}
     });
     if( skip ) { return success( true ); }
@@ -1322,8 +1323,38 @@ async function putPeqMods( pmods, ceProjId ) {
 	    else      { return BAD_SEMANTICS; }
 	});
 
-    await setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "false" );
+    await setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "Locked", "false" );
     return retVal;
+}
+
+// TEST SUPPORT ONLY
+async function setTestLock( ceProjId, val ) {
+
+    console.log( "setTestLock" );
+
+    const params = {
+        TableName: 'CELinkage',
+        FilterExpression: 'CEProjectId = :cpid',
+        ExpressionAttributeValues: { ":cpid": ceProjId },
+	Limit: 99,
+    };
+    let gPromise = paginatedScan( params );
+    let skip = false;
+    await gPromise.then((ps) => {
+	assert( ps.length == 1 );  // guaranteed when choose project
+	if( typeof ps[0].testLocked != 'undefined' && val == "true" && ps[0].testLocked == "true" ) {
+	    // Oops.  headless integration test is writing from aws already.
+	    console.log( "Another window is currently writing host from AWS, skipping.", ceProjId, val );
+	    skip = true;
+	}
+	else {
+	    console.log( "Setting CELinkageId:", ps[0].CELinkageId, val );
+	    setLock( "CELinkage", "CELinkageId", ps[0].CELinkageId, "testLocked", val );
+	}
+    });
+    if( skip ) { return success( false ); }
+
+    return success( true );
 }
 
 

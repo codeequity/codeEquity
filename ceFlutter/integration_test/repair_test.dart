@@ -110,13 +110,13 @@ Future<bool> verifyAssignTest( WidgetTester tester ) async {
    return true;
 }
 
-Future<bool> verifyBlast1( WidgetTester tester ) async {
+Future<bool> verifyBlast1( WidgetTester tester, { amount = "604" } ) async {
 
    final Finder title = find.byKey( const Key( 'Blast 1' ));
    
    expect( title,                                   findsOneWidget );
    expect( find.byKey( const Key( 'UnClaimed' )),   findsAtLeast(1) );
-   expect( find.byKey( const Key( '604' )),         findsAtLeast(1) );
+   expect( find.byKey(       Key(  amount )),       findsAtLeast(1) );
    expect( find.byKey( const Key( 'plan' )),        findsAtLeast(1) );
    expect( find.byKey( const Key( '[ariTester]' )), findsAtLeast(1) );
 
@@ -130,7 +130,7 @@ Future<bool> verifyBlast1( WidgetTester tester ) async {
    expect( find.byKey( const Key( 'Blast 1' )),                 findsAtLeast(2) );
    expect( find.byKey( const Key( 'plan' )),                    findsAtLeast(2) );
    expect( find.byKey( const Key( CEMD_PROJ_ID )),              findsNWidgets(2) );
-   expect( find.byKey( const Key( '604' )),                     findsAtLeast(2) );
+   expect( find.byKey(       Key( amount )),                    findsAtLeast(2) );
    expect( find.byKey( const Key( GH_FLUT_TEST_REPO )),         findsNWidgets(2) );
    expect( find.byKey( const Key( '[U_kgDOBP2eEw]' )),          findsNWidgets(2) );
    expect( find.byKey( const Key( '[UnClaimed, UnClaimed]' )),  findsNWidgets(2) );
@@ -155,7 +155,7 @@ Future<bool> verifyBlast1BadAmount( WidgetTester tester, { dismiss = true } ) as
    await tester.tap( title );
    await tester.pumpAndSettle();
    await pumpSettle( tester, 2 );
-   expect( await goodDetailFraming( tester ), true );
+   expect( await badDetailFraming( tester ), true );
 
    // peq agreement means 2 of each type, but we are seeing through to peqs in the background.
    // issue id changes every time, don't bother trying to check
@@ -508,6 +508,24 @@ Future<bool> sortDesc( WidgetTester tester, Finder col ) async {
    return true;
 }
 
+Future<bool> sortAsc( WidgetTester tester, Finder col ) async {
+   // Make sure column is descending
+   expect( col, findsOneWidget );
+   await tester.tap( col );
+   await tester.pumpAndSettle();
+   try{
+      expect( find.byIcon( Icons.arrow_drop_up ),   findsNWidgets(1) ); // sort,
+      expect( find.byIcon( Icons.arrow_drop_down ), findsNWidgets(2) ); // gone, bad
+   }
+   catch( e ) {
+      await tester.tap( col );
+      await tester.pumpAndSettle();
+      expect( find.byIcon( Icons.arrow_drop_up ),   findsNWidgets(1) ); // sort,
+      expect( find.byIcon( Icons.arrow_drop_down ), findsNWidgets(2) ); // gone, bad
+   }
+   return true;
+}
+
 Future<Map<String, dynamic>> getPeqFromDetail( WidgetTester tester, fakeState state ) async {
    // deconstruct wrap .. check getElt in project_test
    final Finder wrap = find.byKey( const Key( "WrapHost Issue Id:" ));
@@ -522,14 +540,13 @@ Future<Map<String, dynamic>> getPeqFromDetail( WidgetTester tester, fakeState st
 
    // Get full PEQ from aws
    var postData = '{"Endpoint": "ceMD", "Request": "getAWSPeq", "ceProjId": "$CEMD_PROJ_ID", "hostIssueId": "$hid" }';
-   print( "XXX postData: " + postData );
    var response = await postCE( state, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
       assert( false );
    }
    var peq = json.decode( utf8.decode( response.bodyBytes ));
-   print( "XXX " + peq.toString() );
+   print( "Got PEQ: " + peq.toString() );
    assert( peq != "-1" && peq[ 'PEQId' ] != null );
    return peq;
 }
@@ -537,7 +554,6 @@ Future<Map<String, dynamic>> getPeqFromDetail( WidgetTester tester, fakeState st
 Future<bool> writePeq( WidgetTester tester, fakeState state, Map<String, dynamic> peq ) async {
    String pmod     = json.encode( peq );
    var postData    = '{ "Endpoint": "ceMD", "Request": "putAWSPeq", "peq": $pmod }';
-   print( "XXX " + postData );
    var response    = await postCE( state, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -569,6 +585,46 @@ Future<bool> writeOneFromHost( WidgetTester tester ) async {
    await tester.tap( update );
    await pumpSettle( tester, 6 ); // Need time to get peq data from host
    return true;
+}
+
+// XXX writes, verifies all need to set required state internally.
+//     dealing with this outside the method is clumsy, sloppy
+Future<bool> writeOneFromAWS( WidgetTester tester ) async {
+   await pumpSettle( tester, 2 );
+   final Finder useCE = find.byKey( const Key( 'Use CodeEquity PEQ' ) );
+   expect( useCE, findsOneWidget );
+   await tester.tap( useCE );
+   await tester.pumpAndSettle(); 
+   await pumpSettle( tester, 2 ); 
+
+   expect( find.text( 'CodeEquity PEQ:' ),             findsOneWidget );
+   final Finder writeOne = find.byKey( const Key( 'Write one CE' ));
+   expect( writeOne,                                   findsOneWidget );
+   expect( find.byKey( const Key( 'Write all CE' )), findsOneWidget );
+   expect( find.byKey( const Key( 'Dismiss' )),        findsOneWidget );
+   await tester.tap( writeOne );
+   await tester.pumpAndSettle(); 
+   await pumpSettle( tester, 10 );
+
+   // If list is too long, need to close to find update
+   final Finder update = find.byKey( const Key('Update Status?' ));
+   await tester.tap( update );
+   await pumpSettle( tester, 6 ); // Need time to get peq data from host
+   
+   return true;
+}
+
+Future<bool> setTestLock( WidgetTester tester, fakeState state, val ) async {
+   print( "Attempting to lock ceLinkages" );
+   var postData = '{"Endpoint": "ceMD", "Request": "setTestLock", "ceProjId": "$CEMD_PROJ_ID", "val": "$val" }'; 
+   var response = await postCE( state, postData );
+   if( response.statusCode == 401 ) {
+      print( "WARNING.  Could not reach ceServer." );
+      assert( false );
+   }
+   bool res = json.decode( utf8.decode( response.bodyBytes ));
+   print( " .. result: " + res.toString() );
+   return res;
 }
 
 // XXX context not used for awsUtils.. kill it.
@@ -616,17 +672,8 @@ Future<bool> statusModAWSAccr( WidgetTester tester ) async {
    expect( await verifySnowMeltBadAmount( tester ), true );
    
    // Fix accrued snow
-   // XXX use writePeq
    peq[ 'Amount' ] = 1000;
-   var pmod            = json.encode( peq );
-   var postData        = '{ "Endpoint": "ceMD", "Request": "putAWSPeq", "peq": $pmod }';
-   var response        = await postCE( state, postData );
-   if( response.statusCode == 401 ) {
-      print( "WARNING.  Could not reach ceServer." );
-      assert( false );
-   }
-   var resBod = json.decode( utf8.decode( response.bodyBytes ));
-   expect( resBod, peq[ 'PEQId' ] );
+   expect( await writePeq( tester, state, peq ), true );
 
    // update, verify
    await tester.tap( update );
@@ -649,9 +696,9 @@ Future<bool> statusModAWSPlan( WidgetTester tester ) async {
    await tester.tap( good );        // open
    await tester.pumpAndSettle();
 
-   // Make sure title is descending
+   // Make sure title is ascending
    final Finder title = find.byKey( const Key( 'Issue Title' ));
-   expect( await sortDesc( tester, title ), true );
+   expect( await sortAsc( tester, title ), true );
    
    // get detail popup
    final Finder blast = find.byKey( const Key( 'Blast 1' ));
@@ -694,6 +741,106 @@ Future<bool> statusModAWSPlan( WidgetTester tester ) async {
    return true;
 }
 
+// modify plan peq in aws directly, test attempt to rewrite using aws - succeed.  recover.
+// NOTE: when aws rewrites, a new hostIssueId needs to be created, by definition.
+//       integration testing has 2 windows running this operation nearly simultaneously.
+//       when both run, several ids can be created and mixed up with eachother.
+//       No point to untangle - set lock to allow 1 window to operate, only.
+Future<bool> statusModHostPlan( WidgetTester tester ) async {
+
+   var state = fakeState( CESERVER_ENDPOINT );
+
+   bool imIt = await setTestLock( tester, state, "true" );
+   if( !imIt ) {
+      print( "Lock already set, skipping" );
+      await pumpSettle( tester, 100 );
+      return true;
+   }
+               
+   final Finder good = find.byKey( const Key('hideGood' ));
+   await tester.tap( good );        // open
+   await tester.pumpAndSettle();
+
+   // Make sure title is ascending
+   final Finder title = find.byKey( const Key( 'Issue Title' ));
+   expect( await sortAsc( tester, title ), true );
+   
+   // get detail popup
+   final Finder blast = find.byKey( const Key( 'Blast 1' ));
+   expect( blast, findsOneWidget );
+   await tester.tap( blast );
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+
+   // Get peq, update it, write it.
+   print( "Updating blast to 606" );
+   var peq   = await getPeqFromDetail( tester, state );
+   peq[ 'Amount' ] = 606;
+   expect( await writePeq( tester, state, peq ), true );
+
+   // update status, validate
+   await tester.tap( good );      // close
+   await tester.pumpAndSettle();
+   final Finder update = find.byKey( const Key('Update Status?' ));
+   await tester.tap( update );
+   await pumpSettle( tester, 6 ); // Need time to get peq data from host
+   await tester.pumpAndSettle();
+   expect( await statusTabNeedsRepair( tester ), true );   
+
+   // verify error state
+   final Finder bad = find.byKey( const Key('hideBad' ));
+   await tester.tap( bad );       // open
+   await tester.pumpAndSettle();
+   expect( await verifyBlast1BadAmount( tester, dismiss: false ), true );
+
+   // Write from AWS.  Will succeed.
+   print( "Updating from aws" );
+   expect( await writeOneFromAWS( tester ), true );
+   await tester.tap( bad );       // close
+   await tester.pumpAndSettle();
+   await tester.tap( good );      // open
+   await tester.pumpAndSettle();
+   expect( await verifyBlast1( tester, amount: "606" ), true );
+
+   
+   // Recover original state for Blast 1
+   print( "Recovering" );
+   await tester.tap( blast );
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+   peq   = await getPeqFromDetail( tester, state );   // NOTE the hostIssueId is now differet.  Get the new data.
+   peq[ 'Amount' ] = 604;
+   expect( await writePeq( tester, state, peq ), true );
+
+   // ... update, verify
+   await tester.tap( good );      // close
+   await tester.pumpAndSettle();
+   await tester.tap( update );
+   await pumpSettle( tester, 6 ); // Need time to get peq data from host
+   await tester.pumpAndSettle();
+   expect( await statusTabNeedsRepair( tester ), true );
+   print( "Past STN repair" );
+
+   // ... write from AWS.  Will succeed.
+   await tester.tap( bad );      // open
+   await tester.pumpAndSettle();
+   await tester.tap( blast );
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+   expect( await writeOneFromAWS( tester ), true );
+   await tester.tap( bad );      // close
+   await tester.pumpAndSettle();
+   await tester.tap( good );      // open
+   await tester.pumpAndSettle();
+   expect( await verifyBlast1( tester ), true );
+
+   await tester.tap( good );      // close
+   await tester.pumpAndSettle();
+
+   imIt = await setTestLock( tester, state, "false" );
+   return imIt;
+}
+
 
 void main() {
 
@@ -729,13 +876,16 @@ void main() {
          // Head to status page
          expect( await statusTabFraming( tester ), true );
 
-         // expect( await statusPostTesting( tester ), true );
+         expect( await statusPostTesting( tester ), true );
 
-         // Snow Melt
+         // Snow Melt, from host
          expect( await statusModAWSAccr( tester ), true );
 
-         // Blast 1
+         // Blast 1, from host
          expect( await statusModAWSPlan( tester ), true );
+
+         // Blast 1, from aws
+         expect( await statusModHostPlan( tester ), true );
          
          // test statusUnavailable
          // make 1 aws peq, make separate gh peq (make normal, then rem aws part?  or just remove aws part?)

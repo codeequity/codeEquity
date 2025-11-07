@@ -398,7 +398,6 @@ class _CEStatusState extends State<CEStatusFrame> {
          for( int v in activeLabels[ repoId ]! ) {
             if( !hLabelVals.contains( v ) ) {
                print( "Host missing label " + v.toString());
-               print( "Creating." );
                createdLabels.add( createHostLabel( container, cep!, repoId, v ) );
                moddedLabels = true;
             }
@@ -597,7 +596,6 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
    
    void _cancel() {
-      print( "Cancel" );
       updateView = true;
       appState.hoverChunk = "";      
       Navigator.of( context ).pop();
