@@ -78,8 +78,18 @@ Future<bool> badDetailFraming( WidgetTester tester ) async {
    return true;
 }
 
-Future<bool> verifyAssignTest( WidgetTester tester ) async {
+Future<bool> verifyAssignTest( WidgetTester tester, { col = "Issue Title", ascending = true } ) async {
 
+   // Category is 'good' by definition.  open.
+   final Finder good = find.byKey( const Key('toggleGood' ));
+   await tester.tap( good );
+   await tester.pumpAndSettle(); 
+
+   // sort
+   final Finder column = find.byKey( Key( col ));
+   if( ascending ) { expect( await sortAsc(  tester, column ), true ); }
+   else            { expect( await sortDesc( tester, column ), true ); }
+      
    final Finder title = find.byKey( const Key( 'AssignTest' ));
    
    expect( title,                                          findsOneWidget );
@@ -106,11 +116,25 @@ Future<bool> verifyAssignTest( WidgetTester tester ) async {
    final Finder cancel = find.byKey( const Key( 'Cancel' ));
    await tester.tap( cancel );
    await tester.pumpAndSettle();
-   
+
+   // close
+   await tester.tap( good );
+   await tester.pumpAndSettle(); 
+
    return true;
 }
 
-Future<bool> verifyBlast1( WidgetTester tester, { amount = "604" } ) async {
+Future<bool> verifyBlast1( WidgetTester tester, { amount = "604", cat = "toggleGood", col = "Issue Title", ascending = true } ) async {
+
+   // open category
+   final Finder category = find.byKey( Key( cat ));
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
+
+   // sort
+   final Finder column = find.byKey( Key( col ));
+   if( ascending ) { expect( await sortAsc(  tester, column ), true ); }
+   else            { expect( await sortDesc( tester, column ), true ); }
 
    final Finder title = find.byKey( const Key( 'Blast 1' ));
    
@@ -138,11 +162,25 @@ Future<bool> verifyBlast1( WidgetTester tester, { amount = "604" } ) async {
    final Finder cancel = find.byKey( const Key( 'Cancel' ));
    await tester.tap( cancel );
    await tester.pumpAndSettle();
+
+   // close
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
    
    return true;
 }
 
-Future<bool> verifyBlast1BadAmount( WidgetTester tester, { dismiss = true } ) async {
+Future<bool> verifyBlast1BadAmount( WidgetTester tester, { ascending = true } ) async {
+
+   // open category
+   final Finder category = find.byKey( Key( 'toggleBad' ));
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
+
+   // sort
+   final Finder column = find.byKey( const Key( "Issue Title" ));
+   if( ascending ) { expect( await sortAsc(  tester, column ), true ); }
+   else            { expect( await sortDesc( tester, column ), true ); }
 
    final Finder title = find.byKey( const Key( 'Blast 1' ));
    
@@ -168,11 +206,12 @@ Future<bool> verifyBlast1BadAmount( WidgetTester tester, { dismiss = true } ) as
    expect( find.byKey( const Key( '[U_kgDOBP2eEw]' )),          findsNWidgets(2) );
    expect( find.byKey( const Key( '[UnClaimed, UnClaimed]' )),  findsNWidgets(2) );
    
-   if( dismiss == null || dismiss ) {
-      final Finder cancel = find.byKey( const Key( 'Cancel' ));
-      await tester.tap( cancel );
-      await tester.pumpAndSettle();
-   }
+   final Finder cancel = find.byKey( const Key( 'Cancel' ));
+   await tester.tap( cancel );
+   await tester.pumpAndSettle();
+
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
    
    return true;
 }
@@ -180,6 +219,15 @@ Future<bool> verifyBlast1BadAmount( WidgetTester tester, { dismiss = true } ) as
 
 Future<bool> verifyBlast2( WidgetTester tester ) async {
 
+   // open category
+   final Finder category = find.byKey( Key( 'toggleGood' ));
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
+
+   // sort
+   final Finder column = find.byKey( const Key( "Issue Title" ));
+   expect( await sortAsc(  tester, column ), true );
+   
    final Finder title = find.byKey( const Key( 'Blast 2' ));
    
    expect( title,                                   findsOneWidget );
@@ -206,11 +254,23 @@ Future<bool> verifyBlast2( WidgetTester tester ) async {
    final Finder cancel = find.byKey( const Key( 'Cancel' ));
    await tester.tap( cancel );
    await tester.pumpAndSettle();
+
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
    
    return true;
 }
 
 Future<bool> verifySnowMelt( WidgetTester tester ) async {
+
+   // open category
+   final Finder category = find.byKey( Key( 'toggleGood' ));
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
+
+   // sort
+   final Finder column = find.byKey( const Key( "Issue Title" ));
+   expect( await sortDesc(  tester, column ), true );
 
    final Finder title = find.byKey( const Key( 'Snow melt' ));
    
@@ -238,11 +298,23 @@ Future<bool> verifySnowMelt( WidgetTester tester ) async {
    final Finder cancel = find.byKey( const Key( 'Cancel' ));
    await tester.tap( cancel );
    await tester.pumpAndSettle();
+
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
    
    return true;
 }
 
-Future<bool> verifySnowMeltBadAmount( WidgetTester tester, {dismiss = true} ) async {
+Future<bool> verifySnowMeltBadAmount( WidgetTester tester ) async {
+
+   // open category
+   final Finder category = find.byKey( Key( 'toggleBad' ));
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
+
+   // sort
+   final Finder column = find.byKey( const Key( "Issue Title" ));
+   expect( await sortDesc(  tester, column ), true );
 
    final Finder title = find.byKey( const Key( 'Snow melt' ));
    
@@ -268,16 +340,26 @@ Future<bool> verifySnowMeltBadAmount( WidgetTester tester, {dismiss = true} ) as
    expect( find.byKey( const Key( '[U_kgDOBP2eEw, U_kgDOBqJgmQ]' )),  findsNWidgets(2) );
    expect( find.byKey( const Key( '[Data Security Flut, Accrued]' )), findsNWidgets(2) );
 
-   if( dismiss == null || dismiss ) {
-      final Finder cancel = find.byKey( const Key( 'Cancel' ));
-      await tester.tap( cancel );
-      await tester.pumpAndSettle();
-   }
-   
+   final Finder cancel = find.byKey( const Key( 'Cancel' ));
+   await tester.tap( cancel );
+   await tester.pumpAndSettle();
+
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
+
    return true;
 }
 
 Future<bool> verifySituatedAccr( WidgetTester tester ) async {
+
+   // open category
+   final Finder category = find.byKey( Key( 'toggleGood' ));
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
+
+   // sort
+   final Finder column = find.byKey( const Key( "Issue Title" ));
+   expect( await sortDesc(  tester, column ), true );
 
    final Finder title = find.byKey( const Key( 'Situated Accrued' ));
    
@@ -305,11 +387,23 @@ Future<bool> verifySituatedAccr( WidgetTester tester ) async {
    final Finder cancel = find.byKey( const Key( 'Cancel' ));
    await tester.tap( cancel );
    await tester.pumpAndSettle();
+
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
    
    return true;
 }
 
 Future<bool> verifyLabelDubs( WidgetTester tester ) async {
+
+   // open category
+   final Finder category = find.byKey( Key( 'toggleGood' ));
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
+
+   // sort
+   final Finder column = find.byKey( const Key( "Issue Title" ));
+   expect( await sortDesc(  tester, column ), true );
 
    final Finder title = find.byKey( const Key( 'LabelTest Dubs' ));
    
@@ -337,137 +431,13 @@ Future<bool> verifyLabelDubs( WidgetTester tester ) async {
    final Finder cancel = find.byKey( const Key( 'Cancel' ));
    await tester.tap( cancel );
    await tester.pumpAndSettle();
+
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
    
    return true;
 }
 
-
-Future<bool> statusPostTesting( WidgetTester tester ) async {
-   expect( find.byIcon( Icons.arrow_drop_down ),        findsNWidgets(3) );
-   expect( find.byIcon( Icons.arrow_drop_down_circle ), findsNothing );
-
-   // Expand all
-   final Finder gone = find.byKey( const Key('hideGone' ));
-   await tester.tap( gone );
-   await tester.pumpAndSettle(); 
-   expect( find.byIcon( Icons.arrow_drop_down ),        findsNWidgets(2) );
-   expect( find.byIcon( Icons.arrow_drop_down_circle ), findsOneWidget );
-
-   final Finder bad = find.byKey( const Key('hideBad' ));
-   await tester.tap( bad );
-   await tester.pumpAndSettle(); 
-   expect( find.byIcon( Icons.arrow_drop_down ),        findsOneWidget );
-   expect( find.byIcon( Icons.arrow_drop_down_circle ), findsNWidgets(2) );
-
-   final Finder good = find.byKey( const Key('hideGood' ));
-   await tester.tap( good );
-   await tester.pumpAndSettle(); 
-   expect( find.byIcon( Icons.arrow_drop_down ),        findsNothing );
-   expect( find.byIcon( Icons.arrow_drop_down_circle ), findsNWidgets(3) );
-
-   // Close all but good
-   await tester.tap( gone );
-   await tester.pumpAndSettle(); 
-   await tester.tap( bad );
-   await tester.pumpAndSettle(); 
-
-   // Check sorting on good, ascend
-   final Finder title = find.byKey( const Key( 'Issue Title' ));
-   await tester.tap( title );
-   await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ),    findsOneWidget );
-   expect( await verifyAssignTest( tester ),      true );
-   expect( await verifyBlast1( tester ),          true );
-   expect( await verifyBlast2( tester ),          true );
-   expect( find.byKey( const Key( 'Snow melt' )), findsNothing );
-
-   // Check sorting on good, descend
-   await tester.tap( title );
-   await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_down ),   findsNWidgets(3) );  // sort, gone, bad
-   expect( await verifySnowMelt( tester ),         true );
-   expect( await verifySituatedAccr( tester ),     true );
-   expect( await verifyLabelDubs( tester ),        true );
-   expect( find.byKey( const Key( 'AssignTest' )), findsNothing );
-
-   // sorts Host Project, just check title.  ascend
-   final Finder hp = find.byKey( const Key( 'Host Project' ));
-   await tester.tap( hp );
-   await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ),                      findsOneWidget );
-   expect( find.byKey( const Key( 'A Pre-Existing Project Flut' )), findsNWidgets( 4 ));
-   expect( find.byKey( const Key( 'Cross Proj' )),                  findsOneWidget );
-   expect( find.byKey( const Key( 'Data Security Flut' )),          findsNWidgets(6) );
-   expect( find.byKey( const Key( 'UnClaimed' )),                   findsNothing );
-
-   // sorts Host Project, just check title.  descend
-   await tester.tap( hp );
-   await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ),                      findsNothing );
-   expect( find.byKey( const Key( 'A Pre-Existing Project Flut' )), findsNothing);
-   expect( find.byKey( const Key( 'Cross Proj' )),                  findsNothing );
-   expect( find.byKey( const Key( 'Data Security Flut' )),          findsNothing );
-   expect( find.byKey( const Key( 'UnClaimed' )),                   findsAtLeast(8) );
-   
-   // sorts PEQ, just check title.  ascend
-   final Finder peq = find.byKey( const Key( 'PEQ' ));
-   await tester.tap( peq );
-   await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ), findsOneWidget );
-   expect( find.byKey( const Key( '105' )),    findsOneWidget);
-   expect( find.byKey( const Key( '250' )),    findsNWidgets(2) );
-   expect( find.byKey( const Key( '500' )),    findsNWidgets(4) );
-   expect( find.byKey( const Key( '1000' )),   findsNothing );
-
-   // sorts Host Peq, descend
-   await tester.tap( peq );
-   await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ), findsNothing );
-   expect( find.byKey( const Key( '105' )),    findsNothing);
-   expect( find.byKey( const Key( '250' )),    findsNothing );
-   expect( find.byKey( const Key( '500' )),    findsNothing );
-   expect( find.byKey( const Key( '1000' )),   findsAtLeast(8) );
-
-   // sorts Type.  ascend
-   final Finder type = find.byKey( const Key( 'Type' ));
-   await tester.tap( type );
-   await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ),  findsOneWidget );
-   expect( find.byKey( const Key( 'grant' )),   findsAtLeast(8) );
-   expect( find.byKey( const Key( 'pending' )), findsAtLeast(1) );
-
-   // descend
-   await tester.tap( type );
-   await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ),  findsNothing );
-   expect( find.byKey( const Key( 'grant' )),   findsNothing );
-   expect( find.byKey( const Key( 'pending' )), findsNothing );
-   expect( find.byKey( const Key( 'plan' )),    findsAtLeast(8) );
-
-   // sorts Assignees.  ascend
-   final Finder assn = find.byKey( const Key( 'Assignee(s)' ));
-   await tester.tap( assn );
-   await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ),                                findsOneWidget );
-   expect( find.byKey( const Key( '[]' )),                                    findsNWidgets(4) );
-   expect( find.byKey( const Key( '[ariTester, builderCE, connieTester]' )),  findsNWidgets(2) );
-   expect( find.byKey( const Key( '[ariTester, builderCE]' )),                findsAtLeast(6) );
-   expect( find.byKey( const Key( '[builderCE, connieTester]' )),             findsNothing );
-
-   // descend
-   await tester.tap( assn );
-   await tester.pumpAndSettle();
-   expect( find.byIcon( Icons.arrow_drop_up ),                    findsNothing );
-   expect( find.byKey( const Key( '[]' )),                        findsNothing );
-   expect( find.byKey( const Key( '[builderCE]' )),               findsNWidgets(3) );
-   expect( find.byKey( const Key( '[builderCE, connieTester]' )), findsNWidgets(2) );
-
-   // Close good.  Can't undo back to original unsorted state
-   await tester.tap( good );
-   await tester.pumpAndSettle(); 
-
-   return true;
-}
 
 String getFromToolTipTableText( Widget elt ) {
    String retVal = "";
@@ -526,7 +496,9 @@ Future<bool> sortAsc( WidgetTester tester, Finder col ) async {
    return true;
 }
 
-Future<Map<String, dynamic>> getPeqFromDetail( WidgetTester tester, fakeState state ) async {
+// preCondition: detail screen for peq of interest must be open, implying a good/bad/gone is open as well
+// postCondition: close detail scr and underlying category
+Future<Map<String, dynamic>> getPeqFromDetail( WidgetTester tester, fakeState state, String cat ) async {
    // deconstruct wrap .. check getElt in project_test
    final Finder wrap = find.byKey( const Key( "WrapHost Issue Id:" ));
    expect( wrap, findsOneWidget );
@@ -536,6 +508,11 @@ Future<Map<String, dynamic>> getPeqFromDetail( WidgetTester tester, fakeState st
    // remove detail screen
    final Finder cancel = find.byKey( const Key( 'Cancel' ));
    await tester.tap( cancel );
+   await tester.pumpAndSettle();
+
+   // close category list
+   final Finder category = find.byKey( Key( cat ));
+   await tester.tap( category );
    await tester.pumpAndSettle();
 
    // Get full PEQ from aws
@@ -564,7 +541,7 @@ Future<bool> writePeq( WidgetTester tester, fakeState state, Map<String, dynamic
    return true;
 }
 
-Future<bool> writeOneFromHost( WidgetTester tester ) async {
+Future<bool> writeOneFromHost( WidgetTester tester, String cat ) async {
    await pumpSettle( tester, 2 );
    final Finder useHost = find.byKey( const Key( 'Use Host PEQ' ) );
    expect( useHost, findsOneWidget );
@@ -581,15 +558,18 @@ Future<bool> writeOneFromHost( WidgetTester tester ) async {
    await tester.pumpAndSettle(); 
    await pumpSettle( tester, 4 );
 
-   final Finder update = find.byKey( const Key('Update Status?' ));
-   await tester.tap( update );
-   await pumpSettle( tester, 6 ); // Need time to get peq data from host
+   // close category list
+   final Finder category = find.byKey( Key( cat ) );
+   await tester.tap( category );
+   await tester.pumpAndSettle();
+   
+   expect( await updateStatus( tester ), true );
    return true;
 }
 
 // XXX writes, verifies all need to set required state internally.
 //     dealing with this outside the method is clumsy, sloppy
-Future<bool> writeOneFromAWS( WidgetTester tester ) async {
+Future<bool> writeOneFromAWS( WidgetTester tester, String cat ) async {
    await pumpSettle( tester, 2 );
    final Finder useCE = find.byKey( const Key( 'Use CodeEquity PEQ' ) );
    expect( useCE, findsOneWidget );
@@ -606,11 +586,22 @@ Future<bool> writeOneFromAWS( WidgetTester tester ) async {
    await tester.pumpAndSettle(); 
    await pumpSettle( tester, 10 );
 
+   // close category list
+   final Finder category = find.byKey( Key( cat ) );
+   await tester.tap( category );
+   await tester.pumpAndSettle();
+   
    // If list is too long, need to close to find update
+   expect( await updateStatus( tester ), true );
+   
+   return true;
+}
+
+Future<bool> updateStatus( WidgetTester tester ) async {
    final Finder update = find.byKey( const Key('Update Status?' ));
    await tester.tap( update );
    await pumpSettle( tester, 6 ); // Need time to get peq data from host
-   
+   await tester.pumpAndSettle();
    return true;
 }
 
@@ -623,52 +614,181 @@ Future<bool> setTestLock( WidgetTester tester, fakeState state, val ) async {
       assert( false );
    }
    bool res = json.decode( utf8.decode( response.bodyBytes ));
-   print( " .. result: " + res.toString() );
    return res;
+}
+
+Future<bool> showDetail( WidgetTester tester, { cat = 'toggleGood', ascending = true, col = 'Issue Title', name = 'Snow melt' } ) async {
+
+   print( "Show for " + name + " which is in " + cat + " under " + col + " sorted ascending? " + ascending.toString() );
+   
+   // open correct status category
+   final Finder category = find.byKey( Key( cat ));
+   await tester.tap( category );
+   await tester.pumpAndSettle();
+
+   // sort
+   final Finder column = find.byKey( Key( col ));
+   if( ascending ) { expect( await sortAsc(  tester, column ), true ); }
+   else            { expect( await sortDesc( tester, column ), true ); }
+
+   // open detail popup
+   final Finder peq = find.byKey( Key( name ));
+   expect( peq, findsOneWidget );
+   await tester.tap( peq );
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+
+   return true;
+}
+
+Future<bool> statusPreRepair( WidgetTester tester ) async {
+
+   print( "\nChecking status pre-repair testing." );
+   expect( find.byIcon( Icons.arrow_drop_down ),        findsNWidgets(3) );
+   expect( find.byIcon( Icons.arrow_drop_down_circle ), findsNothing );
+
+   // Expand all
+   final Finder gone = find.byKey( const Key('toggleGone' ));
+   await tester.tap( gone ); // open
+   await tester.pumpAndSettle(); 
+   expect( find.byIcon( Icons.arrow_drop_down ),        findsNWidgets(2) );
+   expect( find.byIcon( Icons.arrow_drop_down_circle ), findsOneWidget );
+
+   final Finder bad = find.byKey( const Key('toggleBad' ));
+   await tester.tap( bad ); // open
+   await tester.pumpAndSettle(); 
+   expect( find.byIcon( Icons.arrow_drop_down ),        findsOneWidget );
+   expect( find.byIcon( Icons.arrow_drop_down_circle ), findsNWidgets(2) );
+
+   final Finder good = find.byKey( const Key('toggleGood' ));
+   await tester.tap( good ); // open
+   await tester.pumpAndSettle(); 
+   expect( find.byIcon( Icons.arrow_drop_down ),        findsNothing );
+   expect( find.byIcon( Icons.arrow_drop_down_circle ), findsNWidgets(3) );
+
+   // Close all but good
+   await tester.tap( gone );      // close
+   await tester.pumpAndSettle(); 
+   await tester.tap( bad );       // close
+   await tester.pumpAndSettle(); 
+
+   // Check sorting on good, ascend.  close.
+   final Finder title = find.byKey( const Key( 'Issue Title' ));
+   expect( await sortAsc(  tester, title ), true );
+   expect( find.byIcon( Icons.arrow_drop_up ),    findsOneWidget );
+   await tester.tap( good );       // close
+   await tester.pumpAndSettle(); 
+   expect( await verifyAssignTest( tester ),      true );
+   expect( await verifyBlast1( tester ),          true );
+   expect( await verifyBlast2( tester ),          true );
+   expect( find.byKey( const Key( 'Snow melt' )), findsNothing );
+
+   // Check sorting on good, descend
+   await tester.tap( good );       // open
+   await tester.pumpAndSettle(); 
+   expect( await sortDesc(  tester, title ), true );
+   expect( find.byIcon( Icons.arrow_drop_down ),   findsNWidgets(3) );  // sort, gone, bad
+   await tester.tap( good );       // close
+   await tester.pumpAndSettle(); 
+   expect( await verifySnowMelt( tester ),         true );
+   expect( await verifySituatedAccr( tester ),     true );
+   expect( await verifyLabelDubs( tester ),        true );
+   expect( find.byKey( const Key( 'AssignTest' )), findsNothing );
+
+   // sorts Host Project, just check title.  ascend
+   await tester.tap( good );       // open
+   await tester.pumpAndSettle();
+   final Finder hp = find.byKey( const Key( 'Host Project' ));
+   expect( await sortAsc(  tester, hp ), true );
+   expect( find.byIcon( Icons.arrow_drop_up ),                      findsOneWidget );
+   expect( find.byKey( const Key( 'A Pre-Existing Project Flut' )), findsNWidgets( 4 ));
+   expect( find.byKey( const Key( 'Cross Proj' )),                  findsOneWidget );
+   expect( find.byKey( const Key( 'Data Security Flut' )),          findsNWidgets(6) );
+   expect( find.byKey( const Key( 'UnClaimed' )),                   findsNothing );
+
+   // sorts Host Project, just check title.  descend
+   expect( await sortDesc(  tester, hp ), true );
+   expect( find.byIcon( Icons.arrow_drop_up ),                      findsNothing );
+   expect( find.byKey( const Key( 'A Pre-Existing Project Flut' )), findsNothing);
+   expect( find.byKey( const Key( 'Cross Proj' )),                  findsNothing );
+   expect( find.byKey( const Key( 'Data Security Flut' )),          findsNothing );
+   expect( find.byKey( const Key( 'UnClaimed' )),                   findsAtLeast(8) );
+   
+   // sorts PEQ, just check title.  ascend
+   final Finder peq = find.byKey( const Key( 'PEQ' ));
+   expect( await sortAsc(  tester, peq ), true );
+   expect( find.byIcon( Icons.arrow_drop_up ), findsOneWidget );
+   expect( find.byKey( const Key( '105' )),    findsOneWidget);
+   expect( find.byKey( const Key( '250' )),    findsNWidgets(2) );
+   expect( find.byKey( const Key( '500' )),    findsNWidgets(4) );
+   expect( find.byKey( const Key( '1000' )),   findsNothing );
+
+   // sorts Host Peq, descend
+   expect( await sortDesc(  tester, peq ), true );
+   expect( find.byIcon( Icons.arrow_drop_up ), findsNothing );
+   expect( find.byKey( const Key( '105' )),    findsNothing);
+   expect( find.byKey( const Key( '250' )),    findsNothing );
+   expect( find.byKey( const Key( '500' )),    findsNothing );
+   expect( find.byKey( const Key( '1000' )),   findsAtLeast(8) );
+
+   // sorts Type.  ascend
+   final Finder type = find.byKey( const Key( 'Type' ));
+   expect( await sortAsc(  tester, type ), true );
+   expect( find.byIcon( Icons.arrow_drop_up ),  findsOneWidget );
+   expect( find.byKey( const Key( 'grant' )),   findsAtLeast(8) );
+   expect( find.byKey( const Key( 'pending' )), findsAtLeast(1) );
+
+   // descend
+   expect( await sortDesc(  tester, type ), true );
+   expect( find.byIcon( Icons.arrow_drop_up ),  findsNothing );
+   expect( find.byKey( const Key( 'grant' )),   findsNothing );
+   expect( find.byKey( const Key( 'pending' )), findsNothing );
+   expect( find.byKey( const Key( 'plan' )),    findsAtLeast(8) );
+
+   // sorts Assignees.  ascend
+   final Finder assn = find.byKey( const Key( 'Assignee(s)' ));
+   expect( await sortAsc(  tester, assn ), true );
+   expect( find.byIcon( Icons.arrow_drop_up ),                                findsOneWidget );
+   expect( find.byKey( const Key( '[]' )),                                    findsNWidgets(4) );
+   expect( find.byKey( const Key( '[ariTester, builderCE, connieTester]' )),  findsNWidgets(2) );
+   expect( find.byKey( const Key( '[ariTester, builderCE]' )),                findsAtLeast(6) );
+   expect( find.byKey( const Key( '[builderCE, connieTester]' )),             findsNothing );
+
+   // descend
+   expect( await sortDesc(  tester, assn ), true );
+   expect( find.byIcon( Icons.arrow_drop_up ),                    findsNothing );
+   expect( find.byKey( const Key( '[]' )),                        findsNothing );
+   expect( find.byKey( const Key( '[builderCE]' )),               findsNWidgets(3) );
+   expect( find.byKey( const Key( '[builderCE, connieTester]' )), findsNWidgets(2) );
+
+   // Close good.  Can't undo back to original unsorted state
+   await tester.tap( good );
+   await tester.pumpAndSettle(); 
+
+   return true;
 }
 
 // XXX context not used for awsUtils.. kill it.
 //  modify accr peq in aws directly, test attempt to rewrite using host - fail.     recover.
 Future<bool> statusModAWSAccr( WidgetTester tester ) async {
-   
-   final Finder good = find.byKey( const Key('hideGood' ));
-   await tester.tap( good );
-   await tester.pumpAndSettle();
 
-   // Make sure title is descending
-   final Finder title = find.byKey( const Key( 'Issue Title' ));
-   expect( await sortDesc( tester, title ), true );
-   
-   // get detail popup
-   final Finder snow = find.byKey( const Key( 'Snow melt' ));
-   expect( snow, findsOneWidget );
-   await tester.tap( snow );
-   await tester.pumpAndSettle();
-   await pumpSettle( tester, 2 );
-
-   // Get peq, update it, write it.
+   print( "\nModify ACCR peq in aws, writeFromHost.  Fail." );
    var state = fakeState( CESERVER_ENDPOINT );
-   var peq   = await getPeqFromDetail( tester, state );
+
+   // Get peq, change it, write it.
+   expect( await showDetail( tester, cat: 'toggleGood', col: 'Issue Title', ascending: false, name: 'Snow melt' ), true );
+   var peq   = await getPeqFromDetail( tester, state, 'toggleGood' );
    peq[ 'Amount' ] = 1001;
    expect( await writePeq( tester, state, peq ), true );
 
    // update status, validate
-   await tester.tap( good );
-   await tester.pumpAndSettle();
-   final Finder update = find.byKey( const Key('Update Status?' ));
-   await tester.tap( update );
-   await pumpSettle( tester, 6 ); // Need time to get peq data from host
-   await tester.pumpAndSettle();
+   expect( await updateStatus( tester ), true );
    expect( await statusTabNeedsRepair( tester ), true );   
-
-   // verify error state
-   final Finder bad = find.byKey( const Key('hideBad' ));
-   await tester.tap( bad );
-   await tester.pumpAndSettle();
-   expect( await verifySnowMeltBadAmount( tester, dismiss: false ), true );
+   expect( await verifySnowMeltBadAmount( tester ), true );
 
    // Write from host.  Will fail.. accrued.
-   expect( await writeOneFromHost( tester ), true );
+   expect( await showDetail( tester, cat: 'toggleBad', col: 'Issue Title', ascending: false, name: 'Snow melt' ), true );
+   expect( await writeOneFromHost( tester, 'toggleBad' ), true );
    expect( await verifySnowMeltBadAmount( tester ), true );
    
    // Fix accrued snow
@@ -676,15 +796,8 @@ Future<bool> statusModAWSAccr( WidgetTester tester ) async {
    expect( await writePeq( tester, state, peq ), true );
 
    // update, verify
-   await tester.tap( update );
-   await pumpSettle( tester, 6 ); // Need time to get peq data from host
-   await tester.tap( bad );       // close
-   await tester.pumpAndSettle(); 
-   await tester.tap( good );      // open
-   await tester.pumpAndSettle(); 
+   expect( await updateStatus( tester ), true );
    expect( await verifySnowMelt( tester ), true );
-   await tester.tap( good );      // close
-   await tester.pumpAndSettle(); 
 
    return true;
 }
@@ -692,52 +805,25 @@ Future<bool> statusModAWSAccr( WidgetTester tester ) async {
 // modify plan peq in aws directly, test attempt to rewrite using host - succeed.  recover.
 Future<bool> statusModAWSPlan( WidgetTester tester ) async {
    
-   final Finder good = find.byKey( const Key('hideGood' ));
-   await tester.tap( good );        // open
-   await tester.pumpAndSettle();
-
-   // Make sure title is ascending
-   final Finder title = find.byKey( const Key( 'Issue Title' ));
-   expect( await sortAsc( tester, title ), true );
-   
-   // get detail popup
-   final Finder blast = find.byKey( const Key( 'Blast 1' ));
-   expect( blast, findsOneWidget );
-   await tester.tap( blast );
-   await tester.pumpAndSettle();
-   await pumpSettle( tester, 2 );
+   print( "\nModify PLAN peq in aws, writeFromHost." );
+   var state = fakeState( CESERVER_ENDPOINT );
 
    // Get peq, update it, write it.
-   var state = fakeState( CESERVER_ENDPOINT );
-   var peq   = await getPeqFromDetail( tester, state );
+   expect( await showDetail( tester, cat: 'toggleGood', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   var peq = await getPeqFromDetail( tester, state, 'toggleGood' );
    peq[ 'Amount' ] = 606;
    expect( await writePeq( tester, state, peq ), true );
 
    // update status, validate
-   await tester.tap( good );      // close
-   await tester.pumpAndSettle();
-   final Finder update = find.byKey( const Key('Update Status?' ));
-   await tester.tap( update );
-   await pumpSettle( tester, 6 ); // Need time to get peq data from host
-   await tester.pumpAndSettle();
+   expect( await updateStatus( tester ), true );
    expect( await statusTabNeedsRepair( tester ), true );   
+   expect( await verifyBlast1BadAmount( tester ), true );
 
-   // verify error state
-   final Finder bad = find.byKey( const Key('hideBad' ));
-   await tester.tap( bad );       // open
-   await tester.pumpAndSettle();
-   expect( await verifyBlast1BadAmount( tester, dismiss: false ), true );
-   
    // Write from host.  Will succeed.
-   expect( await writeOneFromHost( tester ), true );
-   await tester.tap( bad );       // close
-   await tester.pumpAndSettle();
-   await tester.tap( good );      // open
-   await tester.pumpAndSettle();
+   expect( await showDetail( tester, cat: 'toggleBad', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   expect( await writeOneFromHost( tester, 'toggleBad' ), true );
    expect( await verifyBlast1( tester ), true );
 
-   await tester.tap( good );      // close
-   await tester.pumpAndSettle(); 
    return true;
 }
 
@@ -750,6 +836,7 @@ Future<bool> statusModHostPlan( WidgetTester tester ) async {
 
    var state = fakeState( CESERVER_ENDPOINT );
 
+   print( "\nModify PLAN peq on host, writeFromAWS." );
    bool imIt = await setTestLock( tester, state, "true" );
    if( !imIt ) {
       print( "Lock already set, skipping" );
@@ -757,85 +844,38 @@ Future<bool> statusModHostPlan( WidgetTester tester ) async {
       return true;
    }
                
-   final Finder good = find.byKey( const Key('hideGood' ));
-   await tester.tap( good );        // open
-   await tester.pumpAndSettle();
-
-   // Make sure title is ascending
-   final Finder title = find.byKey( const Key( 'Issue Title' ));
-   expect( await sortAsc( tester, title ), true );
-   
-   // get detail popup
-   final Finder blast = find.byKey( const Key( 'Blast 1' ));
-   expect( blast, findsOneWidget );
-   await tester.tap( blast );
-   await tester.pumpAndSettle();
-   await pumpSettle( tester, 2 );
-
    // Get peq, update it, write it.
-   print( "Updating blast to 606" );
-   var peq   = await getPeqFromDetail( tester, state );
+   expect( await showDetail( tester, cat: 'toggleGood', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   var peq   = await getPeqFromDetail( tester, state, 'toggleGood' );
    peq[ 'Amount' ] = 606;
    expect( await writePeq( tester, state, peq ), true );
 
    // update status, validate
-   await tester.tap( good );      // close
-   await tester.pumpAndSettle();
-   final Finder update = find.byKey( const Key('Update Status?' ));
-   await tester.tap( update );
-   await pumpSettle( tester, 6 ); // Need time to get peq data from host
-   await tester.pumpAndSettle();
+   expect( await updateStatus( tester ), true );
    expect( await statusTabNeedsRepair( tester ), true );   
-
-   // verify error state
-   final Finder bad = find.byKey( const Key('hideBad' ));
-   await tester.tap( bad );       // open
-   await tester.pumpAndSettle();
-   expect( await verifyBlast1BadAmount( tester, dismiss: false ), true );
+   expect( await verifyBlast1BadAmount( tester ), true );
 
    // Write from AWS.  Will succeed.
-   print( "Updating from aws" );
-   expect( await writeOneFromAWS( tester ), true );
-   await tester.tap( bad );       // close
-   await tester.pumpAndSettle();
-   await tester.tap( good );      // open
-   await tester.pumpAndSettle();
+   print( "Updating new value from aws" );
+   expect( await showDetail( tester, cat: 'toggleBad', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   expect( await writeOneFromAWS( tester, 'toggleBad' ), true );
    expect( await verifyBlast1( tester, amount: "606" ), true );
 
-   
    // Recover original state for Blast 1
-   print( "Recovering" );
-   await tester.tap( blast );
-   await tester.pumpAndSettle();
-   await pumpSettle( tester, 2 );
-   peq   = await getPeqFromDetail( tester, state );   // NOTE the hostIssueId is now differet.  Get the new data.
+   print( "Recovering original state" );
+   expect( await showDetail( tester, cat: 'toggleGood', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   peq   = await getPeqFromDetail( tester, state, 'toggleGood' );   // NOTE the hostIssueId is now differet.  Get the new data.
    peq[ 'Amount' ] = 604;
    expect( await writePeq( tester, state, peq ), true );
 
    // ... update, verify
-   await tester.tap( good );      // close
-   await tester.pumpAndSettle();
-   await tester.tap( update );
-   await pumpSettle( tester, 6 ); // Need time to get peq data from host
-   await tester.pumpAndSettle();
+   expect( await updateStatus( tester ), true );
    expect( await statusTabNeedsRepair( tester ), true );
-   print( "Past STN repair" );
 
    // ... write from AWS.  Will succeed.
-   await tester.tap( bad );      // open
-   await tester.pumpAndSettle();
-   await tester.tap( blast );
-   await tester.pumpAndSettle();
-   await pumpSettle( tester, 2 );
-   expect( await writeOneFromAWS( tester ), true );
-   await tester.tap( bad );      // close
-   await tester.pumpAndSettle();
-   await tester.tap( good );      // open
-   await tester.pumpAndSettle();
+   expect( await showDetail( tester, cat: 'toggleBad', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );   
+   expect( await writeOneFromAWS( tester, 'toggleBad' ), true );
    expect( await verifyBlast1( tester ), true );
-
-   await tester.tap( good );      // close
-   await tester.pumpAndSettle();
 
    imIt = await setTestLock( tester, state, "false" );
    return imIt;
@@ -876,7 +916,7 @@ void main() {
          // Head to status page
          expect( await statusTabFraming( tester ), true );
 
-         expect( await statusPostTesting( tester ), true );
+         expect( await statusPreRepair( tester ), true );
 
          // Snow Melt, from host
          expect( await statusModAWSAccr( tester ), true );

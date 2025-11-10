@@ -520,7 +520,7 @@ Future<List<dynamic>> fetchDynamo( context, container, shortName, postData ) asy
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
       return l.toList();
    } else if( response.statusCode == 204) {
-      print( "Fetch: nothing found" );
+      // print( "Fetch: nothing found" );
       return [];
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );

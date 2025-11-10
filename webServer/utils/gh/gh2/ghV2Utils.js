@@ -467,11 +467,16 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 		    .then( async (raw) => {
 			let allItems = raw.data.node.issues;
 			let items    = allItems.edges;
+			// XXX XXX
+			let verbose = false;
+			if( items.length > 50 ) { verbose = true; }
+			console.log( "ghV2 found", items.length.toString(), "host peqs" );
+
 			for( let i = 0; i < items.length; i++ ) {
 			    let iss = items[i].node;
 			    
 			    // skip non-peq issue
-			    // console.log( "WORKING", iss.title, iss.id, iss );
+			    if( verbose ) { console.log( "WORKING", i.toString(), iss.title, iss.id, iss ); }
 
 			    // Use peq label to determine peqiness.  There are links at times, but they can not be depended on.
 			    // This code is called when checking on errors between GH and CEServer.
@@ -532,6 +537,8 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
     }
 
     Object.values(issues).forEach( v => retVal.push( v ) );
+    // XXX
+    console.log( "ghV2 returning", retVal.length.toString(), "host peqs" );
     // console.log( retVal );
 
     return retVal;

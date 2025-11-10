@@ -407,6 +407,10 @@ Future<bool> statusTabFraming( WidgetTester tester ) async {
    expect( find.text( "2 PEQs are granted and in good standing, but no longer visible on the host." ), findsOneWidget );
    expect( find.text( "0 PEQs are mismatched.  Click in to choose how to make repairs." ), findsOneWidget );
    expect( find.text( "35 PEQs match.  Nothing needs be done here." ), findsOneWidget );
+
+   expect( find.byKey( const Key('toggleGone' )), findsOneWidget );
+   expect( find.byKey( const Key('toggleBad' )), findsOneWidget );
+   expect( find.byKey( const Key('toggleGood' )), findsOneWidget );
    return true;
 }
 
@@ -432,6 +436,10 @@ Future<bool> statusTabNeedsRepair( WidgetTester tester ) async {
    expect( find.text( "2 PEQs are granted and in good standing, but no longer visible on the host." ), findsOneWidget );
    expect( find.text( "1 PEQs are mismatched.  Click in to choose how to make repairs." ), findsOneWidget );
    expect( find.text( "34 PEQs match.  Nothing needs be done here." ), findsOneWidget );
+
+   expect( find.byKey( const Key('toggleGone' )), findsOneWidget );
+   expect( find.byKey( const Key('toggleBad' )), findsOneWidget );
+   expect( find.byKey( const Key('toggleGood' )), findsOneWidget );
    return true;
 }
 
