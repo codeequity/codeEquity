@@ -414,7 +414,7 @@ Future<bool> statusTabFraming( WidgetTester tester ) async {
    return true;
 }
 
-Future<bool> statusTabNeedsRepair( WidgetTester tester ) async {
+Future<bool> statusTabNeedsRepair( WidgetTester tester, { deleted = "" } ) async {
    expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
    final Finder tab = find.byKey( const Key('Status' ));
    await tester.tap( tab );
@@ -428,8 +428,19 @@ Future<bool> statusTabNeedsRepair( WidgetTester tester ) async {
    expect( find.text( "CodeEquity Data (AWS)" ), findsOneWidget );
    expect( find.text( "Host Data (GitHub)" ), findsOneWidget );
    expect( find.text( "REPAIR" ), findsOneWidget );
-   expect( find.text( "37 PEQs: 23 planned, 3 pending, 11 accrued." ), findsOneWidget );
-   expect( find.text( "35 PEQs: 23 planned, 3 pending, 9 accrued." ), findsOneWidget );
+   if( deleted == "" ) {
+      expect( find.text( "37 PEQs: 23 planned, 3 pending, 11 accrued." ), findsOneWidget );
+      expect( find.text( "35 PEQs: 23 planned, 3 pending, 9 accrued." ), findsOneWidget );
+   }
+   else if( deleted == "host" ) {
+      expect( find.text( "37 PEQs: 23 planned, 3 pending, 11 accrued." ), findsOneWidget );
+      expect( find.text( "34 PEQs: 22 planned, 3 pending, 9 accrued." ), findsOneWidget );
+   }
+   else if( deleted == "aws" ) {
+      expect( find.text( "36 PEQs: 22 planned, 3 pending, 11 accrued." ), findsOneWidget );
+      expect( find.text( "35 PEQs: 23 planned, 3 pending, 9 accrued." ), findsOneWidget );
+   }
+   
    expect( find.text( "Unavailable on host" ), findsOneWidget );
    expect( find.text( "Needing Repair" ), findsOneWidget );
    expect( find.text( "In Agreement" ), findsOneWidget );

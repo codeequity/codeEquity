@@ -470,7 +470,7 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 			// XXX XXX
 			let verbose = false;
 			if( items.length > 50 ) { verbose = true; }
-			console.log( "ghV2 found", items.length.toString(), "host peqs" );
+			console.log( "ghV2 found", items.length.toString(), "host peqs", Date.now() );
 
 			for( let i = 0; i < items.length; i++ ) {
 			    let iss = items[i].node;
@@ -524,8 +524,9 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 			    else if( iss.state == config.GH_ISSUE_CLOSED && issues[ iss.id ].hostProjectSub[1] == accr ) {
 				issues[ iss.id ].peqType = config.PEQTYPE_GRANT;
 			    }
-			    
-			    // console.log( issues[ iss.id ] );
+
+			    // XXX
+			    if( Object.values(issues).length > 50 ) { console.log( issues[ iss.id ], iss ); }
 			}
 			
 			if( allItems !== -1 && allItems.pageInfo.hasNextPage ) { cursor = allItems.pageInfo.endCursor; }
@@ -538,7 +539,8 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 
     Object.values(issues).forEach( v => retVal.push( v ) );
     // XXX
-    console.log( "ghV2 returning", retVal.length.toString(), "host peqs" );
+    console.log( "ghV2 returning", Object.values(issues).length.toString(), retVal.length.toString(), "host peqs" );
+	
     // console.log( retVal );
 
     return retVal;

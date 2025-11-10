@@ -411,7 +411,7 @@ class _CEStatusState extends State<CEStatusFrame> {
 
    // Force reload, as core data has changed.
    Future<void> _reset({pop = true}) async {
-      print( "Reset called" );
+      print( "Reset called " + DateTime.now().millisecondsSinceEpoch.toString() );
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
 

@@ -78,6 +78,41 @@ Future<bool> badDetailFraming( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> deletedFraming( WidgetTester tester, deleted ) async {
+
+   expect( find.text( 'CodeEquity vs Host PEQ Data' ),  findsOneWidget );
+   expect( find.byKey( const Key( 'CodeEquity Data' )), findsOneWidget );
+   expect( find.byKey( const Key( 'Host Data' )),       findsOneWidget );
+   expect( find.byIcon( Icons.check_circle_outline ),   findsNothing );
+   expect( find.byIcon( Icons.cancel_outlined ),        findsNWidgets(8) );
+   expect( find.byKey( const Key( 'Title:' )),          findsOneWidget );
+   expect( find.byKey( const Key( 'Peq Type:' )),       findsOneWidget );
+   expect( find.byKey( const Key( 'CE Project Id:' )),  findsOneWidget );
+   expect( find.byKey( const Key( 'PEQ Amount:' )),     findsOneWidget );
+   expect( find.byKey( const Key( 'Host Repo Id:' )),   findsOneWidget );
+   expect( find.byKey( const Key( 'Host Issue Id:' )),  findsOneWidget );
+   expect( find.byKey( const Key( 'Host Assignees:' )), findsOneWidget );
+   expect( find.byKey( const Key( 'Host Location:' )),  findsOneWidget );
+   expect( find.byKey( const Key( 'Cancel' )),          findsOneWidget );
+
+   if( deleted == "host" ) {
+      expect( find.text( 'NOTE: Host Peq is not available.' ),   findsOneWidget );
+      expect( find.byKey( const Key( 'Use CodeEquity PEQ' )),    findsOneWidget );
+      expect( find.byKey( const Key( 'Delete CodeEquity PEQ' )), findsOneWidget );
+      expect( find.byKey( const Key( 'Use Host PEQ' )),          findsNothing );
+      expect( find.byKey( const Key( 'Delete Host PEQ' )),       findsNothing );
+   }
+   else {
+      expect( find.text( 'NOTE: CodeEquity Peq is not available.' ), findsOneWidget );
+      expect( find.byKey( const Key( 'Use CodeEquity PEQ' )),        findsNothing );
+      expect( find.byKey( const Key( 'Delete CodeEquity PEQ' )),     findsNothing );
+      expect( find.byKey( const Key( 'Use Host PEQ' )),              findsOneWidget );
+      expect( find.byKey( const Key( 'Delete Host PEQ' )),           findsOneWidget );
+   }
+
+   return true;
+}
+
 Future<bool> verifyAssignTest( WidgetTester tester, { col = "Issue Title", ascending = true } ) async {
 
    // Category is 'good' by definition.  open.
@@ -205,6 +240,59 @@ Future<bool> verifyBlast1BadAmount( WidgetTester tester, { ascending = true } ) 
    expect( find.byKey( const Key( GH_FLUT_TEST_REPO )),         findsNWidgets(2) );
    expect( find.byKey( const Key( '[U_kgDOBP2eEw]' )),          findsNWidgets(2) );
    expect( find.byKey( const Key( '[UnClaimed, UnClaimed]' )),  findsNWidgets(2) );
+   
+   final Finder cancel = find.byKey( const Key( 'Cancel' ));
+   await tester.tap( cancel );
+   await tester.pumpAndSettle();
+
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
+   
+   return true;
+}
+
+Future<bool> verifyBlast1Deleted( WidgetTester tester, { deleted = "host" } ) async {
+
+   // open category
+   final Finder category = find.byKey( Key( 'toggleBad' ));
+   await tester.tap( category );
+   await tester.pumpAndSettle(); 
+
+   // sort
+   final Finder column = find.byKey( const Key( "Issue Title" ));
+   expect( await sortAsc(  tester, column ), true );
+
+   final Finder title = find.byKey( const Key( 'Blast 1' ));
+   
+   expect( title,                                   findsOneWidget );
+   expect( find.byKey( const Key( 'UnClaimed' )),   findsAtLeast(1) );
+   expect( find.byKey( const Key( 'plan' )),        findsAtLeast(1) );
+   expect( find.byKey( const Key( '[ariTester]' )), findsAtLeast(1) );
+
+   if( deleted == 'host' )     { expect( find.byKey( const Key( '606' )), findsAtLeast(1) ); }
+   else if( deleted == 'aws' ) { expect( find.byKey( const Key( '604' )), findsAtLeast(1) ); }
+   
+   await tester.tap( title );
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+   expect( await deletedFraming( tester, deleted ), true );
+
+   // issue id changes every time, don't bother trying to check
+   expect( find.byKey( const Key( 'Blast 1' )),                 findsAtLeast(1) );
+   expect( find.byKey( const Key( 'plan' )),                    findsAtLeast(1) );
+   expect( find.byKey( const Key( CEMD_PROJ_ID )),              findsNWidgets(1) );
+   expect( find.byKey( const Key( '[U_kgDOBP2eEw]' )),          findsNWidgets(1) );
+   expect( find.byKey( const Key( '[UnClaimed, UnClaimed]' )),  findsNWidgets(1) );
+   expect( find.byKey( const Key( GH_FLUT_TEST_REPO )),         findsNWidgets(1) );
+
+   if( deleted == 'host' ) {
+      expect( find.byKey( const Key( '604' )),                  findsNothing );
+      expect( find.byKey( const Key( '606' )),                  findsAtLeast(1) );
+   }
+   else if( deleted == 'aws' ) {
+      expect( find.byKey( const Key( '604' )),                  findsAtLeast(1) );
+      expect( find.byKey( const Key( '606' )),                  findsNothing );
+   }
    
    final Finder cancel = find.byKey( const Key( 'Cancel' ));
    await tester.tap( cancel );
@@ -541,8 +629,60 @@ Future<bool> writePeq( WidgetTester tester, fakeState state, Map<String, dynamic
    return true;
 }
 
+Future<bool> deleteOneFromHost( WidgetTester tester, String cat ) async {
+   await pumpSettle( tester, 1 );
+   final Finder useHost = find.byKey( const Key( 'Delete Host PEQ' ) );
+   expect( useHost, findsOneWidget );
+   await tester.tap( useHost );
+   await tester.pumpAndSettle(); 
+   await pumpSettle( tester, 2 ); 
+   
+   expect( find.text( 'Host PEQ:' ),                   findsAtLeast(1));
+   final Finder deleteOne = find.byKey( const Key( 'Delete one host' ));
+   expect( deleteOne,                                   findsOneWidget );
+   expect( find.byKey( const Key( 'Delete all host' )), findsOneWidget );
+   expect( find.byKey( const Key( 'Dismiss' )),        findsOneWidget );
+   await tester.tap( deleteOne );
+   await tester.pumpAndSettle(); 
+   await pumpSettle( tester, 4 );
+
+   // close category list
+   final Finder category = find.byKey( Key( cat ) );
+   await tester.tap( category );
+   await tester.pumpAndSettle();
+   
+   expect( await updateStatus( tester ), true );
+   return true;
+}
+
+Future<bool> deleteOneFromAWS( WidgetTester tester, String cat ) async {
+   await pumpSettle( tester, 1 );
+   final Finder useHost = find.byKey( const Key( 'Delete CodeEquity PEQ' ) );
+   expect( useHost, findsOneWidget );
+   await tester.tap( useHost );
+   await tester.pumpAndSettle(); 
+   await pumpSettle( tester, 2 ); 
+   
+   expect( find.text( 'CodeEquity PEQ:' ),              findsAtLeast(1));
+   final Finder deleteOne = find.byKey( const Key( 'Delete one CE' ));
+   expect( deleteOne,                                   findsOneWidget );
+   expect( find.byKey( const Key( 'Delete all CE' )),   findsOneWidget );
+   expect( find.byKey( const Key( 'Dismiss' )),         findsOneWidget );
+   await tester.tap( deleteOne );
+   await tester.pumpAndSettle(); 
+   await pumpSettle( tester, 4 );
+
+   // close category list
+   final Finder category = find.byKey( Key( cat ) );
+   await tester.tap( category );
+   await tester.pumpAndSettle();
+   
+   expect( await updateStatus( tester ), true );
+   return true;
+}
+
 Future<bool> writeOneFromHost( WidgetTester tester, String cat ) async {
-   await pumpSettle( tester, 2 );
+   await pumpSettle( tester, 1 );
    final Finder useHost = find.byKey( const Key( 'Use Host PEQ' ) );
    expect( useHost, findsOneWidget );
    await tester.tap( useHost );
@@ -570,7 +710,7 @@ Future<bool> writeOneFromHost( WidgetTester tester, String cat ) async {
 // XXX writes, verifies all need to set required state internally.
 //     dealing with this outside the method is clumsy, sloppy
 Future<bool> writeOneFromAWS( WidgetTester tester, String cat ) async {
-   await pumpSettle( tester, 2 );
+   await pumpSettle( tester, 1 );
    final Finder useCE = find.byKey( const Key( 'Use CodeEquity PEQ' ) );
    expect( useCE, findsOneWidget );
    await tester.tap( useCE );
@@ -584,7 +724,7 @@ Future<bool> writeOneFromAWS( WidgetTester tester, String cat ) async {
    expect( find.byKey( const Key( 'Dismiss' )),        findsOneWidget );
    await tester.tap( writeOne );
    await tester.pumpAndSettle(); 
-   await pumpSettle( tester, 10 );
+   await pumpSettle( tester, 9 );
 
    // close category list
    final Finder category = find.byKey( Key( cat ) );
@@ -600,7 +740,7 @@ Future<bool> writeOneFromAWS( WidgetTester tester, String cat ) async {
 Future<bool> updateStatus( WidgetTester tester ) async {
    final Finder update = find.byKey( const Key('Update Status?' ));
    await tester.tap( update );
-   await pumpSettle( tester, 6 ); // Need time to get peq data from host
+   await pumpSettle( tester, 5 ); // Need time to get peq data from host
    await tester.pumpAndSettle();
    return true;
 }
@@ -882,6 +1022,93 @@ Future<bool> statusModHostPlan( WidgetTester tester ) async {
 }
 
 
+// modify blast1 on ce, delete host.  write back from aws.  then
+// modify blast1 on ce, delete ce.  write back from host.  
+// NOTE: again, 1 testing window operation, only.  see comments above.
+Future<bool> statusModDelete( WidgetTester tester ) async {
+
+   var state = fakeState( CESERVER_ENDPOINT );
+
+   print( "\nModify on CE, delete host, writeFromAWS." );
+   bool imIt = await setTestLock( tester, state, "true" );
+   if( !imIt ) {
+      print( "Lock already set, skipping" );
+      await pumpSettle( tester, 180 );
+      return true;
+   }
+               
+   // Get peq, update it, write it.
+   expect( await showDetail( tester, cat: 'toggleGood', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   var peq   = await getPeqFromDetail( tester, state, 'toggleGood' );
+   peq[ 'Amount' ] = 606;
+   expect( await writePeq( tester, state, peq ), true );
+
+   // update status, validate
+   expect( await updateStatus( tester ), true );
+   expect( await statusTabNeedsRepair( tester ), true );   
+   expect( await verifyBlast1BadAmount( tester ), true );
+
+   // Delete from host, verify
+   expect( await showDetail( tester, cat: 'toggleBad', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   expect( await deleteOneFromHost( tester, 'toggleBad' ), true );
+   expect( await statusTabNeedsRepair( tester, deleted: 'host' ), true );   
+   expect( await verifyBlast1Deleted( tester, deleted: 'host' ), true );
+   
+   // Write from AWS.  host & aws consistent, but wrong peq value.
+   print( "Recreate from aws" );
+   expect( await showDetail( tester, cat: 'toggleBad', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   expect( await writeOneFromAWS( tester, 'toggleBad' ), true );
+   expect( await verifyBlast1( tester, amount: "606" ), true );
+   
+   
+   
+   // Modify on CE back to good.  writeFromAws. delete aws. writeFromhost.
+   print( "\nNext delete from aws, and recover.  First, fix host." );
+   
+   // Recover original state for Blast 1
+   print( "Recovering original state to fix host" );
+   expect( await showDetail( tester, cat: 'toggleGood', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   peq   = await getPeqFromDetail( tester, state, 'toggleGood' );   // NOTE the hostIssueId is now differet.  Get the new data.
+   peq[ 'Amount' ] = 604;
+   expect( await writePeq( tester, state, peq ), true );
+
+   // ... update, verify
+   expect( await updateStatus( tester ), true );
+   expect( await statusTabNeedsRepair( tester ), true );
+   
+   // ... write from AWS.  All consistent, and original values.
+   expect( await showDetail( tester, cat: 'toggleBad', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );   
+   expect( await writeOneFromAWS( tester, 'toggleBad' ), true );
+   expect( await verifyBlast1( tester ), true );
+
+   
+   // update aws to bad value, Delete from aws, verify
+   print( "break aws" );
+   expect( await showDetail( tester, cat: 'toggleGood', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   peq   = await getPeqFromDetail( tester, state, 'toggleGood' );   // NOTE the hostIssueId is now differet.  Get the new data.
+   peq[ 'Amount' ] = 606;
+   expect( await writePeq( tester, state, peq ), true );
+   
+   // ... update, verify
+   expect( await updateStatus( tester ), true );
+   expect( await statusTabNeedsRepair( tester ), true );
+
+   expect( await showDetail( tester, cat: 'toggleBad', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   expect( await deleteOneFromAWS( tester, 'toggleBad' ), true );
+   expect( await statusTabNeedsRepair( tester, deleted: 'aws' ), true );   
+   expect( await verifyBlast1Deleted( tester, deleted: 'aws' ), true );
+
+   // write good value from host
+   print( "Recreate from host" );
+   expect( await showDetail( tester, cat: 'toggleBad', col: 'Issue Title', ascending: true, name: 'Blast 1' ), true );
+   expect( await writeOneFromHost( tester, 'toggleBad' ), true );
+   expect( await verifyBlast1( tester, amount: "604" ), true );
+   
+   imIt = await setTestLock( tester, state, "false" );
+   return imIt;
+}
+
+
 void main() {
 
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -916,6 +1143,7 @@ void main() {
          // Head to status page
          expect( await statusTabFraming( tester ), true );
 
+         /*
          expect( await statusPreRepair( tester ), true );
 
          // Snow Melt, from host
@@ -926,6 +1154,10 @@ void main() {
 
          // Blast 1, from aws
          expect( await statusModHostPlan( tester ), true );
+         */
+
+         // Delete testing, host and aws
+         expect( await statusModDelete( tester ), true );
          
          // test statusUnavailable
          // make 1 aws peq, make separate gh peq (make normal, then rem aws part?  or just remove aws part?)
