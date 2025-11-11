@@ -79,9 +79,9 @@ class _CEStatusState extends State<CEStatusFrame> {
    
    late bool peqsLoaded;
    late bool goodStatus;     
-   late bool hideGone; 
-   late bool hideBad; 
-   late bool hideGood;
+   late bool toggleGone; 
+   late bool toggleBad; 
+   late bool toggleGood;
    late bool ingestNoticeDisplayed;
 
    late bool updateView;           
@@ -99,9 +99,9 @@ class _CEStatusState extends State<CEStatusFrame> {
       super.initState();
       peqsLoaded  = false;
       goodStatus  = true;
-      hideGone    = true;
-      hideBad     = true;
-      hideGood    = true;
+      toggleGone    = true;
+      toggleBad     = true;
+      toggleGood    = true;
       updateView  = true;
       updateModel = true;
       cPeqs       = {};
@@ -398,7 +398,6 @@ class _CEStatusState extends State<CEStatusFrame> {
          for( int v in activeLabels[ repoId ]! ) {
             if( !hLabelVals.contains( v ) ) {
                print( "Host missing label " + v.toString());
-               print( "Creating." );
                createdLabels.add( createHostLabel( container, cep!, repoId, v ) );
                moddedLabels = true;
             }
@@ -412,6 +411,7 @@ class _CEStatusState extends State<CEStatusFrame> {
 
    // Force reload, as core data has changed.
    Future<void> _reset({pop = true}) async {
+      print( "Reset called " + DateTime.now().millisecondsSinceEpoch.toString() );
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
 
@@ -597,7 +597,6 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
    
    void _cancel() {
-      print( "Cancel" );
       updateView = true;
       appState.hoverChunk = "";      
       Navigator.of( context ).pop();
@@ -629,7 +628,6 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
 
    Future<void> _detailPopup( context, PEQ? cePeq, PEQ? hostPeq, String status ) async {
-      print( "Pop! " + status );
       bool noHost = hostPeq == null;
       bool noCE   = cePeq == null;
       
@@ -645,7 +643,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<Widget> comparison = [];
 
       String hostIssueTitle = noCE ? hostPeq!.hostIssueTitle : cePeq!.hostIssueTitle;
-      print( "Got " + hostIssueTitle );
+      print( "Got detail for " + hostIssueTitle );
       final mux = 1.0;
       final width = 1.3 * baseWidth;
       final spacer = Container( width: width );
@@ -738,7 +736,6 @@ class _CEStatusState extends State<CEStatusFrame> {
       return GestureDetector(
          onTap: () async
          {
-            print( "Show Detail " + hostIssueTitle );
             await _detailPopup( context, cp, hp, status ); 
          },
          key: Key( 'peqDetail ' + hostIssueId ),
@@ -936,38 +933,38 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       if( updateView ) {
          Widget expandGone = GestureDetector(
-            onTap: () async { updateView = true; setState(() => hideGone = false ); },
-            key: Key( 'hideGone'),
+            onTap: () async { updateView = true; setState(() => toggleGone = false ); },
+            key: Key( 'toggleGone'),
             child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
             );
          
          Widget shrinkGone = GestureDetector(
-            onTap: () async { updateView = true; setState(() => hideGone = true ); },
-            key: Key( 'hideGone'),
+            onTap: () async { updateView = true; setState(() => toggleGone = true ); },
+            key: Key( 'toggleGone'),
             child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
             );
          
          Widget expandBad = GestureDetector(
-            onTap: () async { updateView = true; setState(() => hideBad = false ); },
-            key: Key( 'hideBad'),
+            onTap: () async { updateView = true; setState(() => toggleBad = false ); },
+            key: Key( 'toggleBad'),
             child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
             );
          
          Widget shrinkBad = GestureDetector(
-            onTap: () async { updateView = true; setState(() => hideBad = true ); },
-            key: Key( 'hideBad'),
+            onTap: () async { updateView = true; setState(() => toggleBad = true ); },
+            key: Key( 'toggleBad'),
             child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
             );
          
          Widget expandGood = GestureDetector(
-            onTap: () async { updateView = true; setState(() => hideGood = false ); },
-            key: Key( 'hideGood'),
+            onTap: () async { updateView = true; setState(() => toggleGood = false ); },
+            key: Key( 'toggleGood'),
             child: makeToolTip( Icon( Icons.arrow_drop_down ), "Expand", wait: true )
             );
          
          Widget shrinkGood = GestureDetector(
-            onTap: () async { updateView = true; setState(() => hideGood = true ); },
-            key: Key( 'hideGood'),
+            onTap: () async { updateView = true; setState(() => toggleGood = true ); },
+            key: Key( 'toggleGood'),
             child: makeToolTip( Icon( Icons.arrow_drop_down_circle ), "hide", wait: true )
             );
 
@@ -992,7 +989,7 @@ class _CEStatusState extends State<CEStatusFrame> {
          Widget category = paddedLTRB( makeTitleText( appState, "Unavailable on host", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );
          gone[1] = [ empty, category,
                      makeTitleText( appState, goneText, 6*buttonWidth, false, 1 ),
-                     hideGone ? expandGone : shrinkGone, empty ];
+                     toggleGone ? expandGone : shrinkGone, empty ];
          gone[2] = [ categoryHDiv, empty, empty, empty, empty ];      
          
          peqLen         = bad.length > dummyHeaderCount ? (bad.length - peqHeader.length - dummyHeaderCount) : 0;
@@ -1000,7 +997,7 @@ class _CEStatusState extends State<CEStatusFrame> {
          category       = paddedLTRB( makeTitleText( appState, "Needing Repair", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );      
          bad[1] = [ empty, category, 
                     makeTitleText( appState, disText, 6*buttonWidth, false, 1 ),
-                    hideBad ? expandBad : shrinkBad, empty ];
+                    toggleBad ? expandBad : shrinkBad, empty ];
          bad[2] = [ categoryHDiv, empty, empty, empty, empty ];      
          
          peqLen         = good.length > dummyHeaderCount ? (good.length - peqHeader.length - dummyHeaderCount) : 0;
@@ -1008,12 +1005,12 @@ class _CEStatusState extends State<CEStatusFrame> {
          category       = paddedLTRB( makeTitleText( appState, "In Agreement", 1.5*buttonWidth, false, 1, fontSize: 16 ), appState.FAT_PAD, 0, 0, 0 );            
          good[1] = [ empty, category, 
                      makeTitleText( appState, agrText, 6*buttonWidth, false, 1 ),
-                     hideGood ? expandGood : shrinkGood, empty ];
+                     toggleGood ? expandGood : shrinkGood, empty ];
          good[2] = [ categoryHDiv, empty, empty, empty, empty ];      
          
-         body.addAll( hideGone ? gone.sublist( 0, 3 ) : gone );
-         body.addAll( hideBad  ? bad.sublist(  0, 3 ) : bad );
-         body.addAll( hideGood ? good.sublist( 0, 3 ) : good );
+         body.addAll( toggleGone ? gone.sublist( 0, 3 ) : gone );
+         body.addAll( toggleBad  ? bad.sublist(  0, 3 ) : bad );
+         body.addAll( toggleGood ? good.sublist( 0, 3 ) : good );
 
          body.addAll( [[Container( width: appState.GAP_PAD*1.8 ),
                         makeActionButtonFixed(

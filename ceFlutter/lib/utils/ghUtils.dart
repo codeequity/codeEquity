@@ -78,7 +78,8 @@ Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
       return hostPeqs;
    }
 
-   final peqs = json.decode( utf8.decode( response.bodyBytes ));
+   final peqs = await json.decode( utf8.decode( response.bodyBytes ));
+   print( " .. updateGHPeqs decoding " + peqs.length.toString() + " peqs ");
 
    for( final peq in peqs ) {
 
@@ -102,7 +103,8 @@ Future<List<PEQ>> updateGHPeqs( container, CEProject cep ) async {
                               vestedPerc: 0.0, accrualDate: "", peqType: peqType, hostIssueTitle: peq['hostIssueTitle'],
                               hostIssueId: peq['hostIssueId'], hostRepoId: peq['hostRepoId'], active: true ) );
    }
-   // print( "Loaded: " + hostPeqs.toString() );
+   // XXX XXX
+   if( peqs.length > 50 ) { print( "Loaded: " + hostPeqs.toString() ); }
    
    return hostPeqs;
 }

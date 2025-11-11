@@ -385,7 +385,7 @@ async function getHostLabels( PAT, rid, labels, cursor ) {
 async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
     let retVal = [];
     let authData = { pat: PAT, who: "ceMD" };
-    console.log( "Get host peqs" );
+    // console.log( "Get host peqs", ceProjId, Date.now() );
 
     // Need relevant repos.  Pursue 2 paths to get there, either may be incomplete: 1) linkage to aws, 2) aws ceProjects tables
     // For example, ceProjects may be (should be!) in good shape, while aws linkage may be old.  
@@ -467,11 +467,13 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 		    .then( async (raw) => {
 			let allItems = raw.data.node.issues;
 			let items    = allItems.edges;
+			// console.log( "ghV2 found", items.length.toString(), "host peqs", Date.now() );
+
 			for( let i = 0; i < items.length; i++ ) {
 			    let iss = items[i].node;
 			    
 			    // skip non-peq issue
-			    // console.log( "WORKING", iss.title, iss.id, iss );
+			    // console.log( "WORKING", i.toString(), iss.title, iss.id, iss );
 
 			    // Use peq label to determine peqiness.  There are links at times, but they can not be depended on.
 			    // This code is called when checking on errors between GH and CEServer.
@@ -486,7 +488,7 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 			    // remove issues that are untracked
 			    if( typeof issues[ iss.id ] === 'undefined' ) { issues[ iss.id ] = {}; }
 			    if( amount < 1 )  {
-				console.log( " .. skipping non-peq", iss.title );
+				// console.log( " .. skipping non-peq", iss.title );
 				delete issues[ iss.id ];
 				continue;
 			    }
@@ -519,21 +521,20 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 			    else if( iss.state == config.GH_ISSUE_CLOSED && issues[ iss.id ].hostProjectSub[1] == accr ) {
 				issues[ iss.id ].peqType = config.PEQTYPE_GRANT;
 			    }
-			    
-			    // console.log( issues[ iss.id ] );
 			}
 			
 			if( allItems !== -1 && allItems.pageInfo.hasNextPage ) { cursor = allItems.pageInfo.endCursor; }
 			else                                                   { getNextPage = false; }
 		    });
 	    }
-	    catch( e ) { retVal = await ghUtils.errorHandler( "getHostPeqs", e, getHostPeqs, PAT, ceProjects, ghLinks, ceProjId ); }
+	    // This starts all over again, not with the individual repo/page.  just return.
+	    catch( e ) { return await ghUtils.errorHandler( "getHostPeqs", e, getHostPeqs, PAT, ceProjects, ghLinks, ceProjId ); }
 	}
     }
 
     Object.values(issues).forEach( v => retVal.push( v ) );
-    // console.log( retVal );
-
+    console.log( "ghV2 returning", retVal.length.toString(), "host peqs" );
+	
     return retVal;
 }
 

@@ -49,6 +49,7 @@ async function handler( authData, hostLinks, ceProjects, reqBody, res ) {
     }
     else if( reqBody.Request == "putAWSPeq" )     { retVal = await aws.recordPEQ( authData, reqBody.peq );  }                        // TESTING ONLY
     else if( reqBody.Request == "getAWSPeq" )     { retVal = await aws.getPEQ( authData, reqBody.ceProjId, reqBody.hostIssueId );  } // TESTING ONLY
+    else if( reqBody.Request == "setTestLock" )   { retVal = await aws.setTestLock( authData, reqBody.ceProjId, reqBody.val );  }    // TESTING ONLY
     else {
 	console.log( "WARNING.  CE MD Handler request not recognized" );
     }

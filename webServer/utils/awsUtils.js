@@ -423,6 +423,16 @@ async function checkPopulated( authData, ceProjId, repoId ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+// TESTING ONLY
+async function setTestLock( authData, ceProjId, val ) {
+    console.log( authData.who, "Set test lock: ", ceProjId, val );
+
+    let shortName = "SetTestLock";
+    let postData = { "Endpoint": shortName, "ceProjId": ceProjId, "val": val };
+    
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
 async function setPopulated( authData, ceProjId ) {
     console.log( authData.who, "Set populated is GHC only.  Disabled.: ", ceProjId );
     assert( false );
@@ -630,6 +640,7 @@ export {recordPEQData};
 
 export {recordPEQAction};
 export {checkPopulated};
+export {setTestLock};
 export {setPopulated};
 export {rewritePAct};
 
