@@ -353,7 +353,10 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
    assert( cp == null || cp!.id != -1 );
    if( cp != null && cp!.peqType == PeqType.grant ) { setInStone = true; }
 
-   if( setInStone ) { print( "WARNING.  Attempting to overwrite an accrued PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id ); }
+   if( setInStone ) {
+      showToast( "Can not modify an Accrued PEQ." );
+      print( "WARNING.  Attempting to overwrite an accrued PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id );
+   }
    else {
       print( "Creating new PEQ in AWS" );
 
@@ -430,7 +433,10 @@ Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, 
    assert( p == null || p.id != -1 );
    if( p != null && p.peqType == PeqType.grant ) { setInStone = true; }
 
-   if( setInStone ) { print( "WARNING.  Attempting to delete an accrued PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id ); }
+   if( setInStone ) {
+      showToast( "Can not modify an Accrued PEQ." );
+      print( "WARNING.  Attempting to delete an accrued PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id );
+   }
    else {
       print( "Removing PEQ in AWS" );
 

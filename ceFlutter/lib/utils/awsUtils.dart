@@ -75,7 +75,7 @@ Future<bool> checkValidConfig( context ) async {
 }
 
 
-Future<http.Response> awsPost( String shortName, postData, context, container, {reauth = false} ) async {
+Future<http.Response> awsPost( String shortName, postData, container ) async {
    
    final appState  = container.state;
    if( appState.verbose >= 3 ) { print( shortName ); }  // pd is a string at this point
@@ -169,7 +169,7 @@ Future<bool> checkFailure( response, shortName, context, container ) async {
 
 
 Future<String> fetchPAT( context, container, postData, shortName ) async {
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    final failure = "-1";
    
    if (response.statusCode == 201) {
@@ -183,7 +183,7 @@ Future<String> fetchPAT( context, container, postData, shortName ) async {
 }
 
 Future<String> fetchString( context, container, postData, shortName ) async {
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       String s = json.decode(utf8.decode(response.bodyBytes));
@@ -200,7 +200,7 @@ Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) asyn
    print( "updateDynamoPeqMods " );
 
    
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    bool  res      = false;
    
    if (response.statusCode == 201) { res = true; }
@@ -218,7 +218,7 @@ Future<dynamic> updateDynamo( context, container, postData, shortName, { peqId =
 
    print( "updateDynamo " + shortName + ": " + postData );
    
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    bool  res      = false;
 
    if( response.statusCode != 201 ) {
@@ -266,7 +266,7 @@ Future<bool> updateColumnName( context, container, guide ) async {
    postData['Column']      = "true";
    var pd = { "Endpoint": shortName, "query": postData }; 
    
-   final response = await awsPost( shortName, json.encode( pd ), context, container );
+   final response = await awsPost( shortName, json.encode( pd ), container );
    
    if (response.statusCode == 201) {
       return true;
@@ -280,7 +280,7 @@ Future<bool> updateColumnName( context, container, guide ) async {
 Future<List<Person>> fetchCEPeople( context, container ) async {
    String shortName = "fetchCEPeople";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEPeople", "query": { "empty": "" }}';
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    print( "fetch CEPeople" );
    if (response.statusCode == 201) {
@@ -300,7 +300,7 @@ Future<List<Person>> fetchCEPeople( context, container ) async {
 Future<List<CEProject>> fetchCEProjects( context, container ) async {
    String shortName = "fetchCEProjects";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEProjects", "query": { "empty": "" }}';
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
@@ -319,7 +319,7 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
 Future<List<CEVenture>> fetchCEVentures( context, container ) async {
    String shortName = "fetchCEVentures";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEVentures", "query": { "empty": "" }}';
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
@@ -340,7 +340,7 @@ Future<List<CEVenture>> fetchCEVentures( context, container ) async {
 Future<Person?> fetchSignedInPerson( context, container ) async {
    String shortName = "fetchSignedInPerson";
    final postData = '{ "Endpoint": "GetPerson" }';
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       final p = json.decode(utf8.decode(response.bodyBytes));
@@ -355,7 +355,7 @@ Future<Person?> fetchSignedInPerson( context, container ) async {
 
 Future<Map<String, dynamic>> fetchProfileImage( context, container, query ) async {
    String shortName = "fetchProfileImage";
-   final response = await awsPost( shortName, query, context, container );
+   final response = await awsPost( shortName, query, container );
    
    if (response.statusCode == 201) {
       final p = json.decode(utf8.decode(response.bodyBytes));
@@ -378,7 +378,7 @@ Future<Person?> fetchAPerson( context, container, ceUserId ) async {
    var postDataQ = {};
    postDataQ['CEUserId'] = ceUserId;
    final postData = { "Endpoint": "GetEntry", "tableName": "CEPeople", "query": postDataQ };
-   final response = await awsPost( shortName, json.encode( postData ), context, container );
+   final response = await awsPost( shortName, json.encode( postData ), container );
    
    if (response.statusCode == 201) {
       final p = json.decode(utf8.decode(response.bodyBytes));
@@ -396,7 +396,7 @@ Future<Person?> fetchAPerson( context, container, ceUserId ) async {
 Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, Map<String, Person> cePeople ) async {
    String shortName = "fetchHostMap";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable hu = json.decode(utf8.decode(response.bodyBytes));
@@ -425,7 +425,7 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
 
 Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    String shortName = "fetchPEQs";
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
@@ -444,7 +444,7 @@ Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
 /*
 Future<PEQ> fetchaPEQ( context, container, postData ) async {
    String shortName = "fetchaPEQ";
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       final js = json.decode(utf8.decode(response.bodyBytes));
@@ -459,7 +459,7 @@ Future<PEQ> fetchaPEQ( context, container, postData ) async {
 
 Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
    String shortName = "fetchPEQAction";
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
@@ -478,7 +478,7 @@ Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
 Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
    String shortName = "fetchPEQSummary";
    print("FETCH PEQSUM" );
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
 
    if (response.statusCode == 201) {
       final ps = json.decode(utf8.decode(response.bodyBytes));
@@ -497,7 +497,7 @@ Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
    String shortName = "fetchEquityPlan";
    print("FETCH EQPLAN" );
    
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
 
    if (response.statusCode == 201) {
       final ep = json.decode(utf8.decode(response.bodyBytes));
@@ -514,7 +514,7 @@ Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
 
 Future<List<dynamic>> fetchDynamo( context, container, shortName, postData ) async {
 
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
@@ -544,7 +544,7 @@ Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
    String shortName = "fetchHostLinkage";
    print( "FETCH HOSTLINK" );
    
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
 
    if (response.statusCode == 201) {
       final hostl = json.decode(utf8.decode(response.bodyBytes));
@@ -561,7 +561,7 @@ Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
 
 Future<PEQRaw?> fetchPEQRaw( context, container, postData ) async {
    String shortName = "fetchPEQRaw";
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       final ps = json.decode(utf8.decode(response.bodyBytes));
@@ -579,7 +579,7 @@ Future<PEQRaw?> fetchPEQRaw( context, container, postData ) async {
 // Associates hostrepos with CEP.  single uid, or all for given platform
 Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
    String shortName = "GetHostA";
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    print( "FETCH HOSTACC" );
    
    if (response.statusCode == 201) {
@@ -602,7 +602,7 @@ Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
 // Lock uningested PEQActions, then return for processing.
 Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async {
    String shortName = "lockFetchPAction";
-   final response = await awsPost( shortName, postData, context, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable pacts = json.decode(utf8.decode(response.bodyBytes));

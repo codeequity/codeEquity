@@ -707,8 +707,6 @@ Future<bool> writeOneFromHost( WidgetTester tester, String cat ) async {
    return true;
 }
 
-// XXX writes, verifies all need to set required state internally.
-//     dealing with this outside the method is clumsy, sloppy
 Future<bool> writeOneFromAWS( WidgetTester tester, String cat ) async {
    await pumpSettle( tester, 1 );
    final Finder useCE = find.byKey( const Key( 'Use CodeEquity PEQ' ) );
@@ -908,7 +906,6 @@ Future<bool> statusPreRepair( WidgetTester tester ) async {
    return true;
 }
 
-// XXX context not used for awsUtils.. kill it.
 //  modify accr peq in aws directly, test attempt to rewrite using host - fail.     recover.
 Future<bool> statusModAWSAccr( WidgetTester tester ) async {
 
@@ -1109,6 +1106,10 @@ Future<bool> statusModDelete( WidgetTester tester ) async {
 }
 
 
+
+// NOTE: This set of tested interactions in statusFrame cover operations that are adequate to repair
+//       any single-notification loss between host and ceServer, or ceServer and aws.
+//       operations are: write one from aws to host, write one from host to aws, delete one from host, delete one from aws.
 void main() {
 
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -1158,10 +1159,6 @@ void main() {
          expect( await statusModDelete( tester ), true );
          
          // test statusUnavailable
-         // make 1 aws peq, make separate gh peq (make normal, then rem aws part?  or just remove aws part?)
-         // test overwrite 1, all on both ends.  Can 'make' by destroying a bit..
-         // make error with existing both, aws-only, host-only
-         // test each missing notification case + repair.  oi.
          
          await logout( tester );         
 
