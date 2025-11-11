@@ -1033,7 +1033,7 @@ Future<bool> statusModDelete( WidgetTester tester ) async {
    bool imIt = await setTestLock( tester, state, "true" );
    if( !imIt ) {
       print( "Lock already set, skipping" );
-      await pumpSettle( tester, 180 );
+      await pumpSettle( tester, 190 );
       return true;
    }
                
@@ -1143,7 +1143,6 @@ void main() {
          // Head to status page
          expect( await statusTabFraming( tester ), true );
 
-         /*
          expect( await statusPreRepair( tester ), true );
 
          // Snow Melt, from host
@@ -1154,7 +1153,6 @@ void main() {
 
          // Blast 1, from aws
          expect( await statusModHostPlan( tester ), true );
-         */
 
          // Delete testing, host and aws
          expect( await statusModDelete( tester ), true );
