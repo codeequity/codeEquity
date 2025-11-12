@@ -20,6 +20,8 @@ class CEAddHostPage extends StatefulWidget {
 
 class _CEAddHostState extends State<CEAddHostPage> {
 
+   late Map<String, HostPlatforms> platMap;
+   
    late var      container;
    late AppState appState;
    late bool     addHostAcct;
@@ -64,7 +66,7 @@ class _CEAddHostState extends State<CEAddHostPage> {
             ]);
    }
 
-   Widget _makePersonalAccessToken() {
+   Widget _makePersonalAccessTokenGH() {
       return Container( width: maxPaneWidth,
                         child: makeInputField( appState, "Github Personal Access Token", false, pat )
          );
@@ -95,7 +97,7 @@ class _CEAddHostState extends State<CEAddHostPage> {
                Container( height: appState.GAP_PAD ),
 
                Container( height: appState.GAP_PAD ),
-               _makePersonalAccessToken(),
+               _makePersonalAccessTokenGH(),
                makeBodyText( appState, patExplain, maxPaneWidth, true, 2 ),
 
                Container( height: appState.MID_PAD ),
@@ -109,7 +111,8 @@ class _CEAddHostState extends State<CEAddHostPage> {
    
    Widget _makeBody() {
       if( appState.loaded ) {
-         return _makeAssociateGH();
+         if( platMap["hostPlat"] == HostPlatforms.GitHub ) { return _makeAssociateGH(); }
+         else                                              { print( "Host organization not recognized." ); return Container( width: 10 ); }
       }
       else {
          if( appState.verbose >= 1 ) { print( "AppState not ? Loaded" ); }
@@ -123,6 +126,7 @@ class _CEAddHostState extends State<CEAddHostPage> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
       assert( appState != null );
+      platMap = ModalRoute.of(context)!.settings.arguments as Map<String,HostPlatforms>;
       
       pat = TextEditingController();
       

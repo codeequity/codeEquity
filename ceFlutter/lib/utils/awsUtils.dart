@@ -10,6 +10,7 @@ import 'package:collection/collection.dart';  // firstWhereOrNull
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
 
+import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
@@ -395,6 +396,8 @@ Future<Person?> fetchAPerson( context, container, ceUserId ) async {
 // Populates idHostMap
 Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, Map<String, Person> cePeople ) async {
    String shortName = "fetchHostMap";
+   if( hostPlatform != enumToStr( HostPlatforms.GitHub ) ) { print( "Host organization not recognized." ); return {}; }
+   
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
    final response = await awsPost( shortName, postData, container );
    
@@ -551,7 +554,7 @@ Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
       Linkage hostLinks = Linkage.fromJson(hostl);
       return hostLinks;
    } else if( response.statusCode == 204) {
-      print( "Fetch: no GitHub Linkage data found" );
+      print( "Fetch: no Host Linkage data found" );
       return null;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );

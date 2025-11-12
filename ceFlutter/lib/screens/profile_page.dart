@@ -179,9 +179,8 @@ class _CEProfileState extends State<CEProfilePage> {
      }
   }
 
-  // XXX Platform GitHub
   // XXX there is no need to get all this data - can reduce amount xferred
-  void updateProjects( context, container ) async {
+  void updateProjects( context, container, HostPlatforms hostPlat ) async {
      
      if( screenOpened  && screenArgs["profType"] == "CEProject" ) {
         assert( screenArgs["id"] != null );
@@ -200,13 +199,14 @@ class _CEProfileState extends State<CEProfilePage> {
 
         final pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$pid" }}';
 
-        final pdpa = '{ "Endpoint": "GetHostA", "HostPlatform": "GitHub"  }'; // XXX 
+        final hostName = enumToStr( hostPlat );
+        final pdpa = '{ "Endpoint": "GetHostA", "HostPlatform": "$hostName" }'; 
         
         Map<String,dynamic> rawPITable = {};
         List<HostAccount>   haccts     = [];
 
         await Future.wait([
-                             (!appState.hostPlatformsLoaded.contains( "GitHub" ) ? 
+                             (!appState.hostPlatformsLoaded.contains( enumToStr( hostPlat ) ) ? 
                               fetchHostAcct( context, container, pdpa ).then(                 (p) => haccts = p ) : 
                               new Future<bool>.value(true) ),
                              
@@ -226,7 +226,7 @@ class _CEProfileState extends State<CEProfilePage> {
         peqSummary = appState.cePEQSummaries[pid];
         equityPlan = appState.ceEquityPlans[vid];
 
-        if( !appState.hostPlatformsLoaded.contains( "GitHub" ) ) { appState.hostPlatformsLoaded.add( "GitHub" ); }
+        if( !appState.hostPlatformsLoaded.contains(  enumToStr( hostPlat ) ) ) { appState.hostPlatformsLoaded.add(  enumToStr( hostPlat ) ); }
         // One ha per platform, list length is 1
         for( HostAccount ha in haccts ) { appState.ceHostAccounts[ha.ceUserId] = [ha]; }
            
@@ -687,7 +687,7 @@ class _CEProfileState extends State<CEProfilePage> {
        
   }
      
-  Widget _makePersonBody( context ) {
+  Widget _makePersonBody( context, HostPlatforms hostPlat ) {
      assert( appState.cogUser != null );
 
      // aggressive, and without locking, failure for integration testing.
@@ -718,7 +718,7 @@ class _CEProfileState extends State<CEProfilePage> {
         
         // CE Host User
         for( var ha in hostAccs ) {
-           if( ha.hostPlatform == "GitHub" ) {      // XXX formalize
+           if( ha.hostPlatform == enumToStr( HostPlatforms.GitHub ) ) {
               if( ha.ceUserId == cePeep.id ) {
                  hostPeep["userName"] = ha.hostUserName;
                  hostPeep["id"]       = ha.hostUserId;
@@ -726,6 +726,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  ppWid                = _makePperCEP( context, ha, textWidth );
               }
            }
+           else { print( "Host organization not recognized." ); }
         }
      }
 
@@ -793,7 +794,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, "PEQ summary per project:", textWidth, false, 1, fontSize: 18 ),
                  ppWid,
                  makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
-                 makeTitleText( appState, "GitHub ID", textWidth, false, 1, fontSize: 18 ),
+                 makeTitleText( appState,  enumToStr( hostPlat ) + " ID", textWidth, false, 1, fontSize: 18 ),
                  makeTitleText( appState, hname, textWidth, false, 1 ),
                  ]),
            spacer,            
@@ -827,11 +828,11 @@ class _CEProfileState extends State<CEProfilePage> {
       spacer           = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
 
       updatePerson( context, container );
-      updateProjects( context, container );
+      updateProjects( context, container, HostPlatforms.GitHub );
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Profile" ),
-         body: screenArgs["profType"] == "Person" ? _makePersonBody( context ) : _makeProjectBody( context )
+         body: screenArgs["profType"] == "Person" ? _makePersonBody( context, HostPlatforms.GitHub ) : _makeProjectBody( context )
          );
   }
 }

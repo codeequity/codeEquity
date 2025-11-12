@@ -64,14 +64,14 @@ class _CEHomeState extends State<CEHomePage> {
          });
    }
 
-   Widget _addHostAcct() {
+   Widget _addHostAcct( HostPlatforms hostPlat ) {
       return makeActionButtonFixed(
          appState,
          "Go",
          buttonWidth,
          () async
          {
-            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEAddHostPage());
+            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEAddHostPage(), settings: RouteSettings( arguments: { "hostPlat": hostPlat } ));
             confirmedNav( context, container, newPage );
          });
    }
@@ -130,7 +130,6 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
 
-   // XXX host-specific
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
    List<Widget> _makeRepos( hosta ) {
       // print( "MakeRepos" );
@@ -139,20 +138,26 @@ class _CEHomeState extends State<CEHomePage> {
       List<Widget> repoChunks = [];
       var chunkHeight = 0.0;
 
-      Widget _connectBar = Row(
-         crossAxisAlignment: CrossAxisAlignment.center,
-         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         children: <Widget>[ makeTitleText( appState, "Connect to GitHub", textWidth, false, 1 ),
-                             Container( width: 10 ),
-                             _addHostAcct(),
-                             Container( width: 10 ),
-            ]);
-
+      List<Widget> _connectBar = [];
+      for( var hostPlat in HostPlatforms.values ) {
+         Widget connect = Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[ makeTitleText( appState, "Connect to " + enumToStr( hostPlat ), textWidth, false, 1 ),
+                                Container( width: 10 ),
+                                _addHostAcct( hostPlat ),
+                                Container( width: 10 ),
+               ]);
+         _connectBar.add( connect );
+      }
+      
       bool addedMore = false;
       if( hosta == -1 ) {
-         repoChunks.add( _connectBar );
-         chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-         addedMore = true;
+         for( var i = 0; i < _connectBar.length; i++ ) {
+            repoChunks.add( _connectBar[i] );
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+            addedMore = true;
+         }
       }
       else {
          if( hosta.futureCEProjects.length > 0 ) {

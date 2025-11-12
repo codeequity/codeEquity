@@ -466,7 +466,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let newCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, newRepo );
 
 	    if( utils.validField( pd, "checkDuplicate" ) ) {
-		let tdiff = ( Date.now() - pd.checkDuplicate ) / 10.0;
+		// want 10s, times are in ms.
+		let tdiff = ( Date.now() - pd.checkDuplicate ) / 1000.0;
 		console.log( authData.who, " .. checking request for checkDuplicate", newIssueId, tdiff );
 		if( tdiff >= 10 ) {
 		    console.log( authData.who, " - Ready.  Requesting check from aws." );

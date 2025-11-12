@@ -12,6 +12,7 @@ import 'package:ceFlutter/utils/ghUtils.dart';      // host-specific Utils
 
 import 'package:ceFlutter/screens/launch_page.dart';
 
+import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
@@ -250,7 +251,9 @@ Future<void> initMDState( context, container ) async {
    // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform.
    // XXX Scales poorly.  This could move to reloadCEProject, since idMapHost usage is by cep.
    //     Would be work to get cep, then hostRepo, which is stored in hostUser table, no real gains for a long time here.
-   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePeople ); // XXX gh
+   for( var hostPlat in HostPlatforms.values ) {
+      appState.idMapHost = await fetchHostMap( context, container, enumToStr( hostPlat ), appState.cePeople ); 
+   }
    
 }
 
