@@ -46,6 +46,7 @@ class _CEProfileState extends State<CEProfilePage> {
    late double rhsFrameMinWidth;
 
    late Widget spacer;
+   late Widget miniSpacer;
    late List<Widget> collabPeqTable;
    late List<String> displayedPeqTable;
      
@@ -83,7 +84,8 @@ class _CEProfileState extends State<CEProfilePage> {
 
 
   // if show/alert dialog needs dynamic updates, need to use statefulbuilder or statefulWidget
-  void popMRScroll( BuildContext context, scrollHeader, ceUserId, ceps,  dismissFunc, textWidth ) {
+  void popMRScroll( BuildContext context, scrollHeader, ceUserId, ceps, cepIds, dismissFunc, textWidth ) {
+     assert( ceps.length == cepIds.length );
      showDialog(
         context: context,
         builder: (BuildContext context)
@@ -92,7 +94,7 @@ class _CEProfileState extends State<CEProfilePage> {
               builder: ( context, setState )
               {
                  // setState must be defined within statefulBuilder:builder 
-                 Widget _makeCEPLink( cepId ){
+                 Widget _makeCEPLink( cepName, cepId ){
                     void _set( PointerEvent event )   { setState(() => appState.hoverChunk = cepId+ceUserId ); }
                     void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
                     
@@ -103,11 +105,14 @@ class _CEProfileState extends State<CEProfilePage> {
                           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                           confirmedNav( context, container, newPage );
                        },
-                       child: makeActionableText( appState, "   " + cepId, cepId+ceUserId, _set, _unset, textWidth, false, 1 ),
+                       child: makeActionableText( appState, "   " + cepName, cepName+ceUserId, _set, _unset, textWidth, false, 1 ),
                        );
                  }
-                 // ?? dart bug?  should not need to explicitly force .from here
-                 List<Widget> cepLinks = List<Widget>.from( ceps.map( (cepId) => _makeCEPLink( cepId ) ).toList() );
+                 // Need to convert ceps (names) to dds.
+                 List<Widget> cepLinks = [];
+                 for( int i = 0; i < ceps.length; i++ ) {
+                    cepLinks.add( _makeCEPLink( ceps[i], cepIds[i] ) );
+                 }
                  
                  Widget ceProjDetail = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,7 +258,6 @@ class _CEProfileState extends State<CEProfilePage> {
 
      CEProject cep = appState.ceProject[ cepId ] ?? CEProject.empty();
      CEVenture cev = appState.ceVenture[ cep.ceVentureId ] ?? CEVenture.empty();
-     final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
 
      Widget cepLink = GestureDetector(
         onTap: () async
@@ -310,7 +314,7 @@ class _CEProfileState extends State<CEProfilePage> {
         );
      }
 
-     Widget _makeProjLink( ceps ){
+     Widget _makeProjLink( ceps, cepIds ){
         // Project
         void _set( PointerEvent event )   { setState(() => appState.hoverChunk = "projects" + ceUserId );  }
         void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" );   }
@@ -318,7 +322,7 @@ class _CEProfileState extends State<CEProfilePage> {
         return GestureDetector( 
         onTap: () async
         {
-           popMRScroll( context, "CE Projects", ceUserId, ceps, () => Navigator.of( context ).pop(), textWidth );
+           popMRScroll( context, "CE Projects", ceUserId, ceps, cepIds, () => Navigator.of( context ).pop(), textWidth );
         },
         child: makeActionableText( appState, "projects", "projects"+ceUserId, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
         );
@@ -360,7 +364,7 @@ class _CEProfileState extends State<CEProfilePage> {
                           padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
                           child: IntrinsicWidth( child: Text( "Member of: " + ceProjs.length.toString(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)))
                           ),
-                       _makeProjLink( ceProjs ),
+                       _makeProjLink( ceProjs, ha.ceProjectIds ),
                        ]),
                  Row(
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -533,16 +537,60 @@ class _CEProfileState extends State<CEProfilePage> {
      
      return frame;
   }
+  
 
+  Widget _makeVentureLink( cevName, cevId, textWidth ){
+     void _set( PointerEvent event )   { setState(() => appState.hoverChunk = cevId+cevName ); }
+     void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+     
+     return GestureDetector( 
+        onTap: () async
+        {
+           Map<String,String> screenArgs = {"id": cevId, "profType": "CEVenture" };
+           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+           confirmedNav( context, container, newPage );
+        },
+        child: makeActionableText( appState, "Venture: " + cevName, cevId+cevName, _set, _unset, textWidth, false, 1 ),
+        );
+  }
+  
+  Widget _makeRoles( context, List<HostAccount> hostAccs, textWidth ) {
+     List<Widget> rows = [];
 
-  // accrued, tasked out, untasked,total allocated
-  Widget _makeProjectBody( context ) {
-     final textWidth  = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
-     final spacer     = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
-     final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
+     for( int i = 0; i < hostAccs.length; i++ ) {
+        rows.add( makeTitleText( appState, hostAccs[i], textWidth * 1.1, false, 1 ));
+     }
+     Widget frame = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: rows
+        );
+     
+     return frame;
+  }
 
-     List<Widget> repoWid = [spacer];
-     Widget collabWid     = spacer;
+  Widget _getProfImage( name, nameAlt ) {
+     Widget pi;
+     if( name == "" || name == "-1" ) {
+        double gap = lhsFrameMaxWidth / 3.0;
+        pi = Padding(
+           padding: EdgeInsets.fromLTRB(gap, gap/2.0, gap, gap/2.0),
+           child: Container( width: gap, height: gap, child: CircularProgressIndicator() )
+           );
+     }
+     else {
+        String iname = name.length > 0 ? name : nameAlt;
+        pi = Image.asset( "images/"+iname[0].toLowerCase() + "Grad.jpg",
+                          key: Key( iname[0].toLowerCase() + "GradImage" ),
+                          width: lhsFrameMaxWidth,
+                          color: Colors.grey.withOpacity(0.05),
+                          colorBlendMode: BlendMode.darken );
+     }
+     return pi;
+  }
+
+  Widget _makeCEBody( context, Widget botLeft, Widget rhs ) {
+     final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
      Widget? pi           = null;
      CEVenture cev        = CEVenture.empty();
      CEProject cep        = CEProject.empty();
@@ -559,60 +607,17 @@ class _CEProfileState extends State<CEProfilePage> {
         assert( cev.ceVentureId != "-1" );
         
         if( profileImage != null ) { pi   = profileImage!; }
-        if( equityPlan != null )   { ep   = equityPlan!; }
-        if( peqSummary != null )   { psum = peqSummary!; }
+        if( equityPlan   != null ) { ep   = equityPlan!; }
+        if( peqSummary   != null ) { psum = peqSummary!; }
 
-        // CEProject repos
-        for( int i = 0; i < cep.repositories.length; i++ ) {
-           if( i == 0 ) { repoWid = [ makeTitleText( appState, "   " + cep.repositories[i]  + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 ) ]; }
-           else         { repoWid.add( makeTitleText( appState, "   " + cep.repositories[i] + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 )); }
-        }
-
-        // CEProject Collabs
-        List<HostAccount> collabs = [];
-        for( String ceuid in appState.ceHostAccounts.keys ) {
-           assert( appState.ceHostAccounts[ceuid] != null );
-           List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
-           for( HostAccount ha in has ) {
-              if( ha.hostPlatform == cep.hostPlatform && ha.ceProjectIds.contains( cepId ) ) {
-                 collabs.add( ha );
-              }
-           }
-        }
-        collabWid = _makeCollabs( context, collabs, textWidth );
      }
 
-     if( pi == null ) {
-        if( cepId == "-1" ) {
-           double gap = lhsFrameMaxWidth / 3.0;
-           pi = Padding(
-              padding: EdgeInsets.fromLTRB(gap, gap/2.0, gap, gap/2.0),
-              child: Container( width: gap, height: gap, child: CircularProgressIndicator() )
-              );
-        }
-        else {
-           String iName = "images/"+cepId![0].toLowerCase() + "Grad.jpg";
-           pi = Image.asset( iName,
-                             key: Key( cepId![0].toLowerCase()+"GradImage" ),
-                             width: lhsFrameMaxWidth,
-                             color: Colors.grey.withOpacity(0.05),
-                             colorBlendMode: BlendMode.darken );
-        }
-     }
-
+     if( pi == null ) { pi = _getProfImage( cepId, "a" ); }
+     
      double accr     = ep.totalAllocation > 0 ? ( 1.0 * psum.accruedTot ) / ep.totalAllocation : 0.0;
      double tasked   = ep.totalAllocation > 0 ? ( 1.0 * psum.taskedTot  ) / ep.totalAllocation : 0.0;
      double unTasked = ep.totalAllocation > 0 ? ( 1.0 - accr - tasked ) : 0.0;
 
-     /*
-     Widget project = GestureDetector( 
-        onTap: () async
-        {
-        },
-        child: makeActionableText( appState, cep.name, "ppCEP"+cepId, _set, _unset, textWidth, false, 1, keyPreface: "ppCEP" ),
-        );
-     */
-     
      return Wrap(
         children: [
            spacer, 
@@ -626,7 +631,8 @@ class _CEProfileState extends State<CEProfilePage> {
                  // project,
                  makeTitleText( appState, "Id: " + cep.ceProjectId, textWidth, false, 1 ),
                  makeTitleText( appState, cep.description, textWidth, false, 1 ),
-                 makeTitleText( appState, "Venture: " + cev.name, textWidth, false, 1, fontSize: 14 ),
+                 // makeTitleText( appState, "Venture: " + cev.name, textWidth, false, 1, fontSize: 14 ),
+                 _makeVentureLink( cev.name, cev.ceVentureId, textWidth ),
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
@@ -663,30 +669,151 @@ class _CEProfileState extends State<CEProfilePage> {
                              ]),                       
                        ]),
                  miniSpacer,
-                 makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
-                 makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ),
-                 makeTitleText( appState, "Project management system:" , textWidth, false, 1 ),
-                 makeTitleText( appState, "   " + cep.projectMgmtSys , textWidth, false, 1 ),
-                 makeTitleText( appState, "Repositories:", textWidth, false, 1 ),
-                 Column( 
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: repoWid ),
+                 botLeft,
                  ]),
-           spacer,            
-           Column( 
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: <Widget>[
-                 spacer,
-                 makeTitleText( appState, "Collaborators", textWidth, false, 1, fontSize: 18 ),
-                 spacer,
-                 collabWid,
-                 ])
+           spacer,
+           rhs
            ]);
        
   }
+
+  Widget _makeProjectBody( context ) {
+     final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
+     Widget collabWid     = spacer;
+     CEProject cep        = CEProject.empty();
+     String cepId         = cep.ceProjectId;
+     List<Widget> repoWid = [spacer];
      
+     if( !screenOpened ) {
+        assert( appState.ceProject != {} );
+        cep = appState.ceProject[ screenArgs["id"] ] ?? CEProject.empty();
+        cepId   = cep.ceProjectId;
+        assert( cepId != "-1" );
+
+        // CEProject repos
+        for( int i = 0; i < cep.repositories.length; i++ ) {
+           if( i == 0 ) { repoWid = [ makeTitleText( appState, "   " + cep.repositories[i]  + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 ) ]; }
+           else         { repoWid.add( makeTitleText( appState, "   " + cep.repositories[i] + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 )); }
+        }
+
+        // CEProject Collabs
+        List<HostAccount> collabs = [];
+        for( String ceuid in appState.ceHostAccounts.keys ) {
+           assert( appState.ceHostAccounts[ceuid] != null );
+           List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
+           for( HostAccount ha in has ) {
+              if( ha.hostPlatform == cep.hostPlatform && ha.ceProjectIds.contains( cepId ) ) {
+                 collabs.add( ha );
+              }
+           }
+        }
+        collabWid = _makeCollabs( context, collabs, textWidth );
+     }
+
+     Widget hplat = 
+        Column( 
+           crossAxisAlignment: CrossAxisAlignment.start,
+           mainAxisAlignment: MainAxisAlignment.start,
+           children: <Widget>[
+              makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
+              makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ),
+              makeTitleText( appState, "Project management system:" , textWidth, false, 1 ),
+              makeTitleText( appState, "   " + cep.projectMgmtSys , textWidth, false, 1 ),
+              makeTitleText( appState, "Repositories:", textWidth, false, 1 ),
+              Column( 
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 mainAxisAlignment: MainAxisAlignment.start,
+                 children: repoWid ),
+              ]);
+     
+     Widget collabs =
+        Column( 
+           crossAxisAlignment: CrossAxisAlignment.start,
+           mainAxisAlignment: MainAxisAlignment.start,
+           children: <Widget>[
+              spacer,
+              makeTitleText( appState, "Collaborators", textWidth, false, 1, fontSize: 18 ),
+              spacer,
+              collabWid,
+              ]);
+
+     return _makeCEBody( context, hplat, collabs ); 
+     
+  }
+
+  Widget _makeVentureBody( context ) {
+     final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
+     CEVenture cev        = CEVenture.empty();
+     String cevId         = cev.ceVentureId;
+     List<Widget> cepWid  = [spacer];
+     List<String> cepIds  = [];
+     Widget rolesWid      = spacer;
+     
+     if( !screenOpened ) {
+        assert( appState.ceVenture != {} );
+        cev = appState.ceVenture[ screenArgs["id"] ] ?? CEVenture.empty();
+        cevId   = cev.ceVentureId;
+        assert( cevId != "-1" );
+
+        // CEProjects
+        bool first = true;
+        for( String cepKey in appState.ceProject.keys ) {
+           CEProject cep = appState.ceProject[ cepKey ]!;
+           if( cep.ceVentureId == cevId ) {
+              if( first ) { cepWid = [ makeTitleText( appState, "   " + cep.name  + " (" + cep.ceProjectId + ")", textWidth*1.2, false, 1 ) ]; }
+              else        { cepWid.add( makeTitleText( appState, "   " + cep.name + " (" + cep.ceProjectId + ")", textWidth*1.2, false, 1 )); }
+              first = false;
+              cepIds.add( cep.ceProjectId );
+           }
+        }
+
+        // CEProject Collabs
+        List<HostAccount> collabs = [];
+        for( String ceuid in appState.ceHostAccounts.keys ) {
+           assert( appState.ceHostAccounts[ceuid] != null );
+           List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
+           for( String cepId in cepIds ) {
+              for( HostAccount ha in has ) {
+                 if( ha.hostPlatform == appState.ceProject[cepId]!.hostPlatform && ha.ceProjectIds.contains( cepId ) ) {
+                    // XXX can double-add.. fix
+                    collabs.add( ha );
+                 }
+              }
+           }
+        }
+        rolesWid = _makeRoles( context, collabs, textWidth );
+     }
+
+     Widget ceProjects = 
+        Column( 
+           crossAxisAlignment: CrossAxisAlignment.start,
+           mainAxisAlignment: MainAxisAlignment.start,
+           children: <Widget>[
+              makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
+              makeTitleText( appState, "CEProjects:", textWidth, false, 1, fontSize: 18 ),
+              makeTitleText( appState, "Current:", textWidth, false, 1 ),
+              Column( 
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 mainAxisAlignment: MainAxisAlignment.start,
+                 children: cepWid ),
+              ]);
+     
+     Widget roles =
+        Column( 
+           crossAxisAlignment: CrossAxisAlignment.start,
+           mainAxisAlignment: MainAxisAlignment.start,
+           children: <Widget>[
+              spacer,
+              makeTitleText( appState, "Collaborator Roles", textWidth, false, 1, fontSize: 18 ),
+              spacer,
+              rolesWid,
+              ]);
+
+     return _makeCEBody( context, ceProjects, roles ); 
+     
+  }
+  
+  
   Widget _makePersonBody( context, HostPlatforms hostPlat ) {
      assert( appState.cogUser != null );
 
@@ -695,8 +822,6 @@ class _CEProfileState extends State<CEProfilePage> {
 
      final itsMe      = screenArgs["id"] == "";   // Is this profile for the logged in user?
      final textWidth  = lhsFrameMaxWidth - 2*appState.GAP_PAD - appState.TINY_PAD;
-     final spacer     = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
-     final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
      final ceUserName = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
      Widget? pi        = null;
 
@@ -741,24 +866,7 @@ class _CEProfileState extends State<CEProfilePage> {
         updatedPeqTable = false;
      }
 
-     if( pi == null ) {
-        if( cePeep.userName == "" ) {
-           double gap = lhsFrameMaxWidth / 3.0;
-           pi = Padding(
-              padding: EdgeInsets.fromLTRB(gap, gap/2.0, gap, gap/2.0),
-              child: Container( width: gap, height: gap, child: CircularProgressIndicator() )
-              );
-        }
-        else {
-           String uname = cePeep.userName.length > 0 ? cePeep.userName : ceUserName;
-           // print( "XXX KEY: *" + uname[0].toLowerCase() + "GradImage*" );
-           pi = Image.asset( "images/"+uname[0].toLowerCase() + "Grad.jpg",
-                             key: Key( uname[0].toLowerCase() + "GradImage" ),
-                             width: lhsFrameMaxWidth,
-                             color: Colors.grey.withOpacity(0.05),
-                             colorBlendMode: BlendMode.darken );
-        }
-     }
+     if( pi == null ) { pi = _getProfImage( cePeep.userName, ceUserName ); }
 
      String hname = hostPeep["userName"] == "" ? "" : hostPeep["userName"]! + " (" + hostPeep["id"]! + ")";
      String cname = cePeep.userName == "" ? "" : cePeep.userName + " (" + cePeep.id + ")";
@@ -813,6 +921,12 @@ class _CEProfileState extends State<CEProfilePage> {
            ]);
   }
 
+  Widget chooseProfile( BuildContext context, String? profType, HostPlatforms platform ) {
+     if(      profType == "Person"    ) { return _makePersonBody( context, HostPlatforms.GitHub ); }
+     else if( profType == "CEProject" ) { return _makeProjectBody( context ); }
+     else if( profType == "CEVenture" ) { return _makeVentureBody( context ); }
+     else                               { return spacer; }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -826,13 +940,15 @@ class _CEProfileState extends State<CEProfilePage> {
       lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       rhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       spacer           = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
+      miniSpacer       = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
 
       updatePerson( context, container );
       updateProjects( context, container, HostPlatforms.GitHub );
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Profile" ),
-         body: screenArgs["profType"] == "Person" ? _makePersonBody( context, HostPlatforms.GitHub ) : _makeProjectBody( context )
+         //body: screenArgs["profType"] == "Person" ? _makePersonBody( context, HostPlatforms.GitHub ) : _makeProjectBody( context )
+         body: chooseProfile( context, screenArgs["profType"], HostPlatforms.GitHub )
          );
   }
 }

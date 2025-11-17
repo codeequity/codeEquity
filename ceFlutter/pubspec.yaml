@@ -28,7 +28,7 @@ dependencies:
   localstore: ^1.2.0
   amazon_cognito_identity_dart_2: ^3.6.5
   http: ^1.2.2
-  fluttertoast: ^8.0.2
+  fluttertoast: ^9.0.0
   github: ^9.24.0
   image: ^4.3.0
   tuple: ^2.0.0

@@ -11,15 +11,6 @@ import 'package:integration_test/integration_test.dart';
 
 import 'utils.dart';
 
-// create account
-// do 'lots of stuff'.
-// logout
-// login
-// login( driver );
-// do same 'lots of stuff'
-// logout
-// kill account
-
 /*
 https://api.flutter.dev/flutter/flutter_test/CommonFinders/byKey.html
 https://docs.flutter.dev/testing/integration-tests
@@ -158,17 +149,22 @@ void main() {
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-   
    bool skipLogin = true;
 
-   // override?  Run it.
+   // override?  Run it.   i.e. would need to see testCEFlutter add '--dart-define override == true' 
    var override = const String.fromEnvironment('override');
    if( override == "True" ) { skipLogin = false; }
+
+   // XXX
+   skipLogin = false; 
    
+   // NOTE if running this by hand and get 'EXCEPTION CAUGHT BY GESTURES LIBRARY Bad state: No element', ignore..
+   //      most likely did not pumpWidget appstate (restart) before running cursor over window.
+   print( "Launch" );
+   if( skipLogin ) { print("Launch testing is turned off.  Set override to turn it back on" ); }
    report( 'Launch', group:true );
-   
+
    testWidgets('Login known', skip:skipLogin, (WidgetTester tester) async {
-         
          await restart( tester );
          
          bool known = true;
@@ -176,6 +172,7 @@ void main() {
          
          report( 'Login known' );
       });
+   
    
    testWidgets('Login again on restart without logout', skip:skipLogin, (WidgetTester tester) async {
          
@@ -187,7 +184,6 @@ void main() {
          
          report( 'Login again on restart without logout' );
       });
-   
    testWidgets( 'Login unknown', skip:skipLogin, (WidgetTester tester) async {
          
          await restart( tester );
@@ -227,7 +223,6 @@ void main() {
          
          report( 'Signup framing' );
       });
-
    
    // Note: can't run this test regularly until there is a process to clean up aws:cognito.  Leaves users all over, or tests fail due to known user.
    testWidgets('Signup parameter checks', skip:true, (WidgetTester tester) async {
