@@ -93,25 +93,13 @@ class _CEProfileState extends State<CEProfilePage> {
            return StatefulBuilder( 
               builder: ( context, setState )
               {
-                 // setState must be defined within statefulBuilder:builder 
-                 Widget _makeCEPLink( cepName, cepId ){
-                    void _set( PointerEvent event )   { setState(() => appState.hoverChunk = cepId+ceUserId ); }
-                    void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
-                    
-                    return GestureDetector( 
-                       onTap: () async
-                       {
-                          Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
-                          MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-                          confirmedNav( context, container, newPage );
-                       },
-                       child: makeActionableText( appState, "   " + cepName, cepName+ceUserId, _set, _unset, textWidth, false, 1 ),
-                       );
-                 }
                  // Need to convert ceps (names) to dds.
                  List<Widget> cepLinks = [];
                  for( int i = 0; i < ceps.length; i++ ) {
-                    cepLinks.add( _makeCEPLink( ceps[i], cepIds[i] ) );
+                    // setState must be defined within statefulBuilder:builder, else operates in wrong context
+                    void _set( PointerEvent event )   { setState(() => appState.hoverChunk = cepIds[i]+ceUserId ); }
+                    void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+                    cepLinks.add( _makeCEPLink( ceps[i], cepIds[i], set: _set, unset: _unset, trigger: cepIds[i] + ceUserId, namePreface: "   " ));
                  }
                  
                  Widget ceProjDetail = Column(
@@ -345,22 +333,6 @@ class _CEProfileState extends State<CEProfilePage> {
      List<String> ceProjs = ha.ceProjectIds.map( (pid) => (appState.ceProject[pid] ?? CEProject.empty()).name ).toList();
      // XXX Compute this
      Map<String,String> mostActive = ceProjs.length > 0 ? {"name": ceProjs[0], "id": ha.ceProjectIds[0] } : {"name": "", "id": "" };
-
-     // XXX seem to need strict copy here to satisfy popMRScroll:alertdialog state requirements?
-     Widget _makeCEPLink( mostActive ){
-        void _set( PointerEvent event )   { setState(() => appState.hoverChunk = mostActive["id"]+ceUserId ); }
-        void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
-        
-        return GestureDetector( 
-           onTap: () async
-           {
-              Map<String,String> screenArgs = {"id": mostActive["id"], "profType": "CEProject" };
-              MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-              confirmedNav( context, container, newPage );
-           },
-           child: makeActionableText( appState, mostActive["name"], mostActive["id"]+ceUserId, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
-           );
-     }
      
      Widget card = Card.outlined(
         child: ConstrainedBox(
@@ -388,7 +360,7 @@ class _CEProfileState extends State<CEProfilePage> {
                           padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
                           child: IntrinsicWidth( child: Text( ceProjs.length == 0 ? "" : "Most active in: ", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)))
                           ),
-                       _makeCEPLink( mostActive ),
+                       _makeCEPLink( mostActive["name"], mostActive["id"], trigger: mostActive["id"]! + ceUserId, realign: true )
                        ]),
                  ])
            ));
@@ -531,7 +503,11 @@ class _CEProfileState extends State<CEProfilePage> {
      
      return frame;
   }
-  
+
+  // Roles: Executive, grantor, member.
+  //        shared across every CEP in CEV
+  // NOTE: there must be at least 1 executive per CEV, minimum.  So, by default, project creator is the executive.
+  // Every role can remove/add peer, and below.   
   Widget _makeCollabs( context, List<HostAccount> hostAccs, textWidth ) {
      List<Widget> ceps = [];
 
@@ -551,36 +527,7 @@ class _CEProfileState extends State<CEProfilePage> {
      
      return frame;
   }
-  
-
-  // XXX sibling to makeCEPLink clearer?
-  Widget _makeMinorLink( String? profType, minor, List<String> cepIds, textWidth ){
-     print( "Make Minor " + profType! + " " + minor.name );
-     String id        = profType == "CEProject" ? minor.ceVentureId : minor.ceProjectId;
-     String link      = profType == "CEProject" ? minor.name        : (cepIds ?? []).toString();
-     String minorType = profType == "CEProject" ? "CEVenture"       : "CEProject";
-     String name = minor.name;
-     
-     void _set( PointerEvent event )   { setState(() => appState.hoverChunk = id+name ); }
-     void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
-
-     return Wrap( children: [
-                     Padding(
-                          padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
-                          child: IntrinsicWidth( child: Text( minorType + ":", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)))
-                          ),
-                     GestureDetector( 
-                        onTap: () async
-                        {
-                           Map<String,String> screenArgs = {"id": id, "profType": minorType };
-                           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-                           confirmedNav( context, container, newPage );
-                        },
-                        child: makeActionableText( appState, link, id+name, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
-                        )
-                     ]);
-  }
-  
+    
   Widget _makeRoles( context, List<HostAccount> hostAccs, textWidth ) {
      List<Widget> rows = [];
 
@@ -678,7 +625,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  // project,
                  makeTitleText( appState, "Id: " + primeId, textWidth, false, 1 ),
                  makeTitleText( appState, desc, textWidth, false, 1 ),
-                 screenArgs["profType"] == "CEProject" ? _makeMinorLink( screenArgs["profType"], minor, cepIds, textWidth ) : miniSpacer,
+                 screenArgs["profType"] == "CEProject" ? _makeCEVLink( cev.name, cev.ceVentureId, cepIds, textWidth ) : miniSpacer,
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
@@ -797,6 +744,50 @@ class _CEProfileState extends State<CEProfilePage> {
      }
      return cepIds;
   }
+
+  Widget _makeCEPLink( cepName, cepId, {set = null, unset = null, trigger = "", namePreface = "", realign = false} ) {
+     trigger = trigger == "" ? cepName+cepId : trigger;
+     final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
+     if( set == null ) {
+        void _set( PointerEvent event )   { setState(() => appState.hoverChunk = trigger ); }
+        void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+        set = _set;
+        unset = _unset;
+     }
+
+     return GestureDetector( 
+        onTap: () async
+        {
+           Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
+           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+           confirmedNav( context, container, newPage );
+        },
+        child: realign ?
+        makeActionableText( appState, namePreface + cepName, trigger, set, unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ) : 
+        makeActionableText( appState, namePreface + cepName, trigger, set, unset, textWidth, false, 1 ),
+        );
+  }
+
+  Widget _makeCEVLink( cevName, cevId, List<String> cepIds, textWidth ){
+     void _set( PointerEvent event )   { setState(() => appState.hoverChunk = cevId+cevName ); }
+     void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+
+     return Wrap( children: [
+                     Padding(
+                          padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+                          child: IntrinsicWidth( child: Text( "Venture:", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)))
+                          ),
+                     GestureDetector( 
+                        onTap: () async
+                        {
+                           Map<String,String> screenArgs = {"id": cevId, "profType": "CEVenture" };
+                           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+                           confirmedNav( context, container, newPage );
+                        },
+                        child: makeActionableText( appState, cevName, cevId+cevName, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
+                        )
+                     ]);
+  }
   
   Widget _makeVentureBody( context ) {
      final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
@@ -805,22 +796,6 @@ class _CEProfileState extends State<CEProfilePage> {
      List<Widget> cepWid  = [spacer];
      List<String> cepIds  = [];
      Widget rolesWid      = spacer;
-
-     // XXX too many copies
-     Widget _makeCEPLink( cepName, cepId ){
-        void _set( PointerEvent event )   { setState(() => appState.hoverChunk = cepName+cepId ); }
-        void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
-        
-        return GestureDetector( 
-           onTap: () async
-           {
-              Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
-              MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-              confirmedNav( context, container, newPage );
-           },
-           child: makeActionableText( appState, "   " + cepName, cepName+cepId, _set, _unset, textWidth, false, 1 ),
-           );
-     }
 
      print( "loaded venture? " + screenOpened.toString() );
      if( !screenOpened ) {
@@ -835,10 +810,8 @@ class _CEProfileState extends State<CEProfilePage> {
            bool first = true;
            CEProject cep = appState.ceProject[ cepId ]!;
            assert( cep.ceVentureId == cevId );
-           if( first ) { cepWid = [ _makeCEPLink( cep.name, cep.ceProjectId )]; }
-           else        { cepWid.add( _makeCEPLink( cep.name, cep.ceProjectId )); }
-           // if( first ) { cepWid = [ makeTitleText( appState, "   " + cep.name  + " (" + cep.ceProjectId + ")", textWidth*1.2, false, 1 ) ]; }
-           // else        { cepWid.add( makeTitleText( appState, "   " + cep.name + " (" + cep.ceProjectId + ")", textWidth*1.2, false, 1 )); }
+           if( first ) { cepWid = [ _makeCEPLink( cep.name, cep.ceProjectId, namePreface: "   " )]; }
+           else        { cepWid.add( _makeCEPLink( cep.name, cep.ceProjectId, namePreface: "   " )); }
            first = false;
         }
 
@@ -866,7 +839,7 @@ class _CEProfileState extends State<CEProfilePage> {
            children: <Widget>[
               makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
               makeTitleText( appState, "CEProjects:", textWidth, false, 1, fontSize: 18 ),
-              makeTitleText( appState, "Current:", textWidth, false, 1 ),
+              // makeTitleText( appState, "Current:", textWidth, false, 1 ),
               Column( 
                  crossAxisAlignment: CrossAxisAlignment.start,
                  mainAxisAlignment: MainAxisAlignment.start,
@@ -1011,7 +984,7 @@ class _CEProfileState extends State<CEProfilePage> {
       assert( appState != null );
       screenArgs = ModalRoute.of(context)!.settings.arguments as Map<String,String>;
 
-      print( "XXX " + screenArgs.toString() );
+      // print( "XXX " + screenArgs.toString() );
       
       lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;
       lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
