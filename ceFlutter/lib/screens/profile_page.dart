@@ -1,3 +1,4 @@
+import 'dart:ui';       // pointerKinds
 import 'dart:math';
 import 'dart:convert';  // json encode/decode
 import 'package:flutter/material.dart';
@@ -24,6 +25,22 @@ import 'package:ceFlutter/models/Allocation.dart';
 
 import 'package:ceFlutter/customLetters.dart';
 
+
+
+// XXX copy!
+// XXX move to WidgetUtils?
+// Workaround breaking change 5/2021
+// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
+class MyCustomScrollBehavior2 extends MaterialScrollBehavior {
+  // Override behavior methods and getters like dragDevices
+  @override
+  Set<PointerDeviceKind> get dragDevices => { 
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+  };
+}
+
+
 class CEProfilePage extends StatefulWidget {
   CEProfilePage({Key? key}) : super(key: key);
 
@@ -45,8 +62,14 @@ class _CEProfileState extends State<CEProfilePage> {
    late double lhsFrameMaxWidth;
    late double rhsFrameMinWidth;
 
+   // Keep size of headers for roles frame view.  Use this for key indexing
+   late int roleHeaderTop; 
+   
+   late Widget vSpace;
    late Widget spacer;
    late Widget miniSpacer;
+   late Widget empty;       // XXX formalize
+   
    late List<Widget> collabPeqTable;
    late List<String> displayedPeqTable;
      
@@ -158,7 +181,7 @@ class _CEProfileState extends State<CEProfilePage> {
         assert( appState.ceHostAccounts[profId] != null );
         
         assert( appState.cogUser != null );
-        if( myself!.userName != appState.cogUser!.preferredUserName ) { print( "NOTE!  Profile is not for " + myself!.userName ); }
+        if( myself!.userName != appState.cogUser!.preferredUserName ) { print( "Checking out a different profile: " + myself!.userName ); }
         
         if( rawPITable.keys.length > 0 ) {
            print( rawPITable["CEProfileId"] + " " + rawPITable["ByteData"].length.toString() );
@@ -260,7 +283,8 @@ class _CEProfileState extends State<CEProfilePage> {
 
      CEProject cep = appState.ceProject[ cepId ] ?? CEProject.empty();
      CEVenture cev = appState.ceVenture[ cep.ceVentureId ] ?? CEVenture.empty();
-
+     final cepIds  = _getCEProjects( cev.ceVentureId );
+ 
      Widget cepLink = GestureDetector(
         onTap: () async
         {
@@ -283,7 +307,8 @@ class _CEProfileState extends State<CEProfilePage> {
                  cepLink,
                  miniSpacer,
                  makeTitleText( appState, cep.description, textWidth, false, 1, fontSize: 14 ),
-                 makeTitleText( appState, "Venture: " + cev.name, textWidth, false, 1, fontSize: 14 ),
+                 // makeTitleText( appState, "Venture: " + cev.name, textWidth, false, 1, fontSize: 14 ),
+                 _makeCEVLink( cev.name, cev.ceVentureId, cepIds, textWidth ),
                  ]
               )
            ),
@@ -291,20 +316,12 @@ class _CEProfileState extends State<CEProfilePage> {
      return card;
   }
 
-  Widget _makeCollabCard( context, HostAccount ha, textWidth, maxProjCount ) {
-     String ceUserId = ha.ceUserId;
-     // print( ceUserId + " " + appState.cePeople.toString() );
-     assert( appState.cePeople[ ceUserId ] != null );
-     Person cePeep = appState.cePeople[ ceUserId ]!;
-
-     String ceName = cePeep.firstName + " " + cePeep.lastName;
-
-     Widget makeCollabLink() {
-        // Person
-        void _setTitle( PointerEvent event )   { setState(() => appState.hoverChunk = ceUserId );  }
-        void _unsetTitle( PointerEvent event ) { setState(() => appState.hoverChunk = "" );        }
-
-        return GestureDetector(
+  Widget _makeCollabLink( String ceUserId, String ceUserName, double textWidth ) {
+     // Person
+     void _setTitle( PointerEvent event )   { setState(() => appState.hoverChunk = ceUserId );  }
+     void _unsetTitle( PointerEvent event ) { setState(() => appState.hoverChunk = "" );        }
+     
+     return GestureDetector(
         onTap: () async
         {
            Map<String,String> screenArgs = {"id": ceUserId, "profType": "Person" };
@@ -312,9 +329,16 @@ class _CEProfileState extends State<CEProfilePage> {
            confirmedNav( context, container, newPage );
         },
         // If just use ceName, all same name collabs are highlighted.
-        child: makeActionableText( appState, ceName, ceUserId, _setTitle, _unsetTitle, textWidth, false, 1 ),
+        child: makeActionableText( appState, ceUserName, ceUserId, _setTitle, _unsetTitle, textWidth, false, 1 ),
         );
-     }
+  }
+
+  
+  Widget _makeCollabCard( context, HostAccount ha, textWidth, maxProjCount ) {
+     String ceUserId = ha.ceUserId;
+     // print( ceUserId + " " + appState.cePeople.toString() );
+     assert( appState.cePeople[ ceUserId ] != null );
+     Person cePeep = appState.cePeople[ ceUserId ]!;
 
      Widget _makeProjLink( ceps, cepIds ){
         // Project
@@ -340,7 +364,7 @@ class _CEProfileState extends State<CEProfilePage> {
            child: ListView(
               scrollDirection: Axis.vertical,
               children: [
-                 makeCollabLink(),
+                 _makeCollabLink( ceUserId, cePeep.getFullName(), textWidth ),
                  makeTitleText( appState, cePeep.userName + " (" + ceUserId + ")", textWidth, false, 1 ),
                  Row(
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -527,20 +551,70 @@ class _CEProfileState extends State<CEProfilePage> {
      
      return frame;
   }
-    
-  Widget _makeRoles( context, List<HostAccount> hostAccs, textWidth ) {
-     List<Widget> rows = [];
 
-     for( int i = 0; i < hostAccs.length; i++ ) {
-        rows.add( makeTitleText( appState, hostAccs[i].ceUserId, textWidth * 1.1, false, 1 ));
-     }
-     Widget frame = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: rows
-        );
+  List<List<Widget>> _getRoleHeader( double textWidth ) {
+     final width = ( rhsFrameMinWidth - 2*appState.FAT_PAD ) / 4.0;
      
-     return frame;
+     List<List<Widget>> header = [];
+     Widget hdiv               = makeHDivider( appState, textWidth, appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD );
+                    
+     Widget row0 = Container( width: 1.5*width, child: makeTableText( appState, "CodeEquity User", width, appState!.CELL_HEIGHT, false, 1 ) );
+     Widget row1 = Container( width: 1.2*width, child: makeTableText( appState, "Role", width, appState!.CELL_HEIGHT, false, 1 ) );
+     
+     header.add( [ vSpace, vSpace, vSpace, vSpace, vSpace, vSpace, vSpace ] );
+     header.add( [ row0, row1, empty, empty, empty, empty, empty] );
+     header.add( [ hdiv, empty, empty, empty, empty, empty, empty ] );
+     
+     roleHeaderTop = header.length; 
+     return header;
+  }
+
+  List<List<Widget>> _getRoleBody( List<HostAccount> hostAccs, double textWidth ) {
+     List<List<Widget>> roleBody = [];
+     final width = ( rhsFrameMinWidth - 2*appState.FAT_PAD ) / 4.0;
+      
+     for( int i = 0; i < hostAccs.length; i++ ) {
+        String ceUserId = hostAccs[i].ceUserId;
+        assert( appState.cePeople[ ceUserId ] != null );
+        Person cePeep = appState.cePeople[ ceUserId ]!;
+
+        // XXX use role enum
+        Widget row0 = _makeCollabLink( ceUserId, cePeep.getFullName(), textWidth * 1.1 );
+        Widget row1 = Container( width: 1.2*width, child: makeTableText( appState, "Exective", width, appState!.CELL_HEIGHT, false, 1 ) );
+        Widget row2 = makeToolTip( Icon( Icons.check_circle_outline, color: Colors.green ), "Executive can perform any action in the Venture.", wait: true );
+        Widget row3 = Container( width: 1.2*width, child: makeTableText( appState, "Grantor", width, appState!.CELL_HEIGHT, false, 1 ) );
+        Widget row4 = makeToolTip( Icon( Icons.cancel_outlined, color: Colors.red ), "Executive can perform any action in the Venture.", wait: true );
+        Widget row5 = Container( width: 1.2*width, child: makeTableText( appState, "Member", width, appState!.CELL_HEIGHT, false, 1 ) );
+        Widget row6 = makeToolTip( Icon( Icons.check_circle_outlined, color: Colors.red ), "Executive can perform any action in the Venture.", wait: true );
+        roleBody.add( [ row0, row1, row2, row3, row4, row5, row6, ] );
+     }
+     return roleBody;
+  }
+
+  Widget _makeRoles( context, List<HostAccount> hostAccs, double textWidth ) {
+     List<List<Widget>> roles = [];
+     roles.addAll( _getRoleHeader( textWidth ));
+     roles.addAll( _getRoleBody( hostAccs, textWidth ));
+     
+     final svHeight       = ( appState.screenHeight ) * .4;
+     final svWidth        = rhsFrameMinWidth * 2.0;             // XXX oi
+     
+     return ScrollConfiguration(
+        behavior: MyCustomScrollBehavior2(),
+        child: SingleChildScrollView(
+           scrollDirection: Axis.horizontal,
+           child: SizedBox(
+              height: svHeight,
+              width: svWidth,
+              child: ListView(
+                 children: List.generate(
+                    roles.length,
+                    (indexX) => Row(
+                       key: Key( 'role ' + ( indexX - roleHeaderTop ).toString() ),                           
+                       children: List.generate( 
+                          roles[0].length,
+                          (indexY) => roles[indexX][indexY] ))
+                    )))));
   }
 
   Widget _getProfImage( name, nameAlt ) {
@@ -927,7 +1001,7 @@ class _CEProfileState extends State<CEProfilePage> {
               children: <Widget>[
                  spacer, 
                  pi,
-                 makeTitleText( appState, cePeep.firstName + " " + cePeep.lastName, textWidth, false, 1, fontSize: 24 ),
+                 makeTitleText( appState, cePeep.getFullName(), textWidth, false, 1, fontSize: 24 ),
                  makeTitleText( appState, cname, textWidth, false, 1 ),
                  makeTitleText( appState, cePeep.email, textWidth, false, 1 ),
                  miniSpacer,
@@ -991,13 +1065,14 @@ class _CEProfileState extends State<CEProfilePage> {
       rhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       spacer           = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
       miniSpacer       = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
+      vSpace           = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
+      empty            = Container( width: 1, height: 1 );
 
       updatePerson( context, container );
       updateProjects( context, container, HostPlatforms.GitHub );
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Profile" ),
-         //body: screenArgs["profType"] == "Person" ? _makePersonBody( context, HostPlatforms.GitHub ) : _makeProjectBody( context )
          body: chooseProfile( context, screenArgs["profType"], HostPlatforms.GitHub )
          );
   }

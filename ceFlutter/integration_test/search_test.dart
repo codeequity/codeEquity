@@ -433,6 +433,24 @@ void main() {
 
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
+   // This runs once before all tests
+   setUpAll(() async {
+         // Global setup actions (e.g., initializing a database connection)
+         print('Starting integration tests...');
+      });
+   
+   // This runs once after all tests are finished
+   tearDownAll(() async {
+         // Global cleanup actions (e.g., closing database connections, logging)
+         print('All integration tests completed. Performing cleanup...');
+
+         // web app.. no can do
+         // Flutter 3.38+ integration testing for web is no longer killing the app.  Force kill.
+         // await killall( "search" );
+      });
+
+
+   
    // bool skip = true;
    bool skip = false;
 
@@ -441,7 +459,7 @@ void main() {
    if( override == "True" ) { skip = false; }
    
    report( 'Search', group:true );
-
+   
    print( "Search" );
    // testWidgets('Search bar', skip:true, (WidgetTester tester) async {
    testWidgets('Search bar', skip:skip, (WidgetTester tester) async {
@@ -472,6 +490,7 @@ void main() {
          await logout( tester );         
 
          report( 'Search bar' );
+
       });
 
 }

@@ -110,6 +110,17 @@ Future<http.Response> updateDynamoMN( postData, shortName ) async {
 }
 */
 
+/*
+// oops.. web app.. darg
+// Forcekill.  flutter 3.38 and above, web integration testing is not closing the app.
+void killall( testName ) async {
+
+   final cmd = "ps -efl | grep flutter | grep integration | grep -v ${testName} | grep -v dartaot";
+   print( "kill cmd: " + cmd );
+   final result = await Process.run(cmd, [], runInShell: true);
+   print('Offending process: ${result.stdout}');
+}
+*/
 
 Future<bool> restart( WidgetTester tester, {count=1} ) async {
 

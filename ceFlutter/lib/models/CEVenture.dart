@@ -1,3 +1,4 @@
+enum MemberRole  { executive, grantor, member, end }
 
 class CEVenture {
    final String  ceVentureId;
