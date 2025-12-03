@@ -100,7 +100,7 @@ class _CEHomeState extends State<CEHomePage> {
             if( ceVent ) {
                appState.selectedCEVenture = itemId;
                setState(() => ceProjectLoading = true );
-               
+
                if( partner != "" ) {
                   appState.selectedCEProject = partner;
                   await reloadCEProject( context, container );
@@ -113,6 +113,7 @@ class _CEHomeState extends State<CEHomePage> {
                screenArgs["initialPage"] = 3;
             }
             else {
+
                appState.selectedCEProject = itemId;
                assert( partner != "" ); 
                appState.selectedCEVenture = partner;

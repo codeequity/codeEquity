@@ -202,6 +202,7 @@ Future<void> reloadCEProject( context, container ) async {
    appState.myPEQSummary = appState.cePEQSummaries[ceProj];
    appState.myHostLinks  = appState.ceHostLinks[ceProj];
    appState.myGHPAT      = "";
+   appState.myEquityPlan = appState.ceEquityPlans[ceVent];   // profile pages can load equity plans, which doesn't automatically set myEqPlan
    
    if( appState.verbose >= 3 ) {
       print( "Got Links?" ); 

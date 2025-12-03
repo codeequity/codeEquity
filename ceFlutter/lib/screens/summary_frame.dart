@@ -121,6 +121,7 @@ class _CESummaryState extends State<CESummaryFrame> {
 
          // Re-site each alloc into it's new home.
          // print( "buildAlloc attempting to resite " + alloc.category.toString() );
+         assert( appState.myEquityPlan != null );
          List<dynamic> epRet = appState.myEquityPlan!.site( alloc.category );
          List<String> sitedCat   = new List<String>.from( epRet[0] );
          

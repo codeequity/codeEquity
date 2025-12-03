@@ -1,5 +1,6 @@
 @Timeout(Duration(minutes: 25))
 
+import 'dart:io';      // exit
 import 'dart:async';   // timer
 
 import 'package:flutter/material.dart';
@@ -175,7 +176,7 @@ void main() {
    
    
    testWidgets('Login again on restart without logout', skip:skipLogin, (WidgetTester tester) async {
-         
+         print( "BEGIN: restart" );
          await restart( tester );
          
          // Did not logout of previous session.  Should load directly to homepage after splash.
@@ -183,8 +184,11 @@ void main() {
          await logout( tester );
          
          report( 'Login again on restart without logout' );
+         print( "END: restart" );
       });
+   
    testWidgets( 'Login unknown', skip:skipLogin, (WidgetTester tester) async {
+         print( "BEGIN: unknown" );
          
          await restart( tester );
          
@@ -204,12 +208,14 @@ void main() {
          await tester.pumpAndSettle(); // want to see the masked entry in passwd
          
          report( 'Login unknown' );
+         print( "END: unknown" );
       });
    
    // XXX continue as guest
    
    testWidgets('Signup framing', skip:skipLogin, (WidgetTester tester) async {
          
+         print( "BEGIN: framing" );
          await restart( tester );
          
          final Finder cnaButton = find.byKey( const Key( 'Create New Account'));
@@ -222,11 +228,13 @@ void main() {
          
          
          report( 'Signup framing' );
+         print( "END: framing" );
       });
    
    // Note: can't run this test regularly until there is a process to clean up aws:cognito.  Leaves users all over, or tests fail due to known user.
    testWidgets('Signup parameter checks', skip:true, (WidgetTester tester) async {
          
+         print( "BEGIN: parameter" );
          await restart( tester );
          
          final Finder cnaButton = find.byKey( const Key( 'Create New Account'));
@@ -241,5 +249,8 @@ void main() {
          
          report( 'Signup parameter checks' );
       });
+
+   // XXX This doesn't help.  suspect integration test package isn't closing receive ports.
+   // exit(0);
 }
      
