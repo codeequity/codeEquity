@@ -248,6 +248,47 @@ Future<void> initMDState( context, container ) async {
    for( CEProject cep in ceps ) { appState.ceProject[ cep.ceProjectId ] = cep; }
    for( CEVenture cev in cevs ) { appState.ceVenture[ cev.ceVentureId ] = cev; }
    for( Person p in peeps )     { appState.cePeople[ p.id ] = p; }
+
+   // XXX hostAccount only set for current user.
+   // XXX Onboarding should mean this goes away.
+   {
+      // XXX bad.  currently no other association from ceproj to it's people.
+      for( Person p in peeps ) {
+         uid  = p.id; 
+         pdHA = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );
+         await Future.wait([
+                              (appState.ceHostAccounts[uid] == null ? 
+                               fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
+                               new Future<bool>.value(true) ),
+                              ]);
+         
+      }
+      
+      for( CEVenture cev in cevs ) {
+         
+         List<String> cepIds  = [];     
+         for( String cepKey in appState.ceProject.keys ) {
+            CEProject cep = appState.ceProject[ cepKey ]!;
+            if( cep.ceVentureId == cev.ceVentureId ) {
+               cepIds.add( cep.ceProjectId );
+            }
+         }
+         
+         for( String ceuid in appState.ceHostAccounts.keys ) {
+            assert( appState.ceHostAccounts[ceuid] != null );
+            List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
+            for( String cepId in cepIds ) {
+               for( HostAccount ha in has ) {
+                  if( ha.hostPlatform == appState.ceProject[cepId]!.hostPlatform && ha.ceProjectIds.contains( cepId ) ) {
+                     if( cev.roles[ceuid] == null ) { cev.roles[ceuid] = MemberRole.Executive; }
+                  }
+               }
+            }
+         }
+         // print( cev.roles.toString() );
+      }
+   }
+
    
    // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform.
    // XXX Scales poorly.  This could move to reloadCEProject, since idMapHost usage is by cep.

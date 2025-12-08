@@ -1,13 +1,16 @@
-enum MemberRole  { executive, grantor, member, end }
+import 'package:ceFlutter/utils/ceUtils.dart';
+
+enum MemberRole  { Executive, Grantor, Member, end }
 
 class CEVenture {
    final String  ceVentureId;
    final String  name;
    final String? web;
+   final Map< String, MemberRole > roles;
 
-   CEVenture({ required this.ceVentureId, required this.name, this.web });
+   CEVenture({ required this.ceVentureId, required this.name, this.web, required this.roles });
 
-   dynamic toJson() => { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web };
+   dynamic toJson() => { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web, 'Roles': roles };
 
    // No CEVenture found.  return empty 
    factory CEVenture.empty() {
@@ -15,22 +18,33 @@ class CEVenture {
          ceVentureId:  "-1",
          name:         "", 
          web:          "",
+         roles:        {}
          );
    }
       
    factory CEVenture.fromJson(Map<String, dynamic> json) {
 
+      var dynamicRoles           = json['Roles'];
+      Map <String, MemberRole> r = {};
+
+      if( dynamicRoles != null ) { dynamicRoles.forEach( (k,v) { r[k] = v; }); }
+      
       // DynamoDB is not camelCase
       return CEVenture(
          ceVentureId:   json['CEVentureId'],
          name:          json['Name'],
-         web:           json['Website']
+         web:           json['Website'],
+         roles:         r
          );
    }
 
    
    String toString() {
       String res = "\n" + name + " (" + ceVentureId + ") " + (web ?? "");
+      res += "Roles:\n";
+      for( MapEntry<String, MemberRole> role in roles.entries ) {
+         res += "   " + role.key + ": " + enumToStr( role.value );
+      }
       res += "\n";
       return res;
    }
