@@ -18,6 +18,8 @@ class Person {
       return { 'id': id, 'firstName': firstName, 'lastName': lastName, 'userName': userName, 'email': email, 'locked': false }; 
    }
 
+   String getFullName() { return firstName + " " + lastName; }
+   
    // No one found.  return empty 
    factory Person.empty() {
       return Person( 

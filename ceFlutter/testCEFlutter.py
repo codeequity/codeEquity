@@ -144,20 +144,20 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     # browser dim controls the window being driven by tester.  The height does not match physical screen height, but is stable.
     # cmd = "flutter drive -d web-server --browser-name chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
-    cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
     # XXXX painful
     if( testName == "equity_test.dart" ) : 
-        #cmd = "flutter drive -d chrome --browser-dimension=1200,1000 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        #cmd = "flutter drive -d chrome --browser-dimension=1200,1000 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # This works for EQ for by-hand runs
-        # cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        # cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # This used to work for EQ for crons, until title added.. ug.
-        cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # 9 1/8th on screen, crons now work with title.  1075 works by hand.. 1065?
-        # cmd = "flutter drive -d chrome --browser-dimension=1200,1065 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        # cmd = "flutter drive -d chrome --browser-dimension=1200,1065 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if( testName == "project_test.dart" ) :
-        cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
-        #cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        #cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         
     if optimized :
         cmd = cmd + " --release"
@@ -166,6 +166,11 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     if( withDetail ) :
         cmd = cmd + " --dart-define withDetail=True"
 
+    # XXX Ubuntu 24.04 6.14.0.{34,35} kernels with nvidia 580.95 driver is breaking flutter integration testing.  HW?
+    # cmd = cmd + " --enable-software-rendering"
+    # cmd = cmd + " --verbose"
+    # cmd = cmd + " --no-headless"
+        
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
     logging.info( "TestCEFlutter CMD " );
@@ -192,11 +197,12 @@ def runTests( test = "focus" ):
 
     if( test == "projectMain" ):
 
-        tsum = runTest( "launch_test.dart", False, False, False )
-        resultsSum  += tsum
+        # XXX Ouch!! Cmon flutter.. integration tests need to be able to terminate
+        # tsum = runTest( "launch_test.dart", False, False, False )
+        # resultsSum  += tsum
 
-        tsum = runTest( "home_test.dart", False, False, False )
-        resultsSum  += tsum
+        # tsum = runTest( "home_test.dart", False, False, False )
+        # resultsSum  += tsum
 
         # Always clean dynamo summaries and 'ingested' tags first for full tests
         cmd = "npm run cleanFlutter --prefix ../webServer"
@@ -214,6 +220,8 @@ def runTests( test = "focus" ):
         tsum = runTest( "profile_test.dart", False, False, False )
     elif( test == "repair" ):
         tsum = runTest( "repair_test.dart", False, False, False )
+    elif( test == "launch" ):
+        tsum = runTest( "launch_test.dart", False, False, False )
         
 
     resultsSum  += tsum
@@ -267,6 +275,7 @@ def main( cmd ):
     elif( cmd == "search" ) : summary = runTests( test = "search" )
     elif( cmd == "profile" ) : summary = runTests( test = "profile" )
     elif( cmd == "repair" ) : summary = runTests( test = "repair" )
+    elif( cmd == "launch" ) : summary = runTests( test = "launch" )
     else :
         thread = Thread( target=globals()[cmd]( ) )
         thread.start()

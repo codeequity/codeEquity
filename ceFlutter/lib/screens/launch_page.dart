@@ -56,7 +56,7 @@ class _CELaunchPageState extends State<CELaunchPage> {
   
   Widget _contribHead = paddedLTRB(
      Text(
-        'For the GitHub Contributor',
+        'For the ' + enumToStr( HostPlatforms.values[0] ) + ' Contributor',
         softWrap: true,
         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
         ),
@@ -64,7 +64,7 @@ class _CELaunchPageState extends State<CELaunchPage> {
   
   Widget _founderHead = paddedLTRB(
      Text(
-        'For the GitHub Founder',
+        'For the ' + enumToStr( HostPlatforms.values[0] ) + ' Founder',
         softWrap: true,
         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
         ),

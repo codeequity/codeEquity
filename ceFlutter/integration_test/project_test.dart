@@ -1273,6 +1273,7 @@ void main() {
          
          await logout( tester );         
 
+         print( "Project test ND completed" );
          report( 'Project frame coherence' );
       });
 

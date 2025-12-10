@@ -13,9 +13,10 @@ import fifoQ    from  '../components/queue.js' ;
 import hist     from  '../components/histogram.js' ;
 import circBuff from  '../components/circBuff.js' ;
 
-import ceMD     from  './ceMDHandler.js' ;
-import testing  from  './gh/githubTestHandler.js' ;
-import * as ghr from  './gh/githubRouter.js' ;
+import ceMD       from  './ceMDHandler.js' ;
+import testing    from  './gh/githubTestHandler.js' ;
+import checkPoint from  './checkPointHandler.js' ;
+import * as ghr   from  './gh/githubRouter.js' ;
 
 import authDataC  from  '../auth/authData.js' ;
 import jobData    from  './jobData.js' ;
@@ -29,9 +30,10 @@ console.log( "*** INITIALIZING CEROUTER ***" );
 // CE Job Queue  just fifoQ
 var ceJobs = {};
 ceJobs.jobs = new fifoQ();
-ceJobs.count = 0;
-ceJobs.delay = 0;
-ceJobs.maxDepth = 0;
+ceJobs.count = 0;                  // overall number of jobs executed since last purge
+ceJobs.delay = 0;                  // overall number of demotions since last purge
+ceJobs.maxDepth = 0;               // max depth of queue since last purge
+ceJobs.blocked = false;            // do not get next job while queue is blocked (for checkpointing) 
 ceJobs.lastCEP = config.EMPTY;
 
 // XXX verbosity control needed
@@ -192,6 +194,24 @@ function checkQueue( ceJobs, jd ) {
 
 // Remove top of queue, get next top.
 async function getFromQueue( ceJobs ) {
+
+    let daTime = 0;
+    const delay = 5000; // 5s   XXX
+    
+    // Checkpointing can block the queue, but not forever.
+    while( ceJobs.blocked ) {
+	if( daTime == 0 ) { daTime = Date.now(); }
+	console.log( "\nCEServer job queue processing is BLOCKED.", (Date.now() - daTime).toString() );
+	if( ceJobs.jobs.length > 1 && ( Date.now() - daTime ) > 10 * delay ) {
+	    console.log( "CEServer jobQueue is active, and has been delayed too long.  Restarting queue." );
+	    ceJobs.blocked = false;
+	}
+	else {
+	    await utils.sleep( delay );
+	}
+    }
+
+    if( daTime != 0 ) { console.log( "\nCEServer job queue processing is UNBLOCKED.", (Date.now() - daTime).toString() ); }
     
     ceJobs.jobs.shift();
     return ceJobs.jobs.first;
@@ -258,8 +278,9 @@ router.post('/:location?', async function (req, res) {
     // console.log( "BODY", req.body, "\nHEADERS", req.headers );
 
     // invisible, mostly
-    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing( hostLinks, ceJobs, ceProjects, ceNotification, req.body, res ); }
-    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "ceMD" )    { return ceMD( authData, hostLinks, ceProjects, req.body, res ); }
+    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" )    { return testing( hostLinks, ceJobs, ceProjects, ceNotification, req.body, res ); }
+    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "ceMD" )       { return ceMD( authData, hostLinks, ceProjects, req.body, res ); }
+    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "checkPoint" ) { return checkPoint( ceJobs, req.body, res ); }
 
     let jd     = new jobData();
     jd.reqBody = req.body;

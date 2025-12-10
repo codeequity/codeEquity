@@ -20,6 +20,7 @@ import 'package:ceFlutter/models/Linkage.dart';
 import 'package:ceFlutter/components/node.dart';
 import 'package:ceFlutter/components/equityNode.dart';
 
+enum HostPlatforms { GitHub }
 
 class AppState {
 

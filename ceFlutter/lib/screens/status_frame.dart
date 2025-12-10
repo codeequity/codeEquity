@@ -434,7 +434,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       assert( p.ceProjectId == cep!.ceProjectId );
       assert( p.hostProjectSub.length == 2 );
    
-      print( "Overwrite GitHub for " + cep!.name );
+      print( "Overwrite Host for " + cep!.name );
 
       List<String>  activeAssignees = [];           // all host user ids in peqs that ceMD knows about (i.e. from aws)
       List<String>  activeRepos     = [];           // all host repo ids  ""

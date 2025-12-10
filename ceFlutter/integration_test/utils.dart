@@ -110,6 +110,17 @@ Future<http.Response> updateDynamoMN( postData, shortName ) async {
 }
 */
 
+/*
+// oops.. web app.. darg
+// Forcekill.  flutter 3.38 and above, web integration testing is not closing the app.
+void killall( testName ) async {
+
+   final cmd = "ps -efl | grep flutter | grep integration | grep -v ${testName} | grep -v dartaot";
+   print( "kill cmd: " + cmd );
+   final result = await Process.run(cmd, [], runInShell: true);
+   print('Offending process: ${result.stdout}');
+}
+*/
 
 Future<bool> restart( WidgetTester tester, {count=1} ) async {
 
@@ -363,6 +374,8 @@ Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
 
 Future<bool> statusTabNoServer( WidgetTester tester ) async {
    expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
+
+   print( "statusTabNoServer: expect to see: \"ClientException: Failed to fetch\" here" );
    final Finder tab = find.byKey( const Key('Status' ));
    await tester.tap( tab );
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step

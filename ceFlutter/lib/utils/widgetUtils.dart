@@ -323,7 +323,7 @@ Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines,
    if( keyPreface != "" ) { theKey = keyPreface + title.trim();  }
    lgap = lgap == -1 ? appState.GAP_PAD : lgap;
    tgap = tgap == -1 ? appState.MID_PAD : tgap;
-   // print( "id " + id );
+   // print( "id " + id + " vs hovChunk: " + appState.hoverChunk);
    Widget mr = MouseRegion(
       onEnter: hov,
       onExit: nohov,
