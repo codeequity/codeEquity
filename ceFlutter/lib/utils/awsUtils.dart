@@ -541,7 +541,15 @@ Future<void> writeEqPlan( appState, context, container ) async {
       updateDynamo( context, container, postData, "PutEqPlan" );
    }
 }
-   
+
+Future<void> writeCEVenture( appState, context, container, cev ) async {
+   if( cev != null ) {
+      print( "WRITE CEV " + cev.name );
+      String cevs = json.encode( cev );
+      String postData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+      updateDynamo( context, container, postData, "UpdateCEV" );
+   }
+}
 
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
    String shortName = "fetchHostLinkage";

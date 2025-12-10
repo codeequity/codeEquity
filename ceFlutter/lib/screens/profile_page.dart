@@ -577,25 +577,59 @@ class _CEProfileState extends State<CEProfilePage> {
      return header;
   }
 
-  List<List<Widget>> _getRoleBody( List<HostAccount> hostAccs, CEVenture cev ) {
+  List<List<Widget>> _getRoleBody( context, container, List<HostAccount> hostAccs, CEVenture cev ) {
      List<List<Widget>> roleBody = [];
      final width = ( rhsFrameMaxWidth - appState.FAT_PAD ) / 4.0;
      final lspace = Container( width: 0.1 * width );
      final rspace = Container( width: 0.5 * width );
 
-     // XXX check self has role to mod roles
-     // XXX check at least 1 executor
-     // XXX save.  
-     Widget _makeSetRole( CEVenture cev, String ceUserId, MemberRole role ) {
-        if( role != MemberRole.Executor && cev.roles[ceUserId] == MemberRole.Executor ) {
-           // if no other exec, fail.
-        }
-        
+     // NOTE: loggedin user may not be part of the venture in question.  id may remain -1.
+     assert( appState.cogUser != null );
+     final loggedInUserName  = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
+     String loggedInUserId = "-1";
+     for( int i = 0; i < hostAccs.length; i++ ) {
+        String aUserId = hostAccs[i].ceUserId;
+        assert( appState.cePeople[ aUserId ] != null );
+        if( appState.cePeople[ aUserId ]!.userName == loggedInUserName ) { loggedInUserId = aUserId; }
+     }
+     
+     Widget _makeSetRole( CEVenture cev, String ceUserId, String loggedInUserId, MemberRole role ) {
         assert( cev.roles[ceUserId] != null );
+
+        // Does logged in user does have permission to set role?
+        bool canSet = false;
+        MemberRole loggedInRole = MemberRole.end;
+        if( cev.roles[loggedInUserId] != null ) { loggedInRole = cev.roles[loggedInUserId]!; }
+
+        // print( "Logged in user: " + loggedInUserName + " id: " + loggedInUserId + " role " + enumToStr( loggedInRole ) );
+        // print( "Modified user: " + ceUserId );
+        String failMsg = "";
+        if( loggedInRole.index <= role.index ) { canSet = true; }
+        else                                   { failMsg = loggedInUserName + " does not have adequate permissions for this operation"; }
+
+        if( role != MemberRole.Executive ) {
+           bool foundExec = false;
+           for( final entry in cev.roles.entries ) {
+              if( entry.key != ceUserId && entry.value == MemberRole.Executive ) {
+                 foundExec = true;
+                 break;
+              }
+           }
+           if( canSet && !foundExec ) {
+              canSet = false;
+              failMsg = "Every CodeEquity Venture must have at least one Exective.  Operation failed.";
+           }
+        }
+
         return GestureDetector (
            onTap: () async
            {
-              setState( () => cev.roles[ceUserId] = role );
+              if( canSet ) {
+                 setState( () => cev.roles[ceUserId] = role );
+                 // Don't wait
+                 writeCEVenture( appState, context, container, cev );
+              }
+              else         { showToast( failMsg ); }
            },
            child: cev.roles[ceUserId] == role ?
            Container( width: 0.7 * width, child: Wrap( spacing: 0, children: [ lspace, Icon( Icons.check_circle_outline, color: Colors.green ), rspace ] )) : 
@@ -604,23 +638,24 @@ class _CEProfileState extends State<CEProfilePage> {
      }
      
      for( int i = 0; i < hostAccs.length; i++ ) {
-        String ceUserId = hostAccs[i].ceUserId;
+        String ceUserId         = hostAccs[i].ceUserId;
         assert( appState.cePeople[ ceUserId ] != null );
         Person cePeep = appState.cePeople[ ceUserId ]!;
+            
         Widget row0 = _makeCollabLink( ceUserId, cePeep.getFullName(), 1.0*width, intrinsicWidth: false );
-        Widget row1 = _makeSetRole( cev, ceUserId, MemberRole.Executive );
-        Widget row2 = _makeSetRole( cev, ceUserId, MemberRole.Grantor );
-        Widget row3 = _makeSetRole( cev, ceUserId, MemberRole.Member );
+        Widget row1 = _makeSetRole( cev, ceUserId, loggedInUserId, MemberRole.Executive );
+        Widget row2 = _makeSetRole( cev, ceUserId, loggedInUserId, MemberRole.Grantor );
+        Widget row3 = _makeSetRole( cev, ceUserId, loggedInUserId, MemberRole.Member );
 
         roleBody.add([ row0, row1, row2, row3 ]);
      }
      return roleBody;
   }
 
-  Widget _makeRoles( context, List<HostAccount> hostAccs, CEVenture cev ) {
+  Widget _makeRoles( context, container, List<HostAccount> hostAccs, CEVenture cev ) {
      List<List<Widget>> roles = [];
      roles.addAll( _getRoleHeader() );
-     roles.addAll( _getRoleBody( hostAccs, cev ));
+     roles.addAll( _getRoleBody( context, container, hostAccs, cev ));
      
      final svHeight = ( appState.screenHeight ) * .4;
      final svWidth  = rhsFrameMinWidth * 2.0;             // XXX oi
@@ -889,7 +924,7 @@ class _CEProfileState extends State<CEProfilePage> {
                      ]);
   }
   
-  Widget _makeVentureBody( context ) {
+  Widget _makeVentureBody( context, container ) {
      final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
      CEVenture cev        = CEVenture.empty();
      String cevId         = cev.ceVentureId;
@@ -929,7 +964,7 @@ class _CEProfileState extends State<CEProfilePage> {
               }
            }
         }
-        rolesWid = _makeRoles( context, collabs, cev );
+        rolesWid = _makeRoles( context, container, collabs, cev );
      }
 
      Widget ceProjects = 
@@ -1069,10 +1104,10 @@ class _CEProfileState extends State<CEProfilePage> {
            ]);
   }
 
-  Widget chooseProfile( BuildContext context, String? profType, HostPlatforms platform ) {
+  Widget chooseProfile( BuildContext context, container, String? profType, HostPlatforms platform ) {
      if(      profType == "Person"    ) { return _makePersonBody( context, HostPlatforms.GitHub ); }
      else if( profType == "CEProject" ) { return _makeProjectBody( context ); }
-     else if( profType == "CEVenture" ) { return _makeVentureBody( context ); }
+     else if( profType == "CEVenture" ) { return _makeVentureBody( context, container ); }
      else                               { return spacer; }
   }
 
@@ -1100,7 +1135,7 @@ class _CEProfileState extends State<CEProfilePage> {
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Profile" ),
-         body: chooseProfile( context, screenArgs["profType"], HostPlatforms.GitHub )
+         body: chooseProfile( context, container, screenArgs["profType"], HostPlatforms.GitHub )
          );
   }
 }

@@ -10,7 +10,13 @@ class CEVenture {
 
    CEVenture({ required this.ceVentureId, required this.name, this.web, required this.roles });
 
-   dynamic toJson() => { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web, 'Roles': roles };
+   // dynamic toJson() => { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web, 'Roles': roles };
+   dynamic toJson() {
+      final Map< String, String> sRoles = {};
+      assert( roles != null );
+      roles.forEach( (k,v) { sRoles[k] = enumToStr( v ); } );
+      return { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web, 'Roles': sRoles };
+   }
 
    // No CEVenture found.  return empty 
    factory CEVenture.empty() {
@@ -27,7 +33,8 @@ class CEVenture {
       var dynamicRoles           = json['Roles'];
       Map <String, MemberRole> r = {};
 
-      if( dynamicRoles != null ) { dynamicRoles.forEach( (k,v) { r[k] = v; }); }
+      // if( dynamicRoles != null ) { dynamicRoles.forEach( (k,v) { r[k] = v; }); }
+      if( dynamicRoles != null ) { dynamicRoles.forEach( (k,v) { r[k] = enumFromStr<MemberRole>( v, MemberRole.values ); }); }
       
       // DynamoDB is not camelCase
       return CEVenture(
