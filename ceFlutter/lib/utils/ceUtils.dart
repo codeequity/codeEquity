@@ -591,4 +591,14 @@ void confirmedNav( context, container, newPage ) {
 
 }
 
+MemberRole getUserAuth( container ) {
+   final appState  = container.state;
+   assert( appState.selectedCEVenture != null );
+
+   CEVenture? cev = appState.ceVenture[ appState.selectedCEVenture ];
+   assert( cev != null );
+
+   return cev!.roles[ appState.ceUserId ] ?? MemberRole.end;
+}
+
 

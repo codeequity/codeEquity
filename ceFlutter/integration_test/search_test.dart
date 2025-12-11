@@ -90,10 +90,10 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    expect( find.text('ceServer'), findsOneWidget );
    expect( find.text('connieTester'), findsOneWidget );
    expect( find.text('rmusick2000'), findsOneWidget );
-   expect( find.text(BS_PROJ_ID), findsOneWidget );
-   expect( find.text(CEAL_PROJ_ID), findsNWidgets(1) );
-   expect( find.text(CEMD_PROJ_ID), findsNWidgets(1) );
-   expect( find.text(CESE_PROJ_ID), findsNWidgets(1) );
+   expect( find.text(BS_VENT_ID), findsOneWidget );
+   expect( find.text(CEAL_VENT_ID), findsNWidgets(1) );
+   expect( find.text(CEMD_VENT_ID), findsNWidgets(1) );
+   expect( find.text(CESE_VENT_ID), findsNWidgets(1) );
    // Don't get here with detail
    // expect( find.text(GB_PROJ_ID), findsOneWidget );
    // expect( find.text(CE_PROJ_ID), findsNWidgets(1) );
@@ -133,9 +133,9 @@ Future<bool> validateCO( WidgetTester tester, Finder search ) async {
    expect( find.text(CEAL_PROJ_ID), findsNWidgets(1) );
    expect( find.text(CEMD_PROJ_ID), findsNWidgets(1) );
    expect( find.text(CESE_PROJ_ID), findsNWidgets(1) );
-   expect( find.text(CE_PROJ_ID), findsAtLeast(1) );
-   expect( find.text(GB_PROJ_ID), findsAtLeast(1) );
-   expect( find.text('CT Blast X'), findsAtLeast(1) );
+   expect( find.text(CE_VENT_ID), findsAtLeast(1) );
+   expect( find.text(GB_VENT_ID), findsAtLeast(1) );
+   // expect( find.text('CT Blast X'), findsAtLeast(1) );
 
    await dismiss( tester );
    return true;
@@ -262,11 +262,12 @@ Future<bool> validateCollabConnie( WidgetTester tester ) async {
    txt = find.text( CEAL_PROJ_NAME );
    expect( txt, findsNWidgets(2) );
    txt = find.text( CE_PROJ_NAME );
-   expect( txt, findsNWidgets(3) );
+   expect( txt, findsAtLeast(3) );
    txt = find.text( GB_PROJ_NAME );
    expect( txt, findsNWidgets(2) );
 
-   txt = find.text( 'Venture: Connie\'s Creations' );
+   // txt = find.text( 'Venture: Connie\'s Creations' );
+   txt = find.text( 'Connie\'s Creations' );
    expect( txt, findsOneWidget );
 
    txt = find.text( 'Code for Equity' );

@@ -9,6 +9,7 @@ import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
+import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/Person.dart';
@@ -90,9 +91,6 @@ class _CEApprovalState extends State<CEApprovalFrame> {
       Widget miniSpace = Container( height: 1, width: 6 * appState.GAP_PAD );
       Widget title     = makeIWTitleText( appState, cepName , false, 1, fontSize: 18 );
 
-      // String expl1 = "Click ACCEPT to change the issue's status to Accrued, to permanently grant the corresponding PEQ.";
-      // String expl1 = "Click ACCEPT to change the issue's status to Accrued, permanently granting an even split of the PEQs to the Assignees.";
-      // String expl1 = "Click ACCEPT to change the issue's status to Accrued, permanently splitting and granting the PEQs to the Assignees.";
       String expl1 = "Click ACCEPT to Accrue the issue, permanently splitting and granting the PEQs to the Assignees.";
       String expl2 = "Click REJECT to indicate there is more to be done on this task, first.";
 
@@ -143,13 +141,19 @@ class _CEApprovalState extends State<CEApprovalFrame> {
    Widget getActions( PEQ p ) {
       Widget lead = makeIWTitleText( appState, "Accept?   ", false, 1 );
 
+      bool canGrant  = getUserAuth( container ).index <= MemberRole.Grantor.index;
+      String failMsg = "Can not accept or reject Pending PEQs, insufficient permissions.";
+
       Widget accept = GestureDetector(
          onTap: () async 
          {
-            print( "Accepted " + p.hostIssueTitle );
-            // XXX Send GH action
-            // XXX ingest,
-            // XXX update view button no longer grey
+            if( canGrant ) {
+               print( "Accepted " + p.hostIssueTitle );
+               // XXX Send GH action
+               // XXX ingest,
+               // XXX update view button no longer grey
+            }
+            else { showToast( failMsg ); }
          },
          key: Key( 'accept ' + p.id ),
          child: makeToolTip( Icon( Icons.check_circle_outline, color: Colors.green ), "Accrue this issue, evenly splitting PEQ between assignees", wait: true )
@@ -158,11 +162,14 @@ class _CEApprovalState extends State<CEApprovalFrame> {
       Widget reject = GestureDetector(
          onTap: () async 
          {
-            print( "Rejected " + p.hostIssueTitle );
-            TextEditingController reason = new TextEditingController();
-            String popupTitle = "Reject accrual request";
-            String hintText   = "Integration tests are failing";
-            await editBox( context, appState, svWidth / 2.0, popupTitle, "Reason", reason, hintText, () => _confirmReject( reason ), () => _cancelReject( reason ) );
+            if( canGrant ) {
+               print( "Rejected " + p.hostIssueTitle );
+               TextEditingController reason = new TextEditingController();
+               String popupTitle = "Reject accrual request";
+               String hintText   = "Integration tests are failing";
+               await editBox( context, appState, svWidth / 2.0, popupTitle, "Reason", reason, hintText, () => _confirmReject( reason ), () => _cancelReject( reason ) );
+            }
+            else { showToast( failMsg ); }
          },
          key: Key( 'reject ' + p.id ),
          child: makeToolTip( Icon( Icons.cancel_outlined, color: Colors.red ), "Reject, with feedback on what is missing", wait: true )

@@ -583,15 +583,8 @@ class _CEProfileState extends State<CEProfilePage> {
      final lspace = Container( width: 0.1 * width );
      final rspace = Container( width: 0.5 * width );
 
-     // NOTE: loggedin user may not be part of the venture in question.  id may remain -1.
-     assert( appState.cogUser != null );
-     final loggedInUserName  = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
-     String loggedInUserId = "-1";
-     for( int i = 0; i < hostAccs.length; i++ ) {
-        String aUserId = hostAccs[i].ceUserId;
-        assert( appState.cePeople[ aUserId ] != null );
-        if( appState.cePeople[ aUserId ]!.userName == loggedInUserName ) { loggedInUserId = aUserId; }
-     }
+     final loggedInUserName = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
+     final loggedInUserId   = appState.ceUserId;
      
      Widget _makeSetRole( CEVenture cev, String ceUserId, String loggedInUserId, MemberRole role ) {
         assert( cev.roles[ceUserId] != null );
