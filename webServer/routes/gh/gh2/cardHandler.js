@@ -298,6 +298,15 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		ingestUtils.rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, msg, true );
 		return;
 	    }
+
+	    // Need to be MemberRole.Grantor or above to move card out of PEND
+	    let authorized = await awsUtils.checkCERole( authData, pd.ceProjectId, pd.actorId );
+	    if( !authorized && oldNameIndex == config.PROJ_PEND ) {
+		let msg = "WARNING.  Need CodeEquity role of Grantor or above to move card out of the config.PROJ_PEND column.  Moving card back.";
+		ingestUtils.rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, msg, true );
+		return;
+	    }
+		
 	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newCard.columnId, newColName );
 	    // ghLinks.show();
 	    

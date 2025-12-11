@@ -423,6 +423,17 @@ async function checkPopulated( authData, ceProjId, repoId ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+async function checkCERole( authData, ceProjId, actorId ) {
+    // XXX ?? 
+    actorId = await actorId;
+    console.log( authData.who, "check CERole: ", ceProjId, actorId );
+
+    let shortName = "CheckGrantAuth";
+    let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "ActorId": actorId };
+    
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
 // TESTING ONLY
 async function setTestLock( authData, ceProjId, val ) {
     console.log( authData.who, "Set test lock: ", ceProjId, val );
@@ -640,6 +651,7 @@ export {recordPEQData};
 
 export {recordPEQAction};
 export {checkPopulated};
+export {checkCERole};
 export {setTestLock};
 export {setPopulated};
 export {rewritePAct};
