@@ -303,11 +303,65 @@ class _CEHomeState extends State<CEHomePage> {
       final w1 = rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
       final w2 = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
 
-      // XXX Placeholder.
-      if( appState.funny == "" ) {
-         Funnies fun    = new Funnies();
-         appState.funny = fun.getOne();
-      }
+
+      // Turn each getting started off if done
+      // Turn pending/daily off if have getting started
+        
+      // Getting started 
+      List<Widget> tasks         = [];
+      Widget gettingStarted = makeTitleText( appState, "Getting started", w2, false, 1, fontSize: 16 );
+      tasks.add( gettingStarted );
+      
+      List<Widget> unsignedAgmts = [];
+      Widget agreements  = makeTitleText( appState, "Agreements", w2, false, 1 );
+      Widget agmtPrivacy = makeBodyText( appState, "Privacy Notice", w2, true, 1 );
+      Widget agmtEquity  = makeBodyText( appState, "Equity Agreement", w2, true, 1 );
+      unsignedAgmts.add( agreements );
+      unsignedAgmts.add( agmtPrivacy );
+      unsignedAgmts.add( agmtEquity );
+      tasks.addAll( unsignedAgmts );
+      
+      // note - not accurate?  legal - if unidentifiable may not get anything
+      Widget createCEUser     = makeBodyText( appState, "Create CodeEquity User", w2, false, 1 );
+      tasks.add( createCEUser );
+      Widget createCEVenture  = makeBodyText( appState, "Create CodeEquity Venture", w2, false, 1 );
+      tasks.add( createCEVenture );
+      Widget createEquityPlan = makeBodyText( appState, "Create Equity Plan", w2, false, 1 );
+      tasks.add( createEquityPlan );
+      Widget inviteCEUsers    = makeBodyText( appState, "Invite CodeEquity users to your Venture", w2, false, 1 );
+      tasks.add( inviteCEUsers );
+      Widget checkRoles       = makeBodyText( appState, "Check current collaborator roles", w2, false, 1 );
+      tasks.add( checkRoles );
+      Widget createCEProj     = makeBodyText( appState, "Create Code Equity Project", w2, false, 1 );
+      tasks.add( createCEProj );
+      Widget associateHost    = makeBodyText( appState, "Associate to a Host", w2, false, 1 );
+      tasks.add( associateHost );
+      Widget associateHostToEquityPlan = makeBodyText( appState, "Associate Host Projects with Equity Plan elements", w2, false, 1 );
+      tasks.add( associateHostToEquityPlan );
+
+      
+      List<Widget> pending  = [];
+      Widget approvals  = makeBodyText( appState, "14 pending approvals", w2, false, 1 );
+      Widget invites  = makeBodyText( appState, "2 pending invites", w2, false, 1 );
+      Widget requests  = makeBodyText( appState, "1 pending request", w2, false, 1 );
+      pending.add( approvals );
+      pending.add( invites );
+      pending.add( requests );
+      
+      List<Widget> daily = [];
+      Widget peqSummary  = makeBodyText( appState, "yesterday 16 peqs changed:  Plan: +13 -> 98 , PROG -1 -> 23, +1 -> 3  PEND, +2 -> 43 ACCR", w2, false, 1 );
+      daily.add( peqSummary );
+
+      List<Widget> allActivity = [];
+      allActivity.addAll( tasks );
+      allActivity.addAll( pending );
+      allActivity.addAll( daily );
+      
+      Widget allActivityCol = Column( 
+         crossAxisAlignment: CrossAxisAlignment.start,
+         mainAxisAlignment: MainAxisAlignment.start,
+         children: allActivity             
+         );
 
       return Column( 
          crossAxisAlignment: CrossAxisAlignment.start,
@@ -318,7 +372,7 @@ class _CEHomeState extends State<CEHomePage> {
             Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
             ceProjectLoading ?
                Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) : 
-               Container( color: Colors.white, child: makeBodyText( appState, appState.funny, w2, true, 1 ))
+            allActivityCol
             ]);
    }
    

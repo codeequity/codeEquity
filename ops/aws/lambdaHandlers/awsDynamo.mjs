@@ -106,7 +106,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "UpdateCEP")      { resultPromise = putCEP( rb.ceProject ); }
-    else if( endPoint == "UpdateCEV")      { resultPromise = putCEP( rb.ceVenture ); }
+    else if( endPoint == "UpdateCEV")      { resultPromise = putCEV( rb.ceVenture ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
     else if( endPoint == "CheckDup")       { resultPromise = checkDuplicates( rb.CEProjectId, rb.HostIssueId ); }
     else {

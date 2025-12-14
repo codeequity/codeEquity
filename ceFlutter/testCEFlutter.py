@@ -28,7 +28,7 @@ def validateConfiguration():
     if( "Ubuntu" not in platform.version() ) :
         logging.warning( "You do not appear to be running an Ubuntu distribution.  This code has not be tested on other distributions." )
         goodConfig = False
-    if( call("command -v flutter", shell=True) != 0 ) :
+    if( call("command -v fvm flutter", shell=True) != 0 ) :
         logging.warning( "Flutter does not appear to be installed" )
         goodConfig = False
         
@@ -144,19 +144,19 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     # browser dim controls the window being driven by tester.  The height does not match physical screen height, but is stable.
     # cmd = "flutter drive -d web-server --browser-name chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
-    cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    cmd = "fvm flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
     # XXXX painful
     if( testName == "equity_test.dart" ) : 
         #cmd = "flutter drive -d chrome --browser-dimension=1200,1000 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # This works for EQ for by-hand runs
         # cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # This used to work for EQ for crons, until title added.. ug.
-        cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        cmd = "fvm flutter drive -d chrome --browser-dimension=1200,1075 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # 9 1/8th on screen, crons now work with title.  1075 works by hand.. 1065?
         # cmd = "flutter drive -d chrome --browser-dimension=1200,1065 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if( testName == "project_test.dart" ) :
-        cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        cmd = "fvm flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         #cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         
     if optimized :
