@@ -41,10 +41,28 @@ class _CEHomeState extends State<CEHomePage> {
    static const vBarWidth       =   5.0;
    late double  rhsFrameMaxWidth;
 
+   late bool toggleUser; 
+   late bool toggleVenture; 
+   late bool toggleProject;
+   late bool togglePending;
+   late bool toggleDaily;  
+   late bool updateView;
+
+   late List<Widget> tasks;
+   
+   
    @override
    void initState() {
       super.initState();
       ceProjectLoading = false;
+
+      toggleUser    = true;   
+      toggleVenture = true;   
+      toggleProject = true;   
+      togglePending = true;   
+      toggleDaily   = true;
+      updateView    = true;
+      tasks         = [];
    }
 
    @override
@@ -298,71 +316,200 @@ class _CEHomeState extends State<CEHomePage> {
             children: acctList
             ));
    }
+
+
+   Widget _makeLink( String txt, String key, width, func ) {
+      void _unsetLink( PointerEvent event ) {
+         updateView = true;         
+         setState(() { appState.hoverChunk = ""; });
+      }
+      
+      void _setLink( PointerEvent event ) {
+         updateView = true;
+         setState(() { appState.hoverChunk = txt; });
+      }
+      
+      return GestureDetector(
+         onTap: () async
+         {
+            await func();
+         },
+         key: Key( key ),
+         child: makeActionableText( appState, txt, txt, _setLink, _unsetLink, width, false, 1, sub: true, lgap: 2.0 * appState.GAP_PAD )
+         );
+   }
+   
+   Widget makeExpander( String toggle, bool expand ) {
+      void func () async {
+         updateView = true;
+         switch( toggle ) {
+         case "toggleDaily" :
+            setState(() => toggleDaily = expand ? false : true );
+            break;
+         case "toggleVenture" :
+            setState(() => toggleVenture = expand ? false : true );
+            break;
+         case "toggleProject" :
+            setState(() => toggleProject = expand ? false : true );
+            break;
+         case "toggleUser" :
+            setState(() => toggleUser = expand ? false : true );
+            break;
+         case "togglePending" :
+            setState(() => togglePending = expand ? false : true );
+            break;
+         default :
+            assert( false );
+         }
+      }
+      
+      return Padding(
+         padding: EdgeInsets.fromLTRB(0, appState.MID_PAD * 0.4, 0, 0),
+         child: GestureDetector(
+            onTap: func,
+            key: Key( toggle ),
+            child: expand ? Icon( Icons.arrow_drop_down ) : Icon( Icons.arrow_drop_down_circle )
+            ));
+   }
+
+   
+   Widget makeEntry( String entry, double pad, bool title ) {
+      final w2 = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
+      return Padding(
+         padding: EdgeInsets.fromLTRB(pad, 0, 0, 0),
+         child: title ?
+         makeTitleText( appState, entry, w2 * 0.4, false, 1 ) :
+         makeBodyText( appState, entry, w2, false, 1 )
+         );
+   }
+
+
+   List<Widget> makeVenture() {
+      Widget expand = makeExpander( "toggleVenture", true );
+      Widget shrink = makeExpander( "toggleVenture", false );
+
+      List<Widget> subTasks = [];
+      Widget venture = makeEntry( "Create CodeEquity Venture", appState.MID_PAD, true );
+      subTasks.add( Wrap( spacing: 0, children: [ venture, toggleVenture ? expand : shrink ] ));
+
+      if( !toggleVenture ) {
+         subTasks.add( makeEntry( "Complete Venture Profile", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( makeEntry( "Build an Equity Plan", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( makeEntry( "Invite collaborators", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( makeEntry( "Check collaborator roles", 2.0 * appState.MID_PAD, false ));
+      }
+      return subTasks;
+   }
+
+   List<Widget> makeProject() {
+      Widget expand = makeExpander( "toggleProject", true );
+      Widget shrink = makeExpander( "toggleProject", false );
+
+      List<Widget> subTasks = [];
+      Widget project     = makeEntry( "Create CodeEquity Project", appState.MID_PAD, true );
+      subTasks.add( Wrap( spacing: 0, children: [ project, toggleProject ? expand : shrink ] ));
+
+      if( !toggleProject ) {
+         subTasks.add( makeEntry( "Complete Project Profile", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( makeEntry( "Associate with a Host", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( makeEntry( "Associate Host projects with Equity Plan", 2.0 * appState.MID_PAD, false ));
+      }
+      return subTasks;
+   }
+
+   List<Widget> makeMe( double width ) {
+      Widget expand = makeExpander( "toggleUser", true );
+      Widget shrink = makeExpander( "toggleUser", false );
+
+      List<Widget> subTasks = [];
+      Widget register = makeEntry( "Register as a CodeEquity user", appState.MID_PAD, true );
+      subTasks.add( Wrap( spacing: 0, children: [ register, toggleUser ? expand : shrink ]));
+
+      void pop() async {
+         showToast( "thingy" );
+      }
+      
+      if( !toggleUser ) {
+         
+         subTasks.add( _makeLink( "Privacy Notice", "Privacy Notice", width / 4.0, pop ));
+         // subTasks.add( makeEntry( "Privacy Notice",   2.0 * appState.MID_PAD, false ));
+         subTasks.add( makeEntry( "Equity Agreement", 2.0 * appState.MID_PAD, false ));
+         // note - not accurate?  legal - if unidentifiable may not get anything
+         subTasks.add( makeEntry( "Complete profile", 2.0 * appState.MID_PAD, false ));
+      }
+      return subTasks;      
+   }
+   
+   List<Widget> makeGettingStarted( double width ) {
+      List<Widget> subTasks = [];
+      Widget gettingStarted = makeTitleText( appState, "Getting started", width, false, 1, fontSize: 16 );
+
+      subTasks.add( gettingStarted );
+      subTasks.addAll( makeMe( width ) );
+      subTasks.addAll( makeVenture() );
+      subTasks.addAll( makeProject() );
+      return subTasks;
+   }
+
+   List<Widget> makePending( double width ) {
+      Widget expand = makeExpander( "togglePending", true );
+      Widget shrink = makeExpander( "togglePending", false );
+
+      List<Widget> subTasks = [];
+      Widget pending = makeTitleText( appState, "Pending tasks", width / 6.0, false, 1, fontSize: 16 );
+      subTasks.add( Wrap( spacing: 0, children: [ pending, togglePending ? expand : shrink ] ));
+
+      if( !togglePending ) {
+         subTasks.add( makeEntry( "14 pending approvals", 2.0 * appState.MID_PAD, false ) );
+         subTasks.add( makeEntry( "2 pending invites", 2.0 * appState.MID_PAD, false ) );
+         subTasks.add( makeEntry( "1 pending request", 2.0 * appState.MID_PAD, false ) );
+      }
+      return subTasks;
+   }
+
+   List<Widget> makeDaily( double width ) {
+
+      Widget expand = makeExpander( "toggleDaily", true );
+      Widget shrink = makeExpander( "toggleDaily", false );
+
+      List<Widget> subTasks = [];
+      Widget daily = makeTitleText( appState, "Today's stats", width / 6.0, false, 1, fontSize: 16 );
+      subTasks.add( Wrap( spacing: 0, children: [ daily, toggleDaily ? expand : shrink ] ));
+
+      if( !toggleDaily ) {
+         subTasks.add( makeEntry( "13 PEQs added to PLAN -> 98", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( makeEntry( "1 PEQ removed from PROG -> 23", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( makeEntry( "1 PEQ added to PEND -> 3", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( makeEntry( "2 PEQs added to ACCR - 43", 2.0 * appState.MID_PAD, false ));
+      }
+
+      return subTasks;
+   }
    
    Widget _makeActivityZone() {
       final w1 = rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
       final w2 = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
 
-
       // Turn each getting started off if done
       // Turn pending/daily off if have getting started
-        
-      // Getting started 
-      List<Widget> tasks         = [];
-      Widget gettingStarted = makeTitleText( appState, "Getting started", w2, false, 1, fontSize: 16 );
-      tasks.add( gettingStarted );
-      
-      List<Widget> unsignedAgmts = [];
-      Widget agreements  = makeTitleText( appState, "Agreements", w2, false, 1 );
-      Widget agmtPrivacy = makeBodyText( appState, "Privacy Notice", w2, true, 1 );
-      Widget agmtEquity  = makeBodyText( appState, "Equity Agreement", w2, true, 1 );
-      unsignedAgmts.add( agreements );
-      unsignedAgmts.add( agmtPrivacy );
-      unsignedAgmts.add( agmtEquity );
-      tasks.addAll( unsignedAgmts );
-      
-      // note - not accurate?  legal - if unidentifiable may not get anything
-      Widget createCEUser     = makeBodyText( appState, "Create CodeEquity User", w2, false, 1 );
-      tasks.add( createCEUser );
-      Widget createCEVenture  = makeBodyText( appState, "Create CodeEquity Venture", w2, false, 1 );
-      tasks.add( createCEVenture );
-      Widget createEquityPlan = makeBodyText( appState, "Create Equity Plan", w2, false, 1 );
-      tasks.add( createEquityPlan );
-      Widget inviteCEUsers    = makeBodyText( appState, "Invite CodeEquity users to your Venture", w2, false, 1 );
-      tasks.add( inviteCEUsers );
-      Widget checkRoles       = makeBodyText( appState, "Check current collaborator roles", w2, false, 1 );
-      tasks.add( checkRoles );
-      Widget createCEProj     = makeBodyText( appState, "Create Code Equity Project", w2, false, 1 );
-      tasks.add( createCEProj );
-      Widget associateHost    = makeBodyText( appState, "Associate to a Host", w2, false, 1 );
-      tasks.add( associateHost );
-      Widget associateHostToEquityPlan = makeBodyText( appState, "Associate Host Projects with Equity Plan elements", w2, false, 1 );
-      tasks.add( associateHostToEquityPlan );
 
+      if( updateView ) {
+         tasks = [];
+         
+         // Getting started 
+         tasks.addAll( makeGettingStarted( w2 ) );
+         tasks.addAll( makePending( w2 ) );
+         tasks.addAll( makeDaily( w2 ) );
       
-      List<Widget> pending  = [];
-      Widget approvals  = makeBodyText( appState, "14 pending approvals", w2, false, 1 );
-      Widget invites  = makeBodyText( appState, "2 pending invites", w2, false, 1 );
-      Widget requests  = makeBodyText( appState, "1 pending request", w2, false, 1 );
-      pending.add( approvals );
-      pending.add( invites );
-      pending.add( requests );
-      
-      List<Widget> daily = [];
-      Widget peqSummary  = makeBodyText( appState, "yesterday 16 peqs changed:  Plan: +13 -> 98 , PROG -1 -> 23, +1 -> 3  PEND, +2 -> 43 ACCR", w2, false, 1 );
-      daily.add( peqSummary );
+         updateView = false;
+      }
 
-      List<Widget> allActivity = [];
-      allActivity.addAll( tasks );
-      allActivity.addAll( pending );
-      allActivity.addAll( daily );
-      
-      Widget allActivityCol = Column( 
+      Widget allActivity = Column( 
          crossAxisAlignment: CrossAxisAlignment.start,
          mainAxisAlignment: MainAxisAlignment.start,
-         children: allActivity             
+         children: tasks
          );
-
+         
       return Column( 
          crossAxisAlignment: CrossAxisAlignment.start,
          mainAxisAlignment: MainAxisAlignment.start,
@@ -371,8 +518,8 @@ class _CEHomeState extends State<CEHomePage> {
             Container( color: appState.BACKGROUND, child: makeTitleText( appState, "Activity", w1, true, 1 )),
             Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
             ceProjectLoading ?
-               Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) : 
-            allActivityCol
+            Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) : 
+            allActivity
             ]);
    }
    
