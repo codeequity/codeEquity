@@ -339,6 +339,9 @@ async function getEntry( tableName, query ) {
     case "CELinkage":
 	props = [ "CEProjectId" ];
 	break;
+    case "CEAgreements":
+	props = [ "AgreementId", "AgmtType" ];
+	break;
     default:
 	assert( false );
     }
@@ -396,6 +399,9 @@ async function getEntries( tableName, query ) {
 	break;
     case "CEEquityPlan": 
 	props = [ "EquityPlanId" ];
+	break;
+    case "CEAgreements":
+	props = [ "AgreementId", "AgmtType" ];
 	break;
     default:
 	console.log( "*"+tableName+"*", "not found" );

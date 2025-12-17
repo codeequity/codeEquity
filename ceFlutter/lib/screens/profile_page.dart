@@ -1003,7 +1003,8 @@ class _CEProfileState extends State<CEProfilePage> {
 
      assert( ceUserName != null && ceUserName!.length > 0 );
 
-     Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false );
+     // Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false );
+     Person              cePeep     = Person.empty();
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
      List<HostAccount>   hostAccs   = [];
      Widget              cepWid     = spacer;

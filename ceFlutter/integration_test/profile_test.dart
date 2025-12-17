@@ -263,16 +263,19 @@ void main() {
    // testWidgets('Profile', skip:true, (WidgetTester tester) async {
    testWidgets('Profile', skip:skip, (WidgetTester tester) async {
          
-         tester.binding.window.physicalSizeTestValue = const Size(1000, 1050);
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
 
          await restart( tester );
          await login( tester, true );
 
          expect( await verifyAriHome( tester ), true );
          expect( find.byIcon( customIcons.profile ),  findsOneWidget );
-         
+
+         print( "Check ari profile" );
          await validateAriProfile( tester );
+         print( "Check flut profile" );
          await validateFlutProfile( tester );
+         print( "Check cardSwap" );
          await validateCardSwap( tester );
          
          await logout( tester );         

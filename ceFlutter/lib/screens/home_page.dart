@@ -13,7 +13,9 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
-import 'package:ceFlutter/models/PlaceHolder.dart';
+import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/AcceptedDoc.dart';
+import 'package:ceFlutter/models/Agreement.dart';
 
 import 'package:ceFlutter/screens/add_host_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
@@ -318,7 +320,7 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
 
-   Widget _makeLink( String txt, String key, width, func ) {
+   Widget _makeLink( String txt, String key, width, func, { last = false } ) {
       void _unsetLink( PointerEvent event ) {
          updateView = true;         
          setState(() { appState.hoverChunk = ""; });
@@ -328,14 +330,18 @@ class _CEHomeState extends State<CEHomePage> {
          updateView = true;
          setState(() { appState.hoverChunk = txt; });
       }
-      
+
+      double gap = 1.9 * appState.GAP_PAD;
+         
       return GestureDetector(
          onTap: () async
          {
             await func();
          },
          key: Key( key ),
-         child: makeActionableText( appState, txt, txt, _setLink, _unsetLink, width, false, 1, sub: true, lgap: 2.0 * appState.GAP_PAD )
+         child: last ?
+         makeActionableText( appState, txt, txt, _setLink, _unsetLink, width, false, 1, sub: true, lgap: gap, bgap: gap * 0.25 ) :
+         makeActionableText( appState, txt, txt, _setLink, _unsetLink, width, false, 1, sub: true, lgap: gap )
          );
    }
    
@@ -417,7 +423,7 @@ class _CEHomeState extends State<CEHomePage> {
       return subTasks;
    }
 
-   List<Widget> makeMe( double width ) {
+   List<Widget> makeMe( context, container, double width ) {
       Widget expand = makeExpander( "toggleUser", true );
       Widget shrink = makeExpander( "toggleUser", false );
 
@@ -426,26 +432,31 @@ class _CEHomeState extends State<CEHomePage> {
       subTasks.add( Wrap( spacing: 0, children: [ register, toggleUser ? expand : shrink ]));
 
       void pop() async {
-         showToast( "thingy" );
+         assert( appState.ceUserId != "" );
+         Person? cePeep = appState.cePeople[ appState.ceUserId ];
+         assert( cePeep != null );
+         assert( !cePeep!.registered );
+         if( !cePeep!.signedPrivacy() ) {
+            Agreement agmt = await fetchAgreement( context, container, enumToStr( DocType.privacy ) );
+            showToast( agmt.content );
+         }
       }
       
       if( !toggleUser ) {
-         
-         subTasks.add( _makeLink( "Privacy Notice", "Privacy Notice", width / 4.0, pop ));
-         // subTasks.add( makeEntry( "Privacy Notice",   2.0 * appState.MID_PAD, false ));
-         subTasks.add( makeEntry( "Equity Agreement", 2.0 * appState.MID_PAD, false ));
          // note - not accurate?  legal - if unidentifiable may not get anything
-         subTasks.add( makeEntry( "Complete profile", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeLink( "Privacy Notice", "Privacy Notice", width * 0.2, pop ));
+         subTasks.add( _makeLink( "Equity Agreement", "Equity Agreement", width * 0.2, pop ));
+         subTasks.add( _makeLink( "Complete profile", "Complete profile", width * 0.2, pop, last: true ));
       }
       return subTasks;      
    }
    
-   List<Widget> makeGettingStarted( double width ) {
+   List<Widget> makeGettingStarted( context, container, double width ) {
       List<Widget> subTasks = [];
       Widget gettingStarted = makeTitleText( appState, "Getting started", width, false, 1, fontSize: 16 );
 
       subTasks.add( gettingStarted );
-      subTasks.addAll( makeMe( width ) );
+      subTasks.addAll( makeMe( context, container, width ) );
       subTasks.addAll( makeVenture() );
       subTasks.addAll( makeProject() );
       return subTasks;
@@ -486,7 +497,7 @@ class _CEHomeState extends State<CEHomePage> {
       return subTasks;
    }
    
-   Widget _makeActivityZone() {
+   Widget _makeActivityZone( context, container ) {
       final w1 = rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
       final w2 = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
 
@@ -497,7 +508,7 @@ class _CEHomeState extends State<CEHomePage> {
          tasks = [];
          
          // Getting started 
-         tasks.addAll( makeGettingStarted( w2 ) );
+         tasks.addAll( makeGettingStarted( context, container, w2 ) );
          tasks.addAll( makePending( w2 ) );
          tasks.addAll( makeDaily( w2 ) );
       
@@ -523,7 +534,7 @@ class _CEHomeState extends State<CEHomePage> {
             ]);
    }
    
-   Widget _makeBody() {
+   Widget _makeBody( context, container ) {
       if( appState.loaded ) {
          return
             Wrap(
@@ -539,7 +550,7 @@ class _CEHomeState extends State<CEHomePage> {
                      endIndent: 0,
                      width: vBarWidth,
                      ),
-                  _makeActivityZone()
+                  _makeActivityZone( context, container )
                   ]);
       }
       else {
@@ -569,7 +580,7 @@ class _CEHomeState extends State<CEHomePage> {
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),
-         body: _makeBody()
+         body: _makeBody( context, container )
          );
    }
 }
