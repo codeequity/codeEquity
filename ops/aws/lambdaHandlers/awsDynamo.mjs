@@ -538,24 +538,28 @@ async function putPerson( newPerson ) {
     }
     
     // XXX getEntry is conjunction.  If allow disjunction, this would avoid a call
-    // First verify person does not exist already
-    let ceUID = await getCEUIDFromCE( newPerson.userName );
-    let origPerson = await getEntry( "CEPeople", { Email: newPerson.email } );
-    if( ceUID.statusCode != 204 || origPerson.statusCode != 204 ) {
-	console.log( "person already exists, failing." );
-	return BAD_SEMANTICS; 
+    if( newPerson.Verify == "true" ) {
+       // First verify person does not exist already
+       let ceUID = await getCEUIDFromCE( newPerson.userName );
+       let origPerson = await getEntry( "CEPeople", { Email: newPerson.email } );
+       if( ceUID.statusCode != 204 || origPerson.statusCode != 204 ) {
+          console.log( "person already exists, failing." );   
+          return BAD_SEMANTICS; 	     
+       }
     }
     
     const params = {
 	TableName: 'CEPeople',
 	Item: {
-	    "CEUserId": newPerson.id,
-	    "First":    newPerson.firstName,
-	    "Last":     newPerson.lastName,
-	    "CEUserName": newPerson.userName,
-	    "Email":    newPerson.email,
-	    "Locked":   newPerson.locked,
-	    "ImagePng": newPerson.imagePng            
+	    "CEUserId":     newPerson.id,
+	    "First":        newPerson.firstName,
+	    "Last":         newPerson.lastName,
+	    "CEUserName":   newPerson.userName,
+	    "Email":        newPerson.email,
+	    "Locked":       newPerson.locked,
+	    "ImagePng":     newPerson.imagePng,
+            "Registered":   newPerson.registered,
+            "AcceptedDocs": newPerson.acceptedDocs
 	}
     };
     const putCmd = new PutCommand( params );

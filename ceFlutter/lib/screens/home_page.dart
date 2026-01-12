@@ -1,7 +1,9 @@
-import 'dart:convert';                   // json encode/decode
+import 'dart:convert';                   // json encode/decode, b64 coding
 import 'dart:math';               
 import 'package:flutter/services.dart';  // orientation
 import 'package:flutter/material.dart';
+
+import 'package:docx_viewer/docx_viewer.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 
@@ -32,7 +34,7 @@ class _CEHomeState extends State<CEHomePage> {
    late var      container;
    late AppState appState;
    late bool     ceProjectLoading;
-   
+
    var      runningLHSHeight;
 
    // Frames are screen-specific, fit inside Panes which are app-level.
@@ -423,29 +425,80 @@ class _CEHomeState extends State<CEHomePage> {
       return subTasks;
    }
 
+   void _cancel() {
+      print( "Agreement not agreed" );
+      Navigator.of( context ).pop();
+   }
+
+   void _accept( Person cePeep, Agreement agmt ) async {
+      print( "Agreement agreed" );
+      cePeep.accept( agmt );
+      String user = json.encode( cePeep );
+      String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
+      await updateDynamo( context, container, ppostData, "PutPerson" );
+
+      updateView = true;
+      appState.hoverChunk = "";      
+      Navigator.of( context ).pop();      
+   }
+   
    List<Widget> makeMe( context, container, double width ) {
+      assert( appState.ceUserId != "" );
+      Person? cePeep = appState.cePeople[ appState.ceUserId ];
+      assert( cePeep != null );
+
       Widget expand = makeExpander( "toggleUser", true );
       Widget shrink = makeExpander( "toggleUser", false );
 
       List<Widget> subTasks = [];
       Widget register = makeEntry( "Register as a CodeEquity user", appState.MID_PAD, true );
       subTasks.add( Wrap( spacing: 0, children: [ register, toggleUser ? expand : shrink ]));
-
-      void pop() async {
-         assert( appState.ceUserId != "" );
-         Person? cePeep = appState.cePeople[ appState.ceUserId ];
-         assert( cePeep != null );
+      
+      void pop( DocType docType ) async {
          assert( !cePeep!.registered );
-         if( !cePeep!.signedPrivacy() ) {
-            Agreement agmt = await fetchAgreement( context, container, enumToStr( DocType.privacy ) );
-            showToast( agmt.content );
+         Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
+         List<Widget> buttons = [];
+         buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt ) ));
+         buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Reject"), onPressed: _cancel ));
+
+         if( docType == DocType.privacy ) {
+            await showDialog(
+               context: context,
+               builder: (BuildContext context) {
+                                return AlertDialog(
+                                   scrollable: true,
+                                   title: new Text( agmt.title ),
+                                   content: Container( width: 0.6 * width, child: new Text( agmt.content )),
+                                   actions: buttons);
+                             });
+         }
+         else {
+            Uint8List decodedBytes = base64Decode( agmt.content );
+            print( "decoded " + decodedBytes.length.toString() );
+
+            // This shows agreement, but formatting is not good
+            await showDialog(
+               context: context,
+               builder: (BuildContext context) {
+                                return AlertDialog(
+                                   scrollable: true,
+                                   title: new Text( agmt.title ),
+                                   content: DocxView(
+                                      bytes: decodedBytes,
+                                      fontSize: 18,
+                                      onError: (error) { print('Error: $error'); },
+                                      ),
+                                   actions: buttons);
+                             });
          }
       }
+
       
       if( !toggleUser ) {
          // note - not accurate?  legal - if unidentifiable may not get anything
-         subTasks.add( _makeLink( "Privacy Notice", "Privacy Notice", width * 0.2, pop ));
-         subTasks.add( _makeLink( "Equity Agreement", "Equity Agreement", width * 0.2, pop ));
+         if( !cePeep!.signedPrivacy() ) { subTasks.add( _makeLink( "Privacy Notice", "Privacy Notice", width * 0.2, () => pop( DocType.privacy ))); }
+         if( !cePeep.signedEquity() )   { subTasks.add( _makeLink( "Equity Agreement", "Equity Agreement", width * 0.2, () => pop( DocType.equity ))); }
+         // subTasks.add( _makeLink( "Equity Agreement", "Equity Agreement", width * 0.2, pop ));
          subTasks.add( _makeLink( "Complete profile", "Complete profile", width * 0.2, pop, last: true ));
       }
       return subTasks;      
@@ -558,7 +611,7 @@ class _CEHomeState extends State<CEHomePage> {
          return CircularProgressIndicator();
       }
    }
-   
+
    @override
       Widget build(BuildContext context) {
 
@@ -577,7 +630,7 @@ class _CEHomeState extends State<CEHomePage> {
       
       if( appState.verbose >= 3 ) { print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() ); }
       if( appState.verbose >= 3 ) { print( getToday() ); }
-      
+
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),
          body: _makeBody( context, container )

@@ -127,7 +127,7 @@ class _CESignupState extends State<CESignupPage> {
                                             email: attributeController.text, acceptedDocs: {}, registered: false, locked: false );
                   
                   String newUser = json.encode( user );
-                  String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $newUser }';
+                  String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $newUser, "Verify": "true" }';
                   await updateDynamo( context, container, ppostData, "PutPerson" );
                   
                   appState.newUser = false;

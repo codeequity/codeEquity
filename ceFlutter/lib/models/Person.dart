@@ -1,6 +1,7 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/models/AcceptedDoc.dart';
+import 'package:ceFlutter/models/Agreement.dart';
 
 // Dynamodb serializes primary key before using it... so...
 class Person {
@@ -17,8 +18,15 @@ class Person {
             required this.email, required this.registered, required this.acceptedDocs, required this.locked});
    
    dynamic toJson() {
+      Map<String, AcceptedDoc> encodable = {};
+      print( "Encoding Person's docs" );
+      acceptedDocs.forEach( (k,v) {
+            encodable[ enumToStr( k ) ] = v; 
+         });
+      print( "docs encoded" );
+      
       return { 'id': id, 'firstName': firstName, 'lastName': lastName, 'userName': userName, 'email': email, 'locked': false,
-            'registered': registered, 'acceptedDocs': acceptedDocs }; 
+            'registered': registered, 'acceptedDocs': encodable }; 
    }
 
    String getFullName() { return firstName + " " + lastName; }
@@ -30,7 +38,21 @@ class Person {
       return true;
    }
 
+   bool signedEquity() {
+      if( acceptedDocs == null )                    { return false; }
+      if( acceptedDocs![ DocType.equity ] == null ) { return false; }
+
+      return true;
+   }
    
+   void accept( Agreement agmt ) {
+      acceptedDocs[ agmt.type ] = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
+      bool allAccepted = true;
+      DocType.values.forEach( (dtype) {
+            if( acceptedDocs[ dtype ] == null ) { allAccepted = false; }
+         });
+      if( allAccepted ) { registered = true; }
+   }
    
    // No one found.  return empty 
    factory Person.empty() {
@@ -52,8 +74,10 @@ class Person {
 
       Map<DocType, AcceptedDoc> docs = {};
       if( dynamicDocs != null ) {
-         dynamicDocs.forEach((k,v) {
-               docs[k] = new AcceptedDoc( docType: enumFromStr<DocType>( v['docType'], DocType.values ), docId: v['docId'], acceptedDate: v['acceptedDate'] ); });
+         dynamicDocs.entries.forEach((entry) {
+               DocType key = enumFromStr<DocType>( entry.key, DocType.values );
+               docs[key] = AcceptedDoc.fromJson( entry.value );
+            });
       }
       
       return Person(

@@ -1,6 +1,6 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
 
-enum DocType   { privacy, equity, end }
+import 'package:ceFlutter/models/Agreement.dart';
 
 class AcceptedDoc {
    DocType      docType;  
@@ -10,7 +10,8 @@ class AcceptedDoc {
    AcceptedDoc( {required this.docType, required this.docId, required this.acceptedDate} );
    
    dynamic toJson() {
-      return { 'docType': docType, 'docId': docId, 'acceptedDate': acceptedDate };
+      print( "Encoding acceptedDocs" );
+      return { 'docType': enumToStr( docType ), 'docId': docId, 'acceptedDate': acceptedDate };
    }
 
    // Nothing found.  return empty 
@@ -23,11 +24,10 @@ class AcceptedDoc {
    }
    
    factory AcceptedDoc.fromJson(Map<String, dynamic> json) {
-
       return AcceptedDoc(
-         docType:      enumFromStr<DocType>( json['DocType'], DocType.values ),
-         docId:        json['docId'],
-         acceptedDate: json['acceptedDate'],
+         docType:      enumFromStr<DocType>( json['docType'] ?? "end", DocType.values ),
+         docId:        json['docId'] ?? "",
+         acceptedDate: json['acceptedDate'] ?? "",
          );
    }
 

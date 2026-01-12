@@ -1,25 +1,27 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
 
-import 'package:ceFlutter/models/AcceptedDoc.dart';
+enum DocType   { privacy, equity, end }
 
 class Agreement {
    String  id;
+   String  title;
    DocType type;
    String  format;
    String  lastMod;
    String  content;
    String  version;
 
-   Agreement( { required this.id, required this.type, required this.format, required this.lastMod, required this.content, required this.version } );
+   Agreement( { required this.id, required this.title, required this.type, required this.format, required this.lastMod, required this.content, required this.version } );
    
    dynamic toJson() {
-      return { 'id': id, 'type': type, 'format': format, 'lastMod': lastMod, 'content': content, 'version': version };
+      return { 'id': id, 'title': title, 'type': type, 'format': format, 'lastMod': lastMod, 'content': content, 'version': version };
    }
 
    // Nothing found.  return empty 
    factory Agreement.empty() {
       return Agreement(
          id:        "", 
+         title:     "", 
          type:      DocType.end,
          format:    "",
          lastMod:   "",
@@ -30,13 +32,26 @@ class Agreement {
    
    factory Agreement.fromJson(Map<String, dynamic> json) {
 
+      String format = json['Format'];
+      String content = "";
+
+      // XXX nope docx
+      if( format == "pdf" ) {
+         print( "ook, go equity" );
+         content = json['Document'];         
+      }
+      else if( format == "txt" ) {
+         content = json['Document'];
+      }
+      
       return Agreement(
-         id: json['AgreementId'],
-         type: enumFromStr<DocType>( json['AgmtType'], DocType.values ),
-         format: json['Format'],
-         lastMod: json['Last Updated'],
-         content: json['Document'],
-         version: json['Version'],
+         id:      json['AgreementId'],
+         title:   json['Title'] ?? "",
+         type:    enumFromStr<DocType>( json['AgmtType'], DocType.values ),
+         format:  format,
+         lastMod: json['Last Updated'] ?? "",
+         content: content,
+         version: json['Version'] ?? "",
          );
    }
 
@@ -44,6 +59,7 @@ class Agreement {
 
       return Agreement(
          id:      p.id,
+         title:   p.title,
          type:    p.type,
          format:  p.format,
          lastMod: p.lastMod,
@@ -54,7 +70,7 @@ class Agreement {
 
    String toString() {
       String res = "";
-      res += "\n   Agreement type: " + enumToStr( type );
+      res += "\n   Agreement " + title + ", type: " + enumToStr( type );
       res += "\n   Document id: " + id;
       res += "\n   Last modified: " + lastMod;
 
