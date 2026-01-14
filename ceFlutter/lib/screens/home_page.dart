@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:flutter/services.dart';  // orientation
 import 'package:flutter/material.dart';
 
-import 'package:docx_viewer/docx_viewer.dart';
+// import 'package:docx_viewer/docx_viewer.dart';
+// import 'package:docx_file_viewer/docx_file_viewer.dart';
+import 'package:flutter_html/flutter_html.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 
@@ -473,10 +475,38 @@ class _CEHomeState extends State<CEHomePage> {
                              });
          }
          else {
+            // This shows agreement, good formatting, but no editing.
+            String? doc = agmt.content;
+            print( "decoded " + doc.length.toString() );
+            await showDialog(
+               context: context,
+               builder: (BuildContext context) {
+                                return AlertDialog(
+                                   scrollable: true,
+                                   title: new Text( agmt.title ),
+                                   content: Html( data: doc,
+                                                  // seems to require flex display, which pushes all list items into 1 paragraph
+                                                  style: Style.fromCss('''         
+                                                                       ul {
+                                                                          list-style-type: none;
+                                                                          padding-left: 0;
+                                                                       },
+                                                                       ul li {
+                                                                       display: block;
+                                                                          column-gap: 0px;
+                                                                          align-items: center;
+                                                                          margin-bottom: 0px;
+                                                                       }
+                                                                       ''',
+                                                                       (css, errors) => errors.toString())
+                                                     ),
+                                   actions: buttons);
+                                   });
+            
+            /*
             Uint8List decodedBytes = base64Decode( agmt.content );
             print( "decoded " + decodedBytes.length.toString() );
 
-            // This shows agreement, but formatting is not good
             await showDialog(
                context: context,
                builder: (BuildContext context) {
@@ -485,11 +515,12 @@ class _CEHomeState extends State<CEHomePage> {
                                    title: new Text( agmt.title ),
                                    content: DocxView(
                                       bytes: decodedBytes,
-                                      fontSize: 18,
+                                      // fontSize: 18,
                                       onError: (error) { print('Error: $error'); },
                                       ),
                                    actions: buttons);
                              });
+            */
          }
       }
 

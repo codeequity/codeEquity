@@ -35,12 +35,11 @@ class Agreement {
       String format = json['Format'];
       String content = "";
 
-      // XXX nope docx
       if( format == "pdf" ) {
          print( "ook, go equity" );
          content = json['Document'];         
       }
-      else if( format == "txt" ) {
+      else if( format == "txt" || format == "html" ) {
          content = json['Document'];
       }
       
