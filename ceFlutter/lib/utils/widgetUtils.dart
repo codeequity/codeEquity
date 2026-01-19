@@ -65,6 +65,51 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, buttons ) {
               });
 }
 
+Future<void> editForm( BuildContext context, appState, scrollHeader,
+                       List<String> header, List<TextEditingController> controller, List<String> curVal, List<bool> required, List<String> toolTip,
+                       saveFunc, cancelFunc ) async {
+
+   assert( controller.length == required.length );
+   assert( controller.length == toolTip.length );
+   assert( controller.length == header.length );
+   assert( controller.length == curVal.length );
+
+   List<Widget> editVals = [];
+   Widget c = Container( height: 1, width: appState.MID_PAD );
+   for( int i = 0; i < curVal.length; i++ ) {
+
+      Widget entry = Text( header[i] );
+      if( toolTip[i] != "" ) { entry = makeToolTip( entry, toolTip[i] ); }
+      if( required[i] )      { entry = Wrap( spacing: 0, children: [ entry, Text( "*", style: TextStyle( color: Colors.red )) ]); }
+
+      Widget hint = curVal[i] == "" ?
+                    makeInputField( appState, header[i], false, controller[i], keyName: "editForm " + header[i], edit: false) : 
+                    makeInputField( appState, curVal[i], false, controller[i], keyName: "editForm " + header[i], edit: true);
+
+      editVals.add( entry );
+      editVals.add( hint );
+   }
+
+   Widget scrollBody = Column(
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: editVals );
+   
+   List<Widget> buttons = [];
+   buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Save"), onPressed: saveFunc ));
+   buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: cancelFunc ));
+   
+   await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+                 return AlertDialog(
+                    scrollable: true,
+                    title: new Text( scrollHeader ),
+                    content: scrollBody,
+                    actions: buttons);
+              });
+}
 
 Future<void> editList( BuildContext context, appState, scrollHeader,
                        List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc ) async {
@@ -372,7 +417,7 @@ Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight
    return makeText( appState, title, null, null, wrap, lines, keyTxt: keyName, fontSize: fontSize, color: color, iw: true, sw: sw );
 }
 
-Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "", color = Colors.black } ) {
+Widget makeTitleText( appState, title, width, wrap, lines, { lgap = 0.0, bgap = 0.0, fontSize = 14, highlight = false, keyTxt = "", color = Colors.black } ) {
    // Add as encountered.
    var hmux = 1.0;
    if     ( fontSize == 18 ) { hmux = 24.0 / appState.BASE_TXT_HEIGHT; }
@@ -383,8 +428,8 @@ Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, high
    final height = appState.BASE_TXT_HEIGHT * lines * hmux;
    String keyName = keyTxt == "" ? title : keyTxt;
    Color c = highlight ? appState.BUTTON_COLOR : color;
-   
-   return makeText( appState, title, width, height, wrap, lines, keyTxt: keyName, fontSize: fontSize, color: c );
+
+   return makeText( appState, title, width, height, wrap, lines, lgap: lgap, bgap: bgap, keyTxt: keyName, fontSize: fontSize, color: c );
 }
 
 Widget makeIWTableText( appState, title, width, height, wrap, lines, { fontSize = 14, mux = 1.0, sw = null } ) {
@@ -395,15 +440,18 @@ Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 
    return makeText( appState, title, width, height - appState.GAP_PAD - appState.TINY_PAD, wrap, lines, keyTxt: title, fontSize: fontSize, mux: mux );
 }
 
-Widget makeBodyText( appState, title, width, wrap, lines, { keyTxt = "" } ) {
+Widget makeBodyText( appState, title, width, wrap, lines, { bgap = 0.0, keyTxt = "" } ) {
    String keyName = keyTxt == "" ? title : keyTxt;
-   return makeText( appState, title, width, null, wrap, lines, keyTxt: keyName, bold: false );
+   return makeText( appState, title, width, null, wrap, lines, bgap: bgap, keyTxt: keyName, bold: false );
 }
 
-Widget makeText( appState, title, width, height, wrap, lines, { keyTxt = null, fontSize = 14, mux = 1.0, bold = true, iw = false, sw = null, color = Colors.black } ) {
+Widget makeText( appState, title, width, height, wrap, lines,
+                 { lgap = 0, bgap = 0.0, keyTxt = null, fontSize = 14, mux = 1.0, bold = true, iw = false, sw = null, color = Colors.black } ) {
+   if( lgap == 0 ) { lgap = mux * appState.GAP_PAD; }
+   
    if( iw ) {
       return Padding(
-         padding: EdgeInsets.fromLTRB( mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+         padding: EdgeInsets.fromLTRB( lgap, appState.TINY_PAD, appState.TINY_PAD, bgap),
          child: IntrinsicWidth(
             stepWidth: sw,
             key: keyTxt == null ? null : Key( keyTxt ),
@@ -412,7 +460,7 @@ Widget makeText( appState, title, width, height, wrap, lines, { keyTxt = null, f
    }
    else {
       return Padding(
-         padding: EdgeInsets.fromLTRB( mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+         padding: EdgeInsets.fromLTRB( lgap, appState.TINY_PAD, appState.TINY_PAD, bgap),
          child: Container( width: width,
                            key: keyTxt == null ? null : Key( keyTxt ),
                            height: height,

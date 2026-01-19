@@ -1,7 +1,11 @@
-import 'dart:convert';                   // json encode/decode
+import 'dart:convert';                   // json encode/decode, b64 coding
 import 'dart:math';               
 import 'package:flutter/services.dart';  // orientation
 import 'package:flutter/material.dart';
+
+// import 'package:docx_viewer/docx_viewer.dart';
+// import 'package:docx_file_viewer/docx_file_viewer.dart';
+import 'package:flutter_html/flutter_html.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 
@@ -13,7 +17,9 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
-import 'package:ceFlutter/models/PlaceHolder.dart';
+import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/AcceptedDoc.dart';
+import 'package:ceFlutter/models/Agreement.dart';
 
 import 'package:ceFlutter/screens/add_host_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
@@ -30,7 +36,7 @@ class _CEHomeState extends State<CEHomePage> {
    late var      container;
    late AppState appState;
    late bool     ceProjectLoading;
-   
+
    var      runningLHSHeight;
 
    // Frames are screen-specific, fit inside Panes which are app-level.
@@ -41,10 +47,28 @@ class _CEHomeState extends State<CEHomePage> {
    static const vBarWidth       =   5.0;
    late double  rhsFrameMaxWidth;
 
+   late bool toggleRegister;
+   late bool toggleVenture; 
+   late bool toggleProject;
+   late bool togglePending;
+   late bool toggleDaily;  
+   late bool updateView;
+
+   late List<Widget> tasks;
+   
+   
    @override
    void initState() {
       super.initState();
       ceProjectLoading = false;
+
+      toggleRegister = true;
+      toggleVenture  = true;   
+      toggleProject  = true;   
+      togglePending  = true;   
+      toggleDaily    = true;
+      updateView     = true;
+      tasks          = [];
    }
 
    @override
@@ -298,17 +322,348 @@ class _CEHomeState extends State<CEHomePage> {
             children: acctList
             ));
    }
+
+
+   Widget _makeLink( String txt, width, func, { last = false } ) {
+      void _unsetLink( PointerEvent event ) {
+         updateView = true;         
+         setState(() { appState.hoverChunk = ""; });
+      }
+      
+      void _setLink( PointerEvent event ) {
+         updateView = true;
+         setState(() { appState.hoverChunk = txt; });
+      }
+
+      double gap = 1.9 * appState.GAP_PAD;
+         
+      return GestureDetector(
+         onTap: () async
+         {
+            await func();
+         },
+         key: Key( txt ),
+         child: last ?
+         makeActionableText( appState, txt, txt, _setLink, _unsetLink, width, false, 1, sub: true, lgap: gap, bgap: gap * 0.25 ) :
+         makeActionableText( appState, txt, txt, _setLink, _unsetLink, width, false, 1, sub: true, lgap: gap )
+         );
+   }
    
-   Widget _makeActivityZone() {
+   Widget makeExpander( String toggle, bool expand ) {
+      void func () async {
+         updateView = true;
+         switch( toggle ) {
+         case "toggleDaily" :
+            setState(() => toggleDaily = expand ? false : true );
+            break;
+         case "toggleVenture" :
+            setState(() => toggleVenture = expand ? false : true );
+            break;
+         case "toggleProject" :
+            setState(() => toggleProject = expand ? false : true );
+            break;
+         case "toggleRegister" :
+            setState(() => toggleRegister = expand ? false : true );
+            break;
+         case "togglePending" :
+            setState(() => togglePending = expand ? false : true );
+            break;
+         default :
+            assert( false );
+         }
+      }
+      
+      return Padding(
+         padding: EdgeInsets.fromLTRB(0, appState.MID_PAD * 0.4, 0, 0),
+         child: GestureDetector(
+            onTap: func,
+            key: Key( toggle ),
+            child: expand ? Icon( Icons.arrow_drop_down ) : Icon( Icons.arrow_drop_down_circle )
+            ));
+   }
+
+   
+   Widget _makeEntry( String entry, double pad, bool title, { last = false } ) {
+
+      double w2 = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
+      w2 = title ? w2 * 0.4 : w2;
+      
+      double gap = last  ? ( 1.9 * appState.GAP_PAD ) * .25 : 0.0; // XXX 2x
+      
+      return Padding(
+         padding: EdgeInsets.fromLTRB(pad, 0, 0, 0),
+         child: title ?
+         makeTitleText( appState, entry, w2, false, 1, lgap: 1.9 * appState.GAP_PAD, bgap: gap ) :
+         makeBodyText( appState, entry, w2, false, 1, bgap: gap )
+         );
+   }
+
+
+   List<Widget> makeVenture() {
+      Widget expand = makeExpander( "toggleVenture", true );
+      Widget shrink = makeExpander( "toggleVenture", false );
+
+      List<Widget> subTasks = [];
+      Widget venture = _makeEntry( "Create CodeEquity Venture", 0, true );
+      subTasks.add( Wrap( spacing: 0, children: [ venture, toggleVenture ? expand : shrink ] ));
+
+      if( !toggleVenture ) {
+         subTasks.add( _makeEntry( "Complete Venture Profile", 3.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Build an Equity Plan", 3.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Invite collaborators", 3.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Check collaborator roles", 3.0 * appState.MID_PAD, false ));
+      }
+      return subTasks;
+   }
+
+   List<Widget> makeProject() {
+      Widget expand = makeExpander( "toggleProject", true );
+      Widget shrink = makeExpander( "toggleProject", false );
+
+      List<Widget> subTasks = [];
+      Widget project     = _makeEntry( "Create CodeEquity Project", 0, true, last: toggleProject );
+      subTasks.add( Wrap( spacing: 0, children: [ project, toggleProject ? expand : shrink ] ));
+
+      if( !toggleProject ) {
+         subTasks.add( _makeEntry( "Complete Project Profile", 3.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Associate with a Host", 3.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Associate Host projects with Equity Plan", 3.0 * appState.MID_PAD, false, last: true ));
+      }
+      return subTasks;
+   }
+
+   void _cancel() {
+      print( "Agreement not agreed" );
+      Navigator.of( context ).pop();
+   }
+
+   void _accept( Person cePeep, Agreement agmt ) async {
+      print( "Agreement agreed" );
+      cePeep.accept( agmt );
+      String user = json.encode( cePeep );
+      String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
+      await updateDynamo( context, container, ppostData, "PutPerson" );
+
+      setState(() => updateView = true );
+      appState.hoverChunk = "";      
+      Navigator.of( context ).pop();      
+   }
+   
+   void _showDoc( Person cePeep, DocType docType, double width ) async {
+      assert( !cePeep!.registered );
+      Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
+      List<Widget> buttons = [];
+      buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt ) ));
+      buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Reject"), onPressed: _cancel ));
+      
+      if( docType == DocType.privacy ) {
+         await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+                             return AlertDialog(
+                                scrollable: true,
+                                title: new Text( agmt.title ),
+                                content: Container( width: 0.6 * width, child: new Text( agmt.content )),
+                                actions: buttons);
+                          });
+      }
+      else {
+         String? doc = agmt.compose( cePeep! );
+         
+         print( "decoded " + doc.length.toString() );
+         await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+                             return AlertDialog(
+                                scrollable: true,
+                                title: new Text( agmt.title ),
+                                content: Html( data: doc,
+                                               // seems to require flex display, which pushes all list items into 1 paragraph
+                                               style: Style.fromCss('''         
+                                                                    ul {
+                                                                       list-style-type: none;
+                                                                       padding-left: 0;
+                                                                    },
+                                                                    ul li {
+                                                                    display: block;
+                                                                       column-gap: 0px;
+                                                                       align-items: center;
+                                                                       margin-bottom: 0px;
+                                                                    }
+                                                                    ''',
+                                                                    (css, errors) => errors.toString())
+                                   ),
+                                actions: buttons);
+                          });
+      }
+   }
+
+   void _cancelEdit() {
+      print( "Cancel update profile" );
+      Navigator.of( context ).pop();
+   }
+
+   void _saveProfile( Person cePeep, List<TextEditingController> controllers) {
+      
+      // Note: userName assigned during signup, can not change.
+      // Note: email assigned during signup, this can change.
+      assert( controllers.length == 5 );
+      String na = controllers[0].text;
+      String gb = controllers[1].text;
+      String em = controllers[2].text;
+      String ph = controllers[3].text;
+      String pa = controllers[4].text;
+
+      cePeep.legalName      = na != "" ? na : cePeep.legalName;
+      cePeep.email          = em != "" ? em : cePeep.email;
+      cePeep.phone          = ph != "" ? ph : cePeep.phone;
+      cePeep.mailingAddress = pa != "" ? pa : cePeep.mailingAddress;
+      
+      if( gb != "" )                                           { cePeep.goesBy = gb; }
+      else if( cePeep.goesBy == "" && cePeep.legalName != "" ) { cePeep.goesBy = cePeep.legalName.split(" ")[0]; }
+
+      cePeep.completeProfile();
+      writeCEPerson( appState, context, container, cePeep );
+      setState(() => updateView = true );
+      
+      Navigator.of( context ).pop();
+   }
+
+   void _editProfile( Person cePeep, double width ) async {
+      TextEditingController na = new TextEditingController();
+      TextEditingController gb = new TextEditingController();
+      TextEditingController em = new TextEditingController();
+      TextEditingController ph = new TextEditingController();
+      TextEditingController pa = new TextEditingController();
+
+      List<TextEditingController> controllers = [na, gb, em, ph, pa];
+      List<String>                header      = ["Legal name", "Goes by", "Email", "Phone", "Mailing Address"];
+      List<String>                curVals     = [];
+      List<bool>                  required    = [true, false, true, true, false ];
+
+      String tipR = "Required to participate in CodeEquity as a contributor that can earn equity. ";
+      String tipO = "Your Equity Agreement requires a mailing address for written correspondance.  While not required, it is strongly recommended.";
+      List<String> toolTip = [ tipR, tipO, tipR, tipR, tipO ];
+      
+      curVals.add( cePeep.legalName );
+      curVals.add( cePeep.goesBy );
+      curVals.add( cePeep.email );
+      curVals.add( cePeep.phone );
+      curVals.add( cePeep.mailingAddress );
+
+      assert( cePeep.userName != "" );
+      String popupTitle = "Edit " + cePeep.userName + "'s Profile";      
+      await editForm( context, appState, popupTitle, header, controllers, curVals, required, toolTip, () => _saveProfile( cePeep, controllers ), () => _cancelEdit() );
+   }
+   
+   List<Widget> makeMe( context, container, double width ) {
+      assert( appState.ceUserId != "" );
+      Person? cePeep = appState.cePeople[ appState.ceUserId ];
+      assert( cePeep != null );
+      
+      List<Widget> subTasks = [];
+      
+      if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", width * 0.2, () => _showDoc( cePeep!, DocType.privacy, width ))); }
+      if( !cePeep!.completeProfile() ) { subTasks.add( _makeLink( "Complete profile", width * 0.2, () => _editProfile( cePeep!, width ), last: true )); }
+
+      return subTasks;      
+   }
+   
+   List<Widget> makeGettingStarted( context, container, double width ) {
+      List<Widget> subTasks = [];
+
+      assert( appState.ceUserId != "" );
+      Person? cePeep = appState.cePeople[ appState.ceUserId ];
+      assert( cePeep != null );
+
+      if( !cePeep!.registered ) { 
+         Widget gettingStarted = makeTitleText( appState, "Getting started", width, false, 1, fontSize: 16 );
+         subTasks.add( gettingStarted );
+         subTasks.addAll( makeMe( context, container, width ) );
+      }
+      return subTasks;
+   }
+
+   List<Widget> makeRegister( double width ) {
+      assert( appState.ceUserId != "" );
+      Person? cePeep = appState.cePeople[ appState.ceUserId ];
+      assert( cePeep != null );
+
+      Widget expand = makeExpander( "toggleRegister", true );
+      Widget shrink = makeExpander( "toggleRegister", false );
+
+      List<Widget> subTasks = [];
+      Widget pending = makeTitleText( appState, "New Ventures & Projects", width * .3, false, 1, fontSize: 16 );
+      subTasks.add( Wrap( spacing: 0, children: [ pending, toggleRegister ? expand : shrink ] ));
+
+      if( !toggleRegister ) {
+         if( !cePeep!.signedEquity() )   { subTasks.add( _makeLink( "Register with a Venture", width * 0.2, () => _showDoc( cePeep!, DocType.equity, width ))); }
+         subTasks.addAll( makeVenture() );
+         subTasks.addAll( makeProject() );
+      }
+      return subTasks;
+   }
+
+   List<Widget> makePending( double width ) {
+      Widget expand = makeExpander( "togglePending", true );
+      Widget shrink = makeExpander( "togglePending", false );
+
+      List<Widget> subTasks = [];
+      Widget pending = makeTitleText( appState, "Pending tasks", width / 6.0, false, 1, fontSize: 16 );
+      subTasks.add( Wrap( spacing: 0, children: [ pending, togglePending ? expand : shrink ] ));
+
+      if( !togglePending ) {
+         subTasks.add( _makeEntry( "14 pending approvals", 2.0 * appState.MID_PAD, false ) );
+         subTasks.add( _makeEntry( "2 pending invites", 2.0 * appState.MID_PAD, false ) );
+         subTasks.add( _makeEntry( "1 pending request", 2.0 * appState.MID_PAD, false, last: true ) );
+      }
+      return subTasks;
+   }
+
+   List<Widget> makeDaily( double width ) {
+
+      Widget expand = makeExpander( "toggleDaily", true );
+      Widget shrink = makeExpander( "toggleDaily", false );
+
+      List<Widget> subTasks = [];
+      Widget daily = makeTitleText( appState, "Today's stats", width / 6.0, false, 1, fontSize: 16 );
+      subTasks.add( Wrap( spacing: 0, children: [ daily, toggleDaily ? expand : shrink ] ));
+
+      if( !toggleDaily ) {
+         subTasks.add( _makeEntry( "13 PEQs added to PLAN -> 98", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "1 PEQ removed from PROG -> 23", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "1 PEQ added to PEND -> 3", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "2 PEQs added to ACCR - 43", 2.0 * appState.MID_PAD, false ));
+      }
+
+      return subTasks;
+   }
+   
+   Widget _makeActivityZone( context, container ) {
       final w1 = rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
       final w2 = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
 
-      // XXX Placeholder.
-      if( appState.funny == "" ) {
-         Funnies fun    = new Funnies();
-         appState.funny = fun.getOne();
+      // Turn each getting started off if done
+      // Turn pending/daily off if have getting started
+
+      if( updateView ) {
+         tasks = [];
+         
+         // Getting started 
+         tasks.addAll( makeGettingStarted( context, container, w2 ) );
+         tasks.addAll( makeRegister( w2 ) );
+         tasks.addAll( makePending( w2 ) );
+         tasks.addAll( makeDaily( w2 ) );
+      
+         updateView = false;
       }
 
+      Widget allActivity = Column( 
+         crossAxisAlignment: CrossAxisAlignment.start,
+         mainAxisAlignment: MainAxisAlignment.start,
+         children: tasks
+         );
+         
       return Column( 
          crossAxisAlignment: CrossAxisAlignment.start,
          mainAxisAlignment: MainAxisAlignment.start,
@@ -317,12 +672,12 @@ class _CEHomeState extends State<CEHomePage> {
             Container( color: appState.BACKGROUND, child: makeTitleText( appState, "Activity", w1, true, 1 )),
             Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
             ceProjectLoading ?
-               Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) : 
-               Container( color: Colors.white, child: makeBodyText( appState, appState.funny, w2, true, 1 ))
+            Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) : 
+            allActivity
             ]);
    }
    
-   Widget _makeBody() {
+   Widget _makeBody( context, container ) {
       if( appState.loaded ) {
          return
             Wrap(
@@ -338,7 +693,7 @@ class _CEHomeState extends State<CEHomePage> {
                      endIndent: 0,
                      width: vBarWidth,
                      ),
-                  _makeActivityZone()
+                  _makeActivityZone( context, container )
                   ]);
       }
       else {
@@ -346,7 +701,7 @@ class _CEHomeState extends State<CEHomePage> {
          return CircularProgressIndicator();
       }
    }
-   
+
    @override
       Widget build(BuildContext context) {
 
@@ -365,10 +720,10 @@ class _CEHomeState extends State<CEHomePage> {
       
       if( appState.verbose >= 3 ) { print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() ); }
       if( appState.verbose >= 3 ) { print( getToday() ); }
-      
+
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),
-         body: _makeBody()
+         body: _makeBody( context, container )
          );
    }
 }

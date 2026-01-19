@@ -19,6 +19,7 @@ import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/PEQRaw.dart';
 import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/Agreement.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/Linkage.dart';
@@ -336,6 +337,25 @@ Future<List<CEVenture>> fetchCEVentures( context, container ) async {
    }
 }
 
+// Get latest version of the type given
+Future<Agreement> fetchAgreement( context, container, String docType ) async {
+   String shortName = "fetchAgreement";
+   var postDataQ = {};
+   postDataQ['AgmtType'] = docType;
+   final postData = { "Endpoint": "GetEntries", "tableName": "CEAgreements", "query": postDataQ };
+   final response = await awsPost( shortName, json.encode( postData ), container );
+   
+   if (response.statusCode == 201) {
+      Iterable l = json.decode(utf8.decode(response.bodyBytes));
+      List<Agreement> agreements = l.map((sketch) => sketch == -1 ? Agreement.empty() : Agreement.fromJson( sketch ) ).toList();
+      return agreements[0]; // XXXXXX
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchAgreement( context, container, docType ); }
+   }
+   return Agreement.empty();
+}
+
 // XXX deprecated
 // ce username comes from cert in idtoken on lambda side.
 Future<Person?> fetchSignedInPerson( context, container ) async {
@@ -548,6 +568,15 @@ Future<void> writeCEVenture( appState, context, container, cev ) async {
       String cevs = json.encode( cev );
       String postData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
       updateDynamo( context, container, postData, "UpdateCEV" );
+   }
+}
+
+Future<void> writeCEPerson( appState, context, container, cePeep ) async {
+   if( cePeep != null ) {
+      print( "WRITE cePeep " + cePeep.legalName );
+      String cePeepe = json.encode( cePeep );
+      String postData = '{ "Endpoint": "PutPerson", "NewPerson": $cePeepe }';
+      updateDynamo( context, container, postData, "PutPerson" );
    }
 }
 

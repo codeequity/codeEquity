@@ -583,15 +583,8 @@ class _CEProfileState extends State<CEProfilePage> {
      final lspace = Container( width: 0.1 * width );
      final rspace = Container( width: 0.5 * width );
 
-     // NOTE: loggedin user may not be part of the venture in question.  id may remain -1.
-     assert( appState.cogUser != null );
-     final loggedInUserName  = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
-     String loggedInUserId = "-1";
-     for( int i = 0; i < hostAccs.length; i++ ) {
-        String aUserId = hostAccs[i].ceUserId;
-        assert( appState.cePeople[ aUserId ] != null );
-        if( appState.cePeople[ aUserId ]!.userName == loggedInUserName ) { loggedInUserId = aUserId; }
-     }
+     final loggedInUserName = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
+     final loggedInUserId   = appState.ceUserId;
      
      Widget _makeSetRole( CEVenture cev, String ceUserId, String loggedInUserId, MemberRole role ) {
         assert( cev.roles[ceUserId] != null );
@@ -1010,7 +1003,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
      assert( ceUserName != null && ceUserName!.length > 0 );
 
-     Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false );
+     Person              cePeep     = Person.empty();
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
      List<HostAccount>   hostAccs   = [];
      Widget              cepWid     = spacer;
@@ -1094,7 +1087,7 @@ class _CEProfileState extends State<CEProfilePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                  spacer,
-                 makeTitleText( appState, cePeep.firstName + (cePeep.firstName == "" ? " " : "'s ") + "CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
+                 makeTitleText( appState, cePeep.goesBy + (cePeep.goesBy == "" ? " " : "'s ") + "CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
                  spacer,
                  cepWid,
                  makeHDivider( appState, textWidth * 2.0, appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),

@@ -82,6 +82,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "CheckHostPop")   { resultPromise = checkHostPop( rb.CEProjectId, rb.RepoId ); }
+    else if( endPoint == "CheckGrantAuth") { resultPromise = checkGrantAuth( rb.CEProjectId, rb.ActorId ); }
     else if( endPoint == "GetPerson")      { resultPromise = getPerson( username ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.HostUserId, rb.CEProjectId, rb.isAlloc, rb.allAccrued ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
@@ -105,7 +106,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "UpdateCEP")      { resultPromise = putCEP( rb.ceProject ); }
-    else if( endPoint == "UpdateCEV")      { resultPromise = putCEP( rb.ceVenture ); }
+    else if( endPoint == "UpdateCEV")      { resultPromise = putCEV( rb.ceVenture ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
     else if( endPoint == "CheckDup")       { resultPromise = checkDuplicates( rb.CEProjectId, rb.HostIssueId ); }
     else {
@@ -338,6 +339,9 @@ async function getEntry( tableName, query ) {
     case "CELinkage":
 	props = [ "CEProjectId" ];
 	break;
+    case "CEAgreements":
+	props = [ "AgreementId", "AgmtType" ];
+	break;
     default:
 	assert( false );
     }
@@ -395,6 +399,9 @@ async function getEntries( tableName, query ) {
 	break;
     case "CEEquityPlan": 
 	props = [ "EquityPlanId" ];
+	break;
+    case "CEAgreements":
+	props = [ "AgreementId", "AgmtType" ];
 	break;
     default:
 	console.log( "*"+tableName+"*", "not found" );
@@ -531,24 +538,30 @@ async function putPerson( newPerson ) {
     }
     
     // XXX getEntry is conjunction.  If allow disjunction, this would avoid a call
-    // First verify person does not exist already
-    let ceUID = await getCEUIDFromCE( newPerson.userName );
-    let origPerson = await getEntry( "CEPeople", { Email: newPerson.email } );
-    if( ceUID.statusCode != 204 || origPerson.statusCode != 204 ) {
-	console.log( "person already exists, failing." );
-	return BAD_SEMANTICS; 
+    if( newPerson.Verify == "true" ) {
+       // First verify person does not exist already
+       let ceUID = await getCEUIDFromCE( newPerson.userName );
+       let origPerson = await getEntry( "CEPeople", { Email: newPerson.email } );
+       if( ceUID.statusCode != 204 || origPerson.statusCode != 204 ) {
+          console.log( "person already exists, failing." );   
+          return BAD_SEMANTICS; 	     
+       }
     }
     
     const params = {
 	TableName: 'CEPeople',
 	Item: {
-	    "CEUserId": newPerson.id,
-	    "First":    newPerson.firstName,
-	    "Last":     newPerson.lastName,
-	    "CEUserName": newPerson.userName,
-	    "Email":    newPerson.email,
-	    "Locked":   newPerson.locked,
-	    "ImagePng": newPerson.imagePng            
+	    "CEUserId":       newPerson.id,
+	    "GoesBy":         newPerson.goesBy,
+	    "LegalName":      newPerson.legalName,
+	    "CEUserName":     newPerson.userName,
+	    "Email":          newPerson.email,
+	    "Phone":          newPerson.phone,
+	    "MailingAddress": newPerson.mailingAddress,
+	    "Locked":         newPerson.locked,
+	    "ImagePng":       newPerson.imagePng,
+            "Registered":     newPerson.registered,
+            "AcceptedDocs":   newPerson.acceptedDocs
 	}
     };
     const putCmd = new PutCommand( params );
@@ -699,6 +712,25 @@ async function checkHostPop( ceProjId, repoId ) {
     });
 }
 
+async function checkGrantAuth( ceProjId, actorId ) {
+    // Roles reside in CEVenture.  Get Venture from projId
+    let cepWrap = await getEntry( "CEProjects", { CEProjectId: ceProjId });
+    let cep     = JSON.parse( cepWrap.body );
+    // console.log( cep );
+    
+    let cevWrap  = await getEntry( "CEVentures", { CEVentureId: cep.CEVentureId });
+    let cev      = JSON.parse( cevWrap.body );
+    // console.log( cev );
+
+    let ceUIDWrap = await getCEUIDFromHost( "", actorId );
+    let ceUID  = JSON.parse( ceUIDWrap.body );
+    // console.log( ceUID );
+    
+    let role  = cev.Roles[ceUID];
+    // console.log( role );
+    if( role == "Grantor" || role == "Executive" ) { return success( true ); }
+    else                                           { return success( false ); }
+}
 
 // acquire fine-grained lock
 // Skiplock is ONLY set during cleanLoad for testing purposes

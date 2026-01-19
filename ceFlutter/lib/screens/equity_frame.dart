@@ -403,7 +403,10 @@ class _CEEquityState extends State<CEEquityFrame> {
                if( appState.verbose >= 4 ) { print( "_getCategoryWidgets Update equity" ); }
                catList.addAll( _getTiles( context, width ) );
             }
-            if( changed ) { writeEqPlan( appState, context, container ); }
+            if( changed ) {
+               if( getUserAuth( container ).index <= MemberRole.Executive.index ) { writeEqPlan( appState, context, container ); }
+               else { showToast( "Can not save equity plan modifications, insufficient permissions." ); }
+            }
          }
 
          // Add

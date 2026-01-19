@@ -118,10 +118,10 @@ Future<bool> validateAriProfile( WidgetTester tester ) async {
    expect( find.text( CESE_PROJ_NAME ),  findsNWidgets(2) );
    expect( find.text( CE_PROJ_NAME ),  findsAtLeast(2) );
 
-   expect( find.text( "Venture: " + CEMD_VENT_NAME ), findsNWidgets(1) );
-   expect( find.text( "Venture: " + CEAL_VENT_NAME ), findsNWidgets(1) );
-   expect( find.text( "Venture: " + CESE_VENT_NAME ),  findsNWidgets(1) );
-   expect( find.text( "Venture: " + CE_VENT_NAME ),  findsNWidgets(1) );
+   expect( find.text( CEMD_VENT_NAME ), findsNWidgets(1) );
+   expect( find.text( CEAL_VENT_NAME ), findsNWidgets(1) );
+   expect( find.text( CESE_VENT_NAME ),  findsNWidgets(1) );
+   expect( find.text( CE_VENT_NAME ),  findsNWidgets(4) );
 
    expect( find.text( "Internal testing: Front end" ), findsOneWidget );
    expect( find.text( "Internal testing: server" ), findsNWidgets(2) );
@@ -160,7 +160,7 @@ Future<bool> validateFlutProfile( WidgetTester tester ) async {
 
    expect( find.text( 'Internal testing: Front end' ), findsOneWidget );
 
-   expect( find.text( 'Venture: ' + CEMD_VENT_NAME), findsOneWidget );
+   expect( find.text( CEMD_VENT_NAME),              findsOneWidget );
    expect( find.text( 'Venture Equity Plan PEQs:' ), findsOneWidget );
    expect( find.text( '    Accrued:' ),             findsOneWidget );
    expect( find.text( '0.05%' ),                    findsOneWidget );
@@ -263,16 +263,19 @@ void main() {
    // testWidgets('Profile', skip:true, (WidgetTester tester) async {
    testWidgets('Profile', skip:skip, (WidgetTester tester) async {
          
-         tester.binding.window.physicalSizeTestValue = const Size(1000, 1050);
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1050);
 
          await restart( tester );
          await login( tester, true );
 
          expect( await verifyAriHome( tester ), true );
          expect( find.byIcon( customIcons.profile ),  findsOneWidget );
-         
+
+         print( "Check ari profile" );
          await validateAriProfile( tester );
+         print( "Check flut profile" );
          await validateFlutProfile( tester );
+         print( "Check cardSwap" );
          await validateCardSwap( tester );
          
          await logout( tester );         

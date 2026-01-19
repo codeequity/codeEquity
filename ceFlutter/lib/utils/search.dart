@@ -6,6 +6,7 @@ import 'package:comparators/comparators.dart';
 import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
@@ -88,7 +89,12 @@ class _CESearchState extends State<CESearch> {
       else if( obj is Person ) {
          Person p  = obj as Person;
          objName   = p.userName;
-         objDetail = p.firstName + " " + p.lastName;
+         objDetail = p.getFullName();
+      }
+      else if( obj is CEVenture ) {
+         CEVenture v = obj as CEVenture;
+         objName     = v.ceVentureId;
+         objDetail   = "The CodeEquity Venture " + v.name + " found at: " + (v.web ?? "www.google.com");
       }
       else if( obj is CEProject ) {
          CEProject p = obj as CEProject;
@@ -130,6 +136,11 @@ class _CESearchState extends State<CESearch> {
             else if( obj is Person )   {
                screenArgs["id"] = (obj as Person).id;
                screenArgs["profType"] = "Person" ;
+               newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+            }
+            else if( obj is CEVenture) {
+               screenArgs["id"] = (obj as CEVenture).ceVentureId;
+               screenArgs["profType"] = "CEVenture";
                newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
             }
             else if( obj is CEProject) {
@@ -265,6 +276,7 @@ class _getPossibilities {
 
       if(      alist[0] is PEQ )       { alist.sort( compare((p) => p.hostIssueTitle ) ); }
       else if( alist[0] is Person )    { alist.sort( compare((p) => p.userName ) ); }
+      else if( alist[0] is CEVenture ) { alist.sort( compare((p) => p.ceVentureId ) ); }
       else if( alist[0] is CEProject ) { alist.sort( compare((p) => p.ceProjectId ) ); }
       else                             { print( "Error.  Search object is not recognized. " ); assert( false ); }
       
@@ -292,7 +304,8 @@ class _getPossibilities {
       // Filter.. note cePeople is built when app loads
       List<Person>?    filteredCEPeeps = appState.cePeople.values.where( (Person p) => ( p.userName.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
       List<CEProject>? filteredCEProjs = appState.ceProject.values.where( (CEProject p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
-
+      List<CEVenture>? filteredCEVents = appState.ceVenture.values.where( (CEVenture v) => ( v.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
+      
       List<PEQ> filteredPeqs = [];
       for( final ceUID in appState.cePeople.keys ) {
          if( appState.userPeqs[ ceUID ] != null ) {
@@ -306,19 +319,10 @@ class _getPossibilities {
       // There are many many better ways to do this.  For now, prioritize people, then projects.
       // Alphabetical to support testing until a better preference metric is available.
       res.addAll( sortFilter( filteredCEPeeps ?? [] ) );
+      res.addAll( sortFilter( filteredCEVents ?? []) );
       res.addAll( sortFilter( filteredCEProjs ?? []) );
       res.addAll( sortFilter( filteredPeqs ?? []) );
 
-      /*
-      res.addAll( (filteredCEPeeps ?? []) );
-      res.addAll( (filteredCEProjs ?? []) );
-
-      // XXX there are (much) faster ways to do this
-      // search term may grab same peq from multiple users.. remove repeats.
-      final _set = {...filteredPeqs};
-      res.addAll( _set.toList() );
-      */
-      
       return res;
    }
 
