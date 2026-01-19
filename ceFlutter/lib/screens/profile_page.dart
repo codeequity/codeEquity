@@ -1003,7 +1003,6 @@ class _CEProfileState extends State<CEProfilePage> {
 
      assert( ceUserName != null && ceUserName!.length > 0 );
 
-     // Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false );
      Person              cePeep     = Person.empty();
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
      List<HostAccount>   hostAccs   = [];
@@ -1088,7 +1087,7 @@ class _CEProfileState extends State<CEProfilePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                  spacer,
-                 makeTitleText( appState, cePeep.firstName + (cePeep.firstName == "" ? " " : "'s ") + "CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
+                 makeTitleText( appState, cePeep.goesBy + (cePeep.goesBy == "" ? " " : "'s ") + "CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
                  spacer,
                  cepWid,
                  makeHDivider( appState, textWidth * 2.0, appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),

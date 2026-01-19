@@ -551,15 +551,17 @@ async function putPerson( newPerson ) {
     const params = {
 	TableName: 'CEPeople',
 	Item: {
-	    "CEUserId":     newPerson.id,
-	    "First":        newPerson.firstName,
-	    "Last":         newPerson.lastName,
-	    "CEUserName":   newPerson.userName,
-	    "Email":        newPerson.email,
-	    "Locked":       newPerson.locked,
-	    "ImagePng":     newPerson.imagePng,
-            "Registered":   newPerson.registered,
-            "AcceptedDocs": newPerson.acceptedDocs
+	    "CEUserId":       newPerson.id,
+	    "GoesBy":         newPerson.goesBy,
+	    "LegalName":      newPerson.legalName,
+	    "CEUserName":     newPerson.userName,
+	    "Email":          newPerson.email,
+	    "Phone":          newPerson.phone,
+	    "MailingAddress": newPerson.mailingAddress,
+	    "Locked":         newPerson.locked,
+	    "ImagePng":       newPerson.imagePng,
+            "Registered":     newPerson.registered,
+            "AcceptedDocs":   newPerson.acceptedDocs
 	}
     };
     const putCmd = new PutCommand( params );

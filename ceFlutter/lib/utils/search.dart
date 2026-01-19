@@ -89,7 +89,7 @@ class _CESearchState extends State<CESearch> {
       else if( obj is Person ) {
          Person p  = obj as Person;
          objName   = p.userName;
-         objDetail = p.firstName + " " + p.lastName;
+         objDetail = p.getFullName();
       }
       else if( obj is CEVenture ) {
          CEVenture v = obj as CEVenture;

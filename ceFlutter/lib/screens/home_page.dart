@@ -47,7 +47,7 @@ class _CEHomeState extends State<CEHomePage> {
    static const vBarWidth       =   5.0;
    late double  rhsFrameMaxWidth;
 
-   late bool toggleUser; 
+   late bool toggleRegister;
    late bool toggleVenture; 
    late bool toggleProject;
    late bool togglePending;
@@ -62,13 +62,13 @@ class _CEHomeState extends State<CEHomePage> {
       super.initState();
       ceProjectLoading = false;
 
-      toggleUser    = true;   
-      toggleVenture = true;   
-      toggleProject = true;   
-      togglePending = true;   
-      toggleDaily   = true;
-      updateView    = true;
-      tasks         = [];
+      toggleRegister = true;
+      toggleVenture  = true;   
+      toggleProject  = true;   
+      togglePending  = true;   
+      toggleDaily    = true;
+      updateView     = true;
+      tasks          = [];
    }
 
    @override
@@ -324,7 +324,7 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
 
-   Widget _makeLink( String txt, String key, width, func, { last = false } ) {
+   Widget _makeLink( String txt, width, func, { last = false } ) {
       void _unsetLink( PointerEvent event ) {
          updateView = true;         
          setState(() { appState.hoverChunk = ""; });
@@ -342,7 +342,7 @@ class _CEHomeState extends State<CEHomePage> {
          {
             await func();
          },
-         key: Key( key ),
+         key: Key( txt ),
          child: last ?
          makeActionableText( appState, txt, txt, _setLink, _unsetLink, width, false, 1, sub: true, lgap: gap, bgap: gap * 0.25 ) :
          makeActionableText( appState, txt, txt, _setLink, _unsetLink, width, false, 1, sub: true, lgap: gap )
@@ -362,8 +362,8 @@ class _CEHomeState extends State<CEHomePage> {
          case "toggleProject" :
             setState(() => toggleProject = expand ? false : true );
             break;
-         case "toggleUser" :
-            setState(() => toggleUser = expand ? false : true );
+         case "toggleRegister" :
+            setState(() => toggleRegister = expand ? false : true );
             break;
          case "togglePending" :
             setState(() => togglePending = expand ? false : true );
@@ -383,13 +383,18 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
    
-   Widget makeEntry( String entry, double pad, bool title ) {
-      final w2 = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
+   Widget _makeEntry( String entry, double pad, bool title, { last = false } ) {
+
+      double w2 = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
+      w2 = title ? w2 * 0.4 : w2;
+      
+      double gap = last  ? ( 1.9 * appState.GAP_PAD ) * .25 : 0.0; // XXX 2x
+      
       return Padding(
          padding: EdgeInsets.fromLTRB(pad, 0, 0, 0),
          child: title ?
-         makeTitleText( appState, entry, w2 * 0.4, false, 1 ) :
-         makeBodyText( appState, entry, w2, false, 1 )
+         makeTitleText( appState, entry, w2, false, 1, lgap: 1.9 * appState.GAP_PAD, bgap: gap ) :
+         makeBodyText( appState, entry, w2, false, 1, bgap: gap )
          );
    }
 
@@ -399,14 +404,14 @@ class _CEHomeState extends State<CEHomePage> {
       Widget shrink = makeExpander( "toggleVenture", false );
 
       List<Widget> subTasks = [];
-      Widget venture = makeEntry( "Create CodeEquity Venture", appState.MID_PAD, true );
+      Widget venture = _makeEntry( "Create CodeEquity Venture", 0, true );
       subTasks.add( Wrap( spacing: 0, children: [ venture, toggleVenture ? expand : shrink ] ));
 
       if( !toggleVenture ) {
-         subTasks.add( makeEntry( "Complete Venture Profile", 2.0 * appState.MID_PAD, false ));
-         subTasks.add( makeEntry( "Build an Equity Plan", 2.0 * appState.MID_PAD, false ));
-         subTasks.add( makeEntry( "Invite collaborators", 2.0 * appState.MID_PAD, false ));
-         subTasks.add( makeEntry( "Check collaborator roles", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Complete Venture Profile", 3.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Build an Equity Plan", 3.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Invite collaborators", 3.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Check collaborator roles", 3.0 * appState.MID_PAD, false ));
       }
       return subTasks;
    }
@@ -416,13 +421,13 @@ class _CEHomeState extends State<CEHomePage> {
       Widget shrink = makeExpander( "toggleProject", false );
 
       List<Widget> subTasks = [];
-      Widget project     = makeEntry( "Create CodeEquity Project", appState.MID_PAD, true );
+      Widget project     = _makeEntry( "Create CodeEquity Project", 0, true, last: toggleProject );
       subTasks.add( Wrap( spacing: 0, children: [ project, toggleProject ? expand : shrink ] ));
 
       if( !toggleProject ) {
-         subTasks.add( makeEntry( "Complete Project Profile", 2.0 * appState.MID_PAD, false ));
-         subTasks.add( makeEntry( "Associate with a Host", 2.0 * appState.MID_PAD, false ));
-         subTasks.add( makeEntry( "Associate Host projects with Equity Plan", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Complete Project Profile", 3.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Associate with a Host", 3.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "Associate Host projects with Equity Plan", 3.0 * appState.MID_PAD, false, last: true ));
       }
       return subTasks;
    }
@@ -439,110 +444,163 @@ class _CEHomeState extends State<CEHomePage> {
       String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
       await updateDynamo( context, container, ppostData, "PutPerson" );
 
-      updateView = true;
+      setState(() => updateView = true );
       appState.hoverChunk = "";      
       Navigator.of( context ).pop();      
+   }
+   
+   void _showDoc( Person cePeep, DocType docType, double width ) async {
+      assert( !cePeep!.registered );
+      Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
+      List<Widget> buttons = [];
+      buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt ) ));
+      buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Reject"), onPressed: _cancel ));
+      
+      if( docType == DocType.privacy ) {
+         await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+                             return AlertDialog(
+                                scrollable: true,
+                                title: new Text( agmt.title ),
+                                content: Container( width: 0.6 * width, child: new Text( agmt.content )),
+                                actions: buttons);
+                          });
+      }
+      else {
+         String? doc = agmt.compose( cePeep! );
+         
+         print( "decoded " + doc.length.toString() );
+         await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+                             return AlertDialog(
+                                scrollable: true,
+                                title: new Text( agmt.title ),
+                                content: Html( data: doc,
+                                               // seems to require flex display, which pushes all list items into 1 paragraph
+                                               style: Style.fromCss('''         
+                                                                    ul {
+                                                                       list-style-type: none;
+                                                                       padding-left: 0;
+                                                                    },
+                                                                    ul li {
+                                                                    display: block;
+                                                                       column-gap: 0px;
+                                                                       align-items: center;
+                                                                       margin-bottom: 0px;
+                                                                    }
+                                                                    ''',
+                                                                    (css, errors) => errors.toString())
+                                   ),
+                                actions: buttons);
+                          });
+      }
+   }
+
+   void _cancelEdit() {
+      print( "Cancel update profile" );
+      Navigator.of( context ).pop();
+   }
+
+   void _saveProfile( Person cePeep, List<TextEditingController> controllers) {
+      
+      // Note: userName assigned during signup, can not change.
+      // Note: email assigned during signup, this can change.
+      assert( controllers.length == 5 );
+      String na = controllers[0].text;
+      String gb = controllers[1].text;
+      String em = controllers[2].text;
+      String ph = controllers[3].text;
+      String pa = controllers[4].text;
+
+      cePeep.legalName      = na != "" ? na : cePeep.legalName;
+      cePeep.email          = em != "" ? em : cePeep.email;
+      cePeep.phone          = ph != "" ? ph : cePeep.phone;
+      cePeep.mailingAddress = pa != "" ? pa : cePeep.mailingAddress;
+      
+      if( gb != "" )                                           { cePeep.goesBy = gb; }
+      else if( cePeep.goesBy == "" && cePeep.legalName != "" ) { cePeep.goesBy = cePeep.legalName.split(" ")[0]; }
+
+      cePeep.completeProfile();
+      writeCEPerson( appState, context, container, cePeep );
+      setState(() => updateView = true );
+      
+      Navigator.of( context ).pop();
+   }
+
+   void _editProfile( Person cePeep, double width ) async {
+      TextEditingController na = new TextEditingController();
+      TextEditingController gb = new TextEditingController();
+      TextEditingController em = new TextEditingController();
+      TextEditingController ph = new TextEditingController();
+      TextEditingController pa = new TextEditingController();
+
+      List<TextEditingController> controllers = [na, gb, em, ph, pa];
+      List<String>                header      = ["Legal name", "Goes by", "Email", "Phone", "Mailing Address"];
+      List<String>                curVals     = [];
+      List<bool>                  required    = [true, false, true, true, false ];
+
+      String tipR = "Required to participate in CodeEquity as a contributor that can earn equity. ";
+      String tipO = "Your Equity Agreement requires a mailing address for written correspondance.  While not required, it is strongly recommended.";
+      List<String> toolTip = [ tipR, tipO, tipR, tipR, tipO ];
+      
+      curVals.add( cePeep.legalName );
+      curVals.add( cePeep.goesBy );
+      curVals.add( cePeep.email );
+      curVals.add( cePeep.phone );
+      curVals.add( cePeep.mailingAddress );
+
+      assert( cePeep.userName != "" );
+      String popupTitle = "Edit " + cePeep.userName + "'s Profile";      
+      await editForm( context, appState, popupTitle, header, controllers, curVals, required, toolTip, () => _saveProfile( cePeep, controllers ), () => _cancelEdit() );
    }
    
    List<Widget> makeMe( context, container, double width ) {
       assert( appState.ceUserId != "" );
       Person? cePeep = appState.cePeople[ appState.ceUserId ];
       assert( cePeep != null );
-
-      Widget expand = makeExpander( "toggleUser", true );
-      Widget shrink = makeExpander( "toggleUser", false );
-
+      
       List<Widget> subTasks = [];
-      Widget register = makeEntry( "Register as a CodeEquity user", appState.MID_PAD, true );
-      subTasks.add( Wrap( spacing: 0, children: [ register, toggleUser ? expand : shrink ]));
       
-      void pop( DocType docType ) async {
-         assert( !cePeep!.registered );
-         Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
-         List<Widget> buttons = [];
-         buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt ) ));
-         buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Reject"), onPressed: _cancel ));
+      if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", width * 0.2, () => _showDoc( cePeep!, DocType.privacy, width ))); }
+      if( !cePeep!.completeProfile() ) { subTasks.add( _makeLink( "Complete profile", width * 0.2, () => _editProfile( cePeep!, width ), last: true )); }
 
-         if( docType == DocType.privacy ) {
-            await showDialog(
-               context: context,
-               builder: (BuildContext context) {
-                                return AlertDialog(
-                                   scrollable: true,
-                                   title: new Text( agmt.title ),
-                                   content: Container( width: 0.6 * width, child: new Text( agmt.content )),
-                                   actions: buttons);
-                             });
-         }
-         else {
-            // This shows agreement, good formatting, but no editing.
-            String? doc = agmt.content;
-            print( "decoded " + doc.length.toString() );
-            await showDialog(
-               context: context,
-               builder: (BuildContext context) {
-                                return AlertDialog(
-                                   scrollable: true,
-                                   title: new Text( agmt.title ),
-                                   content: Html( data: doc,
-                                                  // seems to require flex display, which pushes all list items into 1 paragraph
-                                                  style: Style.fromCss('''         
-                                                                       ul {
-                                                                          list-style-type: none;
-                                                                          padding-left: 0;
-                                                                       },
-                                                                       ul li {
-                                                                       display: block;
-                                                                          column-gap: 0px;
-                                                                          align-items: center;
-                                                                          margin-bottom: 0px;
-                                                                       }
-                                                                       ''',
-                                                                       (css, errors) => errors.toString())
-                                                     ),
-                                   actions: buttons);
-                                   });
-            
-            /*
-            Uint8List decodedBytes = base64Decode( agmt.content );
-            print( "decoded " + decodedBytes.length.toString() );
-
-            await showDialog(
-               context: context,
-               builder: (BuildContext context) {
-                                return AlertDialog(
-                                   scrollable: true,
-                                   title: new Text( agmt.title ),
-                                   content: DocxView(
-                                      bytes: decodedBytes,
-                                      // fontSize: 18,
-                                      onError: (error) { print('Error: $error'); },
-                                      ),
-                                   actions: buttons);
-                             });
-            */
-         }
-      }
-
-      
-      if( !toggleUser ) {
-         // note - not accurate?  legal - if unidentifiable may not get anything
-         if( !cePeep!.signedPrivacy() ) { subTasks.add( _makeLink( "Privacy Notice", "Privacy Notice", width * 0.2, () => pop( DocType.privacy ))); }
-         if( !cePeep.signedEquity() )   { subTasks.add( _makeLink( "Equity Agreement", "Equity Agreement", width * 0.2, () => pop( DocType.equity ))); }
-         // subTasks.add( _makeLink( "Equity Agreement", "Equity Agreement", width * 0.2, pop ));
-         subTasks.add( _makeLink( "Complete profile", "Complete profile", width * 0.2, pop, last: true ));
-      }
       return subTasks;      
    }
    
    List<Widget> makeGettingStarted( context, container, double width ) {
       List<Widget> subTasks = [];
-      Widget gettingStarted = makeTitleText( appState, "Getting started", width, false, 1, fontSize: 16 );
 
-      subTasks.add( gettingStarted );
-      subTasks.addAll( makeMe( context, container, width ) );
-      subTasks.addAll( makeVenture() );
-      subTasks.addAll( makeProject() );
+      assert( appState.ceUserId != "" );
+      Person? cePeep = appState.cePeople[ appState.ceUserId ];
+      assert( cePeep != null );
+
+      if( !cePeep!.registered ) { 
+         Widget gettingStarted = makeTitleText( appState, "Getting started", width, false, 1, fontSize: 16 );
+         subTasks.add( gettingStarted );
+         subTasks.addAll( makeMe( context, container, width ) );
+      }
+      return subTasks;
+   }
+
+   List<Widget> makeRegister( double width ) {
+      assert( appState.ceUserId != "" );
+      Person? cePeep = appState.cePeople[ appState.ceUserId ];
+      assert( cePeep != null );
+
+      Widget expand = makeExpander( "toggleRegister", true );
+      Widget shrink = makeExpander( "toggleRegister", false );
+
+      List<Widget> subTasks = [];
+      Widget pending = makeTitleText( appState, "New Ventures & Projects", width * .3, false, 1, fontSize: 16 );
+      subTasks.add( Wrap( spacing: 0, children: [ pending, toggleRegister ? expand : shrink ] ));
+
+      if( !toggleRegister ) {
+         if( !cePeep!.signedEquity() )   { subTasks.add( _makeLink( "Register with a Venture", width * 0.2, () => _showDoc( cePeep!, DocType.equity, width ))); }
+         subTasks.addAll( makeVenture() );
+         subTasks.addAll( makeProject() );
+      }
       return subTasks;
    }
 
@@ -555,9 +613,9 @@ class _CEHomeState extends State<CEHomePage> {
       subTasks.add( Wrap( spacing: 0, children: [ pending, togglePending ? expand : shrink ] ));
 
       if( !togglePending ) {
-         subTasks.add( makeEntry( "14 pending approvals", 2.0 * appState.MID_PAD, false ) );
-         subTasks.add( makeEntry( "2 pending invites", 2.0 * appState.MID_PAD, false ) );
-         subTasks.add( makeEntry( "1 pending request", 2.0 * appState.MID_PAD, false ) );
+         subTasks.add( _makeEntry( "14 pending approvals", 2.0 * appState.MID_PAD, false ) );
+         subTasks.add( _makeEntry( "2 pending invites", 2.0 * appState.MID_PAD, false ) );
+         subTasks.add( _makeEntry( "1 pending request", 2.0 * appState.MID_PAD, false, last: true ) );
       }
       return subTasks;
    }
@@ -572,10 +630,10 @@ class _CEHomeState extends State<CEHomePage> {
       subTasks.add( Wrap( spacing: 0, children: [ daily, toggleDaily ? expand : shrink ] ));
 
       if( !toggleDaily ) {
-         subTasks.add( makeEntry( "13 PEQs added to PLAN -> 98", 2.0 * appState.MID_PAD, false ));
-         subTasks.add( makeEntry( "1 PEQ removed from PROG -> 23", 2.0 * appState.MID_PAD, false ));
-         subTasks.add( makeEntry( "1 PEQ added to PEND -> 3", 2.0 * appState.MID_PAD, false ));
-         subTasks.add( makeEntry( "2 PEQs added to ACCR - 43", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "13 PEQs added to PLAN -> 98", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "1 PEQ removed from PROG -> 23", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "1 PEQ added to PEND -> 3", 2.0 * appState.MID_PAD, false ));
+         subTasks.add( _makeEntry( "2 PEQs added to ACCR - 43", 2.0 * appState.MID_PAD, false ));
       }
 
       return subTasks;
@@ -593,6 +651,7 @@ class _CEHomeState extends State<CEHomePage> {
          
          // Getting started 
          tasks.addAll( makeGettingStarted( context, container, w2 ) );
+         tasks.addAll( makeRegister( w2 ) );
          tasks.addAll( makePending( w2 ) );
          tasks.addAll( makeDaily( w2 ) );
       

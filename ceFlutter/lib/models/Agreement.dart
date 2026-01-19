@@ -1,4 +1,5 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
+import 'package:ceFlutter/models/Person.dart';
 
 enum DocType   { privacy, equity, end }
 
@@ -67,6 +68,13 @@ class Agreement {
          );
    }
 
+   // Replace tags in content
+   String compose( Person cePeep ) {
+      // XXX Pull these out
+      String filledIn = content.replaceAll( "<codeEquityTag=\"EffectiveDate\">", "<u>" + getToday() + "</u>" );
+      return filledIn;
+   }
+   
    String toString() {
       String res = "";
       res += "\n   Agreement " + title + ", type: " + enumToStr( type );

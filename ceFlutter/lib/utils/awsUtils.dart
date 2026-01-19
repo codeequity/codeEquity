@@ -571,6 +571,15 @@ Future<void> writeCEVenture( appState, context, container, cev ) async {
    }
 }
 
+Future<void> writeCEPerson( appState, context, container, cePeep ) async {
+   if( cePeep != null ) {
+      print( "WRITE cePeep " + cePeep.legalName );
+      String cePeepe = json.encode( cePeep );
+      String postData = '{ "Endpoint": "PutPerson", "NewPerson": $cePeepe }';
+      updateDynamo( context, container, postData, "PutPerson" );
+   }
+}
+
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
    String shortName = "fetchHostLinkage";
    print( "FETCH HOSTLINK" );
