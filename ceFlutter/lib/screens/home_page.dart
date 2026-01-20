@@ -498,73 +498,19 @@ class _CEHomeState extends State<CEHomePage> {
       }
    }
 
-   void _cancelEdit() {
-      print( "Cancel update profile" );
-      Navigator.of( context ).pop();
-   }
-
-   void _saveProfile( Person cePeep, List<TextEditingController> controllers) {
-      
-      // Note: userName assigned during signup, can not change.
-      // Note: email assigned during signup, this can change.
-      assert( controllers.length == 5 );
-      String na = controllers[0].text;
-      String gb = controllers[1].text;
-      String em = controllers[2].text;
-      String ph = controllers[3].text;
-      String pa = controllers[4].text;
-
-      cePeep.legalName      = na != "" ? na : cePeep.legalName;
-      cePeep.email          = em != "" ? em : cePeep.email;
-      cePeep.phone          = ph != "" ? ph : cePeep.phone;
-      cePeep.mailingAddress = pa != "" ? pa : cePeep.mailingAddress;
-      
-      if( gb != "" )                                           { cePeep.goesBy = gb; }
-      else if( cePeep.goesBy == "" && cePeep.legalName != "" ) { cePeep.goesBy = cePeep.legalName.split(" ")[0]; }
-
-      cePeep.completeProfile();
-      writeCEPerson( appState, context, container, cePeep );
-      setState(() => updateView = true );
-      
-      Navigator.of( context ).pop();
-   }
-
-   void _editProfile( Person cePeep, double width ) async {
-      TextEditingController na = new TextEditingController();
-      TextEditingController gb = new TextEditingController();
-      TextEditingController em = new TextEditingController();
-      TextEditingController ph = new TextEditingController();
-      TextEditingController pa = new TextEditingController();
-
-      List<TextEditingController> controllers = [na, gb, em, ph, pa];
-      List<String>                header      = ["Legal name", "Goes by", "Email", "Phone", "Mailing Address"];
-      List<String>                curVals     = [];
-      List<bool>                  required    = [true, false, true, true, false ];
-
-      String tipR = "Required to participate in CodeEquity as a contributor that can earn equity. ";
-      String tipO = "Your Equity Agreement requires a mailing address for written correspondance.  While not required, it is strongly recommended.";
-      List<String> toolTip = [ tipR, tipO, tipR, tipR, tipO ];
-      
-      curVals.add( cePeep.legalName );
-      curVals.add( cePeep.goesBy );
-      curVals.add( cePeep.email );
-      curVals.add( cePeep.phone );
-      curVals.add( cePeep.mailingAddress );
-
-      assert( cePeep.userName != "" );
-      String popupTitle = "Edit " + cePeep.userName + "'s Profile";      
-      await editForm( context, appState, popupTitle, header, controllers, curVals, required, toolTip, () => _saveProfile( cePeep, controllers ), () => _cancelEdit() );
-   }
-   
    List<Widget> makeMe( context, container, double width ) {
       assert( appState.ceUserId != "" );
       Person? cePeep = appState.cePeople[ appState.ceUserId ];
       assert( cePeep != null );
+
+      void updateCallback() { setState(() => updateView = true ); }
       
       List<Widget> subTasks = [];
       
       if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", width * 0.2, () => _showDoc( cePeep!, DocType.privacy, width ))); }
-      if( !cePeep!.completeProfile() ) { subTasks.add( _makeLink( "Complete profile", width * 0.2, () => _editProfile( cePeep!, width ), last: true )); }
+      if( !cePeep!.completeProfile() ) {
+         subTasks.add( _makeLink( "Complete profile", width * 0.2, () => editProfile( context, container, cePeep!, width, updateCallback: () => updateCallback() ), last: true ));
+      }
 
       return subTasks;      
    }

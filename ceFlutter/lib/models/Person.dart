@@ -37,6 +37,16 @@ class Person {
       return fn;
    }
 
+   List<String> getEditable() { return ["Legal name", "Goes by", "Email", "Phone", "Mailing Address"]; }
+   List<String> getCurVal()   { return [ legalName,    goesBy,    email,   phone,   mailingAddress ]; }
+   List<bool>   getRequired() { return [true,          false,     true,    true,    false ]; }
+   List<String> getToolTip() {
+      String tipR = "Required to participate in CodeEquity as a contributor that can earn equity.";
+      String tipO = "Your Equity Agreement requires a mailing address for written correspondance.  While not required, it is strongly recommended.";
+      return [ tipR, tipO, tipR, tipR, tipO ];
+   }
+
+
    bool signedPrivacy() {
       if( registered )                               { return true; }
       if( acceptedDocs == null )                     { return false; }

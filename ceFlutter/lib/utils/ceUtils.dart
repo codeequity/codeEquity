@@ -316,6 +316,63 @@ String ceUIDFromHost( appState, String hostUID ) {
 }
 
 
+
+
+void editProfile( context, container, Person cePeep, double width, {void Function()? updateCallback} ) async {
+   
+   void _cancelEdit( context ) {
+      print( "Cancel update profile" );
+      Navigator.of( context ).pop();
+   }
+   
+   void _saveProfile( context, container, Person cePeep, List<TextEditingController> controller, updateCallback) {
+      final appState  = container.state;      
+      // Note: userName assigned during signup, can not change.
+      // Note: email assigned during signup, this can change.
+      assert( controller.length == 5 );
+      String na = controller[0].text;
+      String gb = controller[1].text;
+      String em = controller[2].text;
+      String ph = controller[3].text;
+      String pa = controller[4].text;
+      
+      cePeep.legalName      = na != "" ? na : cePeep.legalName;
+      cePeep.email          = em != "" ? em : cePeep.email;
+      cePeep.phone          = ph != "" ? ph : cePeep.phone;
+      cePeep.mailingAddress = pa != "" ? pa : cePeep.mailingAddress;
+      
+      if( gb != "" )                                           { cePeep.goesBy = gb; }
+      else if( cePeep.goesBy == "" && cePeep.legalName != "" ) { cePeep.goesBy = cePeep.legalName.split(" ")[0]; }
+
+      cePeep.completeProfile();
+      writeCEPerson( appState, context, container, cePeep );
+      updateCallback?.call();
+      
+      Navigator.of( context ).pop();
+   }
+
+   assert( cePeep.userName != "" );
+
+   List<String> header                    = cePeep.getEditable();
+   List<bool>   required                  = cePeep.getRequired();
+   List<String> curVal                    = cePeep.getCurVal();
+   List<String> toolTip                   = cePeep.getToolTip();
+   List<TextEditingController> controller = [];
+
+   assert( header.length == required.length );
+   assert( header.length == curVal.length );
+   assert( header.length == toolTip.length );
+   header.forEach( (h) => controller.add( new TextEditingController() ) );
+
+   final appState = container.state;
+   String popupTitle = "Edit " + cePeep.userName + "'s Profile";      
+   await editForm( context, appState, popupTitle, header, controller, curVal, required, toolTip,
+                   () => _saveProfile( context, container, cePeep, controller, updateCallback), () => _cancelEdit( context ) );
+}
+   
+
+
+
 // Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
 //        Could reduce calls by further limiting update to dirty, where dirty is set when empty or after updatePeq.
 //        small beer.. 
