@@ -1061,12 +1061,13 @@ class _CEProfileState extends State<CEProfilePage> {
                  miniSpacer,
 
                  itsMe ? 
-                 Wrap( children: [ Container( width: appState.GAP_PAD ), 
-                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
+                 Wrap( children: [ Container( width: appState.GAP_PAD ),
+                                   makeActionButtonFixed( appState, 'Edit profile', lhsFrameMaxWidth / 3.0, () => editProfile( context, container, cePeep, rhsFrameMaxWidth )),
+                                   makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 3.0, () async {
                                          MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
                                          confirmedNav( context, container, newPage );
                                       }),
-                                   makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 2.0, _logout( context, appState) )                                                    
+                                   makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 3.0, _logout( context, appState) )
                           ])
                  :
                  Container( width: 1.0 ),

@@ -112,7 +112,8 @@ Future<void> editForm( BuildContext context, appState, scrollHeader,
 }
 
 Future<void> editList( BuildContext context, appState, scrollHeader,
-                       List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc ) async {
+                       List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc, 
+                       { saveName: "Save" }) async {
 
    bool edit = scrollHeader.contains( "Edit" );
    assert( controllers.length == values.length );
@@ -135,7 +136,7 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
       children: editVals );
    
    List<Widget> buttons = [];
-   buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Save"), onPressed: saveFunc ));
+   buttons.add( new TextButton( key: Key( saveName ), child: new Text(saveName), onPressed: saveFunc ));
 
    if( deleteFunc != null ) {
       buttons.add( new TextButton( key: Key( 'Delete' ), child: new Text("Delete"), onPressed: deleteFunc ) );

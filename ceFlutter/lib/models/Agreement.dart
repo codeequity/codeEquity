@@ -7,7 +7,7 @@ class Agreement {
    String  id;
    String  title;
    DocType type;
-   String  format;
+   String  format;     // These variables all pertain to the document type, not any signed instance.
    String  lastMod;
    String  content;
    String  version;
@@ -66,13 +66,6 @@ class Agreement {
          content: p.content,
          version: p.version,
          );
-   }
-
-   // Replace tags in content
-   String compose( Person cePeep ) {
-      // XXX Pull these out
-      String filledIn = content.replaceAll( "<codeEquityTag=\"EffectiveDate\">", "<u>" + getToday() + "</u>" );
-      return filledIn;
    }
    
    String toString() {

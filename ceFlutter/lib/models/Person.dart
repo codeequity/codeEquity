@@ -14,18 +14,17 @@ class Person {
    String       mailingAddress;
    bool         registered;        // with CodeEquity.  i.e. signed privacy, completed profile
    bool         locked;
-   Map< DocType, AcceptedDoc> acceptedDocs;   // { privacy: AcceptedDoc, equity: AcceptedDoc}
+   Map< DocType, List<AcceptedDoc>> acceptedDocs;   // { privacy: AcceptedDoc, equity with venture 1, 2: AcceptedDoc}
 
    Person({required this.id, required this.goesBy, required this.legalName, required this.userName,
             required this.email, required this.phone, required this.mailingAddress, required this.registered, required this.acceptedDocs, required this.locked});
    
    dynamic toJson() {
-      Map<String, AcceptedDoc> encodable = {};
+      Map<String, List<AcceptedDoc>> encodable = {};
       print( "Encoding Person's docs" );
       acceptedDocs.forEach( (k,v) {
             encodable[ enumToStr( k ) ] = v; 
          });
-      print( "docs encoded" );
       
       return { 'id': id, 'goesBy': goesBy, 'legalName': legalName, 'userName': userName, 'email': email, 'phone': phone,
             'mailingAddress': mailingAddress, 'locked': false, 'registered': registered, 'acceptedDocs': encodable }; 
@@ -37,23 +36,34 @@ class Person {
       return fn;
    }
 
-   bool signedPrivacy() {
-      if( registered )                               { return true; }
-      if( acceptedDocs == null )                     { return false; }
-      if( acceptedDocs![ DocType.privacy ] == null ) { return false; }
-
-      return true;
-   }
-
-   bool signedEquity() {
-      if( acceptedDocs == null )                    { return false; }
-      if( acceptedDocs![ DocType.equity ] == null ) { return false; }
-
-      return true;
+   bool hasEquityAgreement( String cevId ) {
+      bool hasEA = false;
+      if( acceptedDocs[ DocType.equity ] == null ) { return hasEA; }
+      List<AcceptedDoc> ea = acceptedDocs[ DocType.equity ]!;
+      for( final accepted in ea ) {
+         if( accepted.ventureId == cevId ) { hasEA = true; break;} 
+      }
+      return hasEA;
    }
    
-   bool completeProfile() {
+   List<String> getEditable() { return ["Legal name", "Goes by", "Email", "Phone", "Mailing Address"]; }
+   List<String> getCurVal()   { return [ legalName,    goesBy,    email,   phone,   mailingAddress ]; }
+   List<bool>   getRequired() { return [true,          false,     true,    true,    false ]; }
+   List<String> getToolTip() {
+      String tipR = "Required to participate in CodeEquity as a contributor that can earn equity.";
+      String tipO = "Your Equity Agreement requires a mailing address for written correspondance.  While not required, it is strongly recommended.";
+      return [ tipR, tipO, tipR, tipR, tipO ];
+   }
 
+
+   bool signedPrivacy() {
+      if( registered )                              { return true; }
+      if( acceptedDocs[ DocType.privacy ] == null ) { return false; }
+
+      return true;
+   }
+
+   bool completeProfile() {
       if( legalName != "" && userName != "" && email != "" && phone != "" ) {
          if( signedPrivacy() ) { registered = true; }
          return true;
@@ -63,13 +73,10 @@ class Person {
    }
 
    void accept( Agreement agmt ) {
-      acceptedDocs[ agmt.type ] = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
-      bool allAccepted = true;
-      DocType.values.forEach( (dtype) {
-            if( acceptedDocs[ dtype ] == null ) { allAccepted = false; }
-         });
-      
-      if( signedEquity() && completeProfile()) { registered = true; }
+      AcceptedDoc ad = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
+      if( acceptedDocs[ agmt.type ] == null )  { acceptedDocs[ agmt.type ] = [ ad ];  }
+      else                                     { acceptedDocs[ agmt.type ]!.add( ad ); }
+      if( signedPrivacy() && completeProfile()) { registered = true; }
    }
    
    // No one found.  return empty 
@@ -92,11 +99,14 @@ class Person {
 
       var dynamicDocs = json['AcceptedDocs'];  // json arriving as Map<String,Map<String,String>>
 
-      Map<DocType, AcceptedDoc> docs = {};
+      Map<DocType, List<AcceptedDoc>> docs = {};
       if( dynamicDocs != null ) {
          dynamicDocs.entries.forEach((entry) {
                DocType key = enumFromStr<DocType>( entry.key, DocType.values );
-               docs[key] = AcceptedDoc.fromJson( entry.value );
+               // docs[key] = entry.value.map( (accepted) => AcceptedDoc.fromJson( accepted )).toList();
+               List<AcceptedDoc> a = [];
+               entry.value.forEach( (v) => a.add( AcceptedDoc.fromJson( v )) );
+               docs[key] = a;
             });
       }
       
