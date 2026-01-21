@@ -438,7 +438,6 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
    void _accept( Person cePeep, Agreement agmt ) async {
-      print( "Agreement agreed" );
       cePeep.accept( agmt );
       String user = json.encode( cePeep );
       String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
@@ -448,13 +447,34 @@ class _CEHomeState extends State<CEHomePage> {
       appState.hoverChunk = "";      
       Navigator.of( context ).pop();      
    }
+
+   void _registerVenture( Person cePeep, DocType docType, double width ) async {
+      void _select( TextEditingController cont ) {
+         String cev = cont.text;
+         final cevEntry = appState.ceVenture.entries.where( ( entry ) => entry.value.name == cev ).toList();
+         assert( cevEntry.length <= 1 );
+         if( cevEntry.length < 1 ) {
+            showToast( "Venture not found.  Please re-enter the name of the Venture." );
+            return;
+         }
+         String cevId = cevEntry[0].key;
+         Navigator.of( context ).pop();
+         _showDoc( cePeep!, DocType.equity, width, cevId: cevId, cevName: cev );
+      }
+
+      String choose = "Choose the CodeEquity Venture you wish to register with.";
+      String item   = "Venture name";
+      TextEditingController cont = new TextEditingController();
+      String hint   = "Search is available if you need a hint";
+      editList( context, appState, choose, [item], [cont], [hint], () => _select( cont ), () => _cancel(), null, saveName: "Select" );
+   }
    
-   void _showDoc( Person cePeep, DocType docType, double width ) async {
-      assert( !cePeep!.registered );
+   void _showDoc( Person cePeep, DocType docType, double width, { cevId = "", cevName = "" } ) async {
+
       Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
       List<Widget> buttons = [];
       buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt ) ));
-      buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Reject"), onPressed: _cancel ));
+      buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
       
       if( docType == DocType.privacy ) {
          await showDialog(
@@ -468,16 +488,22 @@ class _CEHomeState extends State<CEHomePage> {
                           });
       }
       else {
-         String? doc = agmt.compose( cePeep! );
+         if( !cePeep!.registered ) {
+            showToast( "The required fields of your profile must be completed first." );
+            return;
+         }
+
+         AcceptedDoc accepted = AcceptedDoc.empty();
+         String filledInDoc = accepted.compose( cePeep!, agmt, cevId, cevName );
          
-         print( "decoded " + doc.length.toString() );
+         print( "decoded " + filledInDoc.length.toString() );
          await showDialog(
             context: context,
             builder: (BuildContext context) {
                              return AlertDialog(
                                 scrollable: true,
                                 title: new Text( agmt.title ),
-                                content: Html( data: doc,
+                                content: Html( data: filledInDoc,
                                                // seems to require flex display, which pushes all list items into 1 paragraph
                                                style: Style.fromCss('''         
                                                                     ul {
@@ -521,8 +547,8 @@ class _CEHomeState extends State<CEHomePage> {
       assert( appState.ceUserId != "" );
       Person? cePeep = appState.cePeople[ appState.ceUserId ];
       assert( cePeep != null );
-
-      if( !cePeep!.registered ) { 
+      
+      if(  !cePeep!.registered ) { 
          Widget gettingStarted = makeTitleText( appState, "Getting started", width, false, 1, fontSize: 16 );
          subTasks.add( gettingStarted );
          subTasks.addAll( makeMe( context, container, width ) );
@@ -530,6 +556,8 @@ class _CEHomeState extends State<CEHomePage> {
       return subTasks;
    }
 
+   // Can always register with another CEV.
+   // Once registered, can update the same agreement, but not remove it.  For example, mailing address or phone might change.
    List<Widget> makeRegister( double width ) {
       assert( appState.ceUserId != "" );
       Person? cePeep = appState.cePeople[ appState.ceUserId ];
@@ -543,7 +571,8 @@ class _CEHomeState extends State<CEHomePage> {
       subTasks.add( Wrap( spacing: 0, children: [ pending, toggleRegister ? expand : shrink ] ));
 
       if( !toggleRegister ) {
-         if( !cePeep!.signedEquity() )   { subTasks.add( _makeLink( "Register with a Venture", width * 0.2, () => _showDoc( cePeep!, DocType.equity, width ))); }
+         // subTasks.add( _makeLink( "Register with a Venture", width * 0.2, () => _showDoc( cePeep!, DocType.equity, width )));
+         subTasks.add( _makeLink( "Register with a Venture", width * 0.2, () => _registerVenture( cePeep!, DocType.equity, width )));
          subTasks.addAll( makeVenture() );
          subTasks.addAll( makeProject() );
       }
