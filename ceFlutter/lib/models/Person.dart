@@ -71,12 +71,25 @@ class Person {
       if( registered ) { return true; }
       return false;
    }
-
+   
    void accept( Agreement agmt ) {
       AcceptedDoc ad = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
       if( acceptedDocs[ agmt.type ] == null )  { acceptedDocs[ agmt.type ] = [ ad ];  }
       else                                     { acceptedDocs[ agmt.type ]!.add( ad ); }
       if( signedPrivacy() && completeProfile()) { registered = true; }
+   }
+
+   bool registeredWithCEV( cevId ) {
+      bool res = false;
+
+      List<AcceptedDoc>? docs = acceptedDocs[ DocType.equity ];
+      if( docs == null ) { return res; }
+
+      docs.forEach( (d) {
+            if( d.ventureId == cevId ) { res = true; }
+         });
+      
+      return res;
    }
    
    // No one found.  return empty 

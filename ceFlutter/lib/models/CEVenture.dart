@@ -1,12 +1,14 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
 
+import 'package:ceFlutter/models/Person.dart';
+
 enum MemberRole  { Executive, Grantor, Member, end }
 
 class CEVenture {
    final String  ceVentureId;
    final String  name;
    final String? web;
-   final Map< String, MemberRole > roles;
+   final Map< String, MemberRole > roles;  // ceUID: role
 
    CEVenture({ required this.ceVentureId, required this.name, this.web, required this.roles });
 
@@ -45,6 +47,16 @@ class CEVenture {
          );
    }
 
+   List<Person> getExecutives( appState ) {
+      List<Person> res = [];
+      roles.entries.forEach( (e) {
+            if( e.value == MemberRole.Executive ) {
+               Person? p = appState.cePeople[ e.key ];
+               assert( p != null );
+               res.add( p! );
+            }} );
+      return res;
+   }
    
    String toString() {
       String res = "\n" + name + " (" + ceVentureId + ") " + (web ?? "");
