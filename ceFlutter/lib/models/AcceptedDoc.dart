@@ -59,7 +59,7 @@ class AcceptedDoc {
          partnerPhone   = cePeep.phone;
          ventureId      = cevId;
          ventureName    = cev!.name;
-         ventureWebsite = cev!.web == "" ? "https://www.codeequity.com/XXX" : cev!.web;
+         ventureWebsite = cev!.web == "" ? "https://www.codeequity.org/XXX" : cev!.web;
 
          // XXX Any exec will do.  Show first available, but pending tasks for all execs.
          execName      = execs[0].legalName;
