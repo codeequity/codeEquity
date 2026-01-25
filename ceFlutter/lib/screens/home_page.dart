@@ -493,8 +493,17 @@ class _CEHomeState extends State<CEHomePage> {
             return;
          }
 
+         if( cePeep.registeredWithCEV( cevId ) ) {
+            showToast( "You have already signed the CodeEquity Equity Agreement with " + cevName );
+            return;
+         }
+         
          AcceptedDoc accepted = AcceptedDoc.empty();
-         String filledInDoc = accepted.compose( cePeep!, agmt, cevId, cevName );
+         String filledInDoc = accepted.compose( appState, cePeep!, agmt, cevId );
+         if( filledInDoc == "-1" ) {
+            showToast( "No need to sign agreements with yourself." );
+            return;
+         }
          
          print( "decoded " + filledInDoc.length.toString() );
          await showDialog(

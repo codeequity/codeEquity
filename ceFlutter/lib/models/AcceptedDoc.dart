@@ -1,5 +1,7 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
 
+import 'package:ceFlutter/app_state_container.dart';
+
 import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 import 'package:ceFlutter/models/Person.dart';
@@ -11,11 +13,11 @@ class AcceptedDoc {
 
    // Equity agreement.  Only fully valid agreements store these values.
    String? effectiveDate;      // the effective date filled in on the agreement instance
-   String? ownerName;
-   String? ownerSignature;
-   String? ownerEmail;
-   String? ownerPhone;
-   String? ownerMailingAddress;
+   String? execName;
+   String? execSignature;
+   String? execEmail;
+   String? execPhone;
+   String? execMailingAddress;
    String? ventureName;
    String? ventureId;
    String? ventureWebsite;
@@ -24,38 +26,56 @@ class AcceptedDoc {
    String? partnerEmail;
    String? partnerPhone;
    String? partnerMailingAddress;
-
+   String? partnerTitle;
+   
    AcceptedDoc( {required this.docType, required this.docId, required this.acceptedDate} );
 
    // Replace tags in content
-   String compose( Person cePeep, Agreement agmt, String cevId, String cevName ) {
+   String compose( appState, Person cePeep, Agreement agmt, String cevId ) {
       // NOTE if the pattern from is not found, the <codeEquityTag> will be visible at best, or lost part of the doc at worst.
       print( agmt.content.length.toString() + " " + agmt.toString() );
       String res = "";
       if( agmt.type == DocType.equity ) {
 
+         CEVenture? cev = appState.ceVenture[ cevId ];
+         assert( cev != null );
+
+         // Exec
+         List<Person> execs = cev!.getExecutives( appState );
+         assert( execs.length >= 1 );
+
+         // no use signing with yourself
+         execs = execs.where( (p) => p.id != cePeep.id ).toList();
+         if( execs.length == 0 ) { return "-1"; }
          
          // XXX
          String pMA = cePeep.mailingAddress != "" ? cePeep.mailingAddress : "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
          String oMA = "&nbsp&nbsp&nbsp&nbsp&nbspXXX&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
          String nyi = "XXX";
          
-         effectiveDate = getToday();
-         partnerName   = cePeep.legalName;
-         partnerEmail  = cePeep.email;
-         partnerPhone  = cePeep.phone;
-         ventureId     = cevId;
-         ventureName   = cevName;
+         effectiveDate  = getToday();
+         partnerName    = cePeep.legalName;
+         partnerEmail   = cePeep.email;
+         partnerPhone   = cePeep.phone;
+         ventureId      = cevId;
+         ventureName    = cev!.name;
+         ventureWebsite = cev!.web == "" ? "https://www.codeequity.org/XXX" : cev!.web;
+
+         // XXX Any exec will do.  Show first available, but pending tasks for all execs.
+         execName      = execs[0].legalName;
+         execEmail     = execs[0].email;
+         execPhone     = execs[0].phone;
          
          res = agmt.content;
+         res = res.replaceAll( "<codeEquityTag=\"PartnerTitle\">", "<u>" + nyi + "</u>" );
          res = res.replaceAll( "<codeEquityTag=\"EffectiveDate\">", "<u>" + effectiveDate! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"OwnerName\">", "<u>" + nyi + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"OwnerSignature\">", "<u>" + nyi + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"OwnerEmail\">", "<u>" + nyi + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"OwnerPhone\">", "<u>" + nyi + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"OwnerMailingAddress\">", "<u>" + oMA + "</u>" );
+         res = res.replaceAll( "<codeEquityTag=\"ExecutiveName\">", "<u>" + execName! + "</u>" );
+         res = res.replaceAll( "<codeEquityTag=\"ExecutiveSignature\">", "<u>" + nyi + "</u>" );
+         res = res.replaceAll( "<codeEquityTag=\"ExecutiveEmail\">", "<u>" + execEmail! + "</u>" );
+         res = res.replaceAll( "<codeEquityTag=\"ExecutivePhone\">", "<u>" + execPhone! + "</u>" );
+         res = res.replaceAll( "<codeEquityTag=\"ExecutiveMailingAddress\">", "<u>" + oMA + "</u>" );
          res = res.replaceAll( "<codeEquityTag=\"VentureName\">", "<u>" + ventureName! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"VentureWebsite\">", "<u>" + "https://www.codeequity.com/XXX" + "</u>" );
+         res = res.replaceAll( "<codeEquityTag=\"VentureWebsite\">", "<u>" + ventureWebsite! + "</u>" );
          res = res.replaceAll( "<codeEquityTag=\"PartnerName\">", "<u>" + partnerName! + "</u>" );
          res = res.replaceAll( "<codeEquityTag=\"PartnerSignature\">", "<u>" + nyi + "</u>" );
          res = res.replaceAll( "<codeEquityTag=\"PartnerEmail\">", "<u>" + partnerEmail! + "</u>" );
