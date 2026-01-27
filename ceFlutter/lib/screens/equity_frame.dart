@@ -508,8 +508,6 @@ class _CEEquityState extends State<CEEquityFrame> {
       else {
          var itemCount = max( categoryCount, categories.length );
 
-         final ScrollController controller = ScrollController();
-
          /*
          for( int i = 0; i < categories.length; i++ ) {
             print( i.toString() + ": " + categories[i].toString() + " " + categories[i].length.toString() );

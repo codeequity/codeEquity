@@ -295,8 +295,6 @@ class _CESummaryState extends State<CESummaryFrame> {
          // var itemCount = min( allocCount, 50 );
          var itemCount = max( allocCount, allocs.length );
 
-         final ScrollController controller = ScrollController();
-
          // Key removes spacer index for compatibility with integration testing
          return ScrollConfiguration(
             behavior: MyCustomScrollBehavior(),

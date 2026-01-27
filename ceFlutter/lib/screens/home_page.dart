@@ -54,6 +54,11 @@ class _CEHomeState extends State<CEHomePage> {
    late bool toggleDaily;  
    late bool updateView;
 
+
+   final ScrollController _scrollController = ScrollController();
+   bool _eventTriggered = false;                                    // State variable to prevent triggering the event multiple times
+   final double _triggerPosition = 500.0;                           // The position in pixels to trigger the event
+   
    late List<Widget> tasks;
    
    
@@ -69,10 +74,14 @@ class _CEHomeState extends State<CEHomePage> {
       toggleDaily    = true;
       updateView     = true;
       tasks          = [];
+
+      _scrollController.addListener(_onScroll);
    }
 
    @override
    void dispose() {
+      _scrollController.removeListener( _onScroll );
+      _scrollController.dispose();
       super.dispose();
       if( appState.verbose >= 2 ) { print( "HP dispose" ); }
    }
@@ -468,6 +477,27 @@ class _CEHomeState extends State<CEHomePage> {
       String hint   = "Search is available if you need a hint";
       editList( context, appState, choose, [item], [cont], [hint], () => _select( cont ), () => _cancel(), null, saveName: "Select" );
    }
+
+
+   void _editPreamble() {
+       print( "Yes" );
+       Navigator.of( context ).pop();
+       // Pop editBox
+       // build a new filledInDoc and update view?   probably.
+   }
+   
+
+      
+      
+   void _onScroll() {
+      if (!_eventTriggered && _scrollController.position.pixels >= _triggerPosition) {
+         print("Scrolled past $_triggerPosition! Event triggered.");
+         _eventTriggered = true; 
+         
+         confirm( context, "Enter or edit values?", "Select yes to edit.", () => _editPreamble(), () => print( "No" ) );
+      }
+      if (_scrollController.position.pixels < _triggerPosition) { _eventTriggered = false; }
+   }
    
    void _showDoc( Person cePeep, DocType docType, double width, { cevId = "", cevName = "" } ) async {
 
@@ -504,8 +534,38 @@ class _CEHomeState extends State<CEHomePage> {
             showToast( "No need to sign agreements with yourself." );
             return;
          }
-         
+
          print( "decoded " + filledInDoc.length.toString() );
+         await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+                             return AlertDialog(
+                                title: new Text( agmt.title ),
+                                content: SizedBox(
+                                   height: 2000,
+                                   child: SingleChildScrollView( 
+                                      scrollDirection: Axis.vertical,
+                                      controller: _scrollController, 
+                                      child: Html( data: filledInDoc,
+                                               // seems to require flex display, which pushes all list items into 1 paragraph
+                                               style: Style.fromCss('''         
+                                                                    ul {
+                                                                       list-style-type: none;
+                                                                       padding-left: 0;
+                                                                    },
+                                                                    ul li {
+                                                                    display: block;
+                                                                       column-gap: 0px;
+                                                                       align-items: center;
+                                                                       margin-bottom: 0px;
+                                                                    }
+                                                                    ''',
+                                                                    (css, errors) => errors.toString())
+                                         ))),
+                                actions: buttons);
+                          });
+
+         /*
          await showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -530,6 +590,7 @@ class _CEHomeState extends State<CEHomePage> {
                                    ),
                                 actions: buttons);
                           });
+         */
       }
    }
 
