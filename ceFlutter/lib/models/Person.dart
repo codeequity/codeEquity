@@ -72,8 +72,11 @@ class Person {
       return false;
    }
    
-   void accept( Agreement agmt ) {
-      AcceptedDoc ad = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
+   void accept( Agreement agmt, AcceptedDoc ad ) {
+      // equity accepted docs come with filled in blank data
+      if( agmt.type != DocType.equity ) {
+         ad = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
+      }
       if( acceptedDocs[ agmt.type ] == null )  { acceptedDocs[ agmt.type ] = [ ad ];  }
       else                                     { acceptedDocs[ agmt.type ]!.add( ad ); }
       if( signedPrivacy() && completeProfile()) { registered = true; }

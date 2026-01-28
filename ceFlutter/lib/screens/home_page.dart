@@ -54,10 +54,8 @@ class _CEHomeState extends State<CEHomePage> {
    late bool toggleDaily;  
    late bool updateView;
 
-
    final ScrollController _scrollController = ScrollController();
-   bool _eventTriggered = false;                                    // State variable to prevent triggering the event multiple times
-   final double _triggerPosition = 500.0;                           // The position in pixels to trigger the event
+   late AcceptedDoc scrollDoc;
    
    late List<Widget> tasks;
    
@@ -442,12 +440,12 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
    void _cancel() {
-      print( "Agreement not agreed" );
+      print( "Cancelled" );
       Navigator.of( context ).pop();
    }
 
    void _accept( Person cePeep, Agreement agmt ) async {
-      cePeep.accept( agmt );
+      cePeep.accept( agmt, scrollDoc );
       String user = json.encode( cePeep );
       String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
       await updateDynamo( context, container, ppostData, "PutPerson" );
@@ -475,28 +473,66 @@ class _CEHomeState extends State<CEHomePage> {
       String item   = "Venture name";
       TextEditingController cont = new TextEditingController();
       String hint   = "Search is available if you need a hint";
-      editList( context, appState, choose, [item], [cont], [hint], () => _select( cont ), () => _cancel(), null, saveName: "Select" );
+      editList( context, appState, choose, [item], [cont], [hint], () => _select( cont ), _cancel, null, saveName: "Select" );
    }
 
 
-   void _editPreamble() {
-       print( "Yes" );
-       Navigator.of( context ).pop();
-       // Pop editBox
-       // build a new filledInDoc and update view?   probably.
+   void _rewriteDoc( List<TextEditingController> cont ) {
+      Navigator.of( context ).pop();
+   }
+
+   void _rewriteDoccy( String choice ) {
+      print( "Radio sez " + choice );
+      Navigator.of( context ).pop();
+   }
+
+
+   void _editBox( final box ) {
+      print( "In editBox" );
+      assert( scrollDoc != null );
+      assert( scrollDoc.filledIn != null );
+
+      if( box.type == "editList" ) {
+         assert( box.values != null );
+         List<String>                item = [];
+         List<TextEditingController> cont = [];
+         List<String>                hint = [];
+         for( final entry in box.values.entries ) {
+            item.add( entry.key );
+            hint.add( entry.value );
+            cont.add( new TextEditingController() );
+         }
+         
+         Navigator.of( context ).pop();
+         editList( context, appState, "", item, cont, hint, () => _rewriteDoc( cont ), _cancel, null, stepWidth: 45 );
+      }
+      else if( box.type == "radio" ) {
+         assert( box.choices != null );
+         assert( box.choices.length >= 1 );
+         assert( box.choiceTitle != null );
+         Navigator.of( context ).pop();
+         radioDialog( context, box.choiceTitle!, box.choices!, _rewriteDoccy, _cancel );
+      }
+      
+      // build a new filledInDoc and update view?   probably.
    }
    
-
-      
       
    void _onScroll() {
-      if (!_eventTriggered && _scrollController.position.pixels >= _triggerPosition) {
-         print("Scrolled past $_triggerPosition! Event triggered.");
-         _eventTriggered = true; 
-         
-         confirm( context, "Enter or edit values?", "Select yes to edit.", () => _editPreamble(), () => print( "No" ) );
+      assert( _scrollController.position.maxScrollExtent > 0 );
+      double depth = 100 * ( _scrollController.position.pixels /  _scrollController.position.maxScrollExtent );
+      if( scrollDoc.boxes == null ) { return; }
+      for( var i = 0; i < scrollDoc.boxes!.length; i++ ) {
+         var box = scrollDoc.boxes![i];
+         if( !box.triggered && depth >= box.percDepth ) {
+            print("Scrolled past " + box.percDepth.toString() + " Event triggered.");
+            box.triggered = true; 
+            
+            confirm( context, "Update Venture Agreement?", "Select continue to edit.", () => _editBox( box ), _cancel);
+            break;
+         }
+         if (depth < box.percDepth ) { box.triggered = false; }
       }
-      if (_scrollController.position.pixels < _triggerPosition) { _eventTriggered = false; }
    }
    
    void _showDoc( Person cePeep, DocType docType, double width, { cevId = "", cevName = "" } ) async {
@@ -528,8 +564,9 @@ class _CEHomeState extends State<CEHomePage> {
             return;
          }
          
-         AcceptedDoc accepted = AcceptedDoc.empty();
-         String filledInDoc = accepted.compose( appState, cePeep!, agmt, cevId );
+         scrollDoc          = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
+         String filledInDoc = scrollDoc.compose( appState, cePeep!, agmt, cevId );
+         
          if( filledInDoc == "-1" ) {
             showToast( "No need to sign agreements with yourself." );
             return;
@@ -542,7 +579,7 @@ class _CEHomeState extends State<CEHomePage> {
                              return AlertDialog(
                                 title: new Text( agmt.title ),
                                 content: SizedBox(
-                                   height: 2000,
+                                   height: 8000,
                                    child: SingleChildScrollView( 
                                       scrollDirection: Axis.vertical,
                                       controller: _scrollController, 

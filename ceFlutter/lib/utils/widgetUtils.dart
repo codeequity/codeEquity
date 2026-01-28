@@ -113,7 +113,7 @@ Future<void> editForm( BuildContext context, appState, scrollHeader,
 
 Future<void> editList( BuildContext context, appState, scrollHeader,
                        List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc, 
-                       { saveName: "Save" }) async {
+                       { saveName: "Save", stepWidth: 40 }) async {
 
    bool edit = scrollHeader.contains( "Edit" );
    assert( controllers.length == values.length );
@@ -122,7 +122,7 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
    for( int i = 0; i < values.length; i++ ) {
       Widget text = makeInputField( appState, values[i], false, controllers[i], keyName: "editRow " + values[i], edit: edit);
       Widget w = IntrinsicWidth( child: text );
-      Widget h = IntrinsicWidth( stepWidth: 40, child: Text( itemHeaders[i] ));
+      Widget h = IntrinsicWidth( stepWidth: stepWidth, child: Text( itemHeaders[i] ));
       editVals.add(
          Row( 
             mainAxisSize: MainAxisSize.max,
@@ -155,6 +155,43 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
               });
    // print( "Edit row finished" );
 }
+
+
+Future<void> radioDialog( BuildContext context, boxHeader, List<String> choices, executeFunc, cancelFunc ) async {
+
+   String? _choice = choices[0];
+   
+   List<Widget> buttons = [];
+   buttons.add( new TextButton( key: Key( 'Confirm' ), child: new Text("Confirm"), onPressed: () => executeFunc( _choice ) ));
+   buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: cancelFunc ));
+   
+   List<Widget> tiles = [];
+   for( var i = 0; i < choices.length; i++ ) {
+      tiles.add( RadioListTile<String>( title: Text( choices[i] ), value: choices[i] ));
+   }
+   
+   await showDialog(
+      context: context,
+      builder: (BuildContext context)
+      {
+         return StatefulBuilder(
+            builder: (context, setState )
+            {
+               return AlertDialog(
+                  title: new Text( boxHeader ),
+                  content: RadioGroup<String>(
+                     groupValue: _choice,
+                     onChanged: (String? value) { setState(() => _choice = value ); },
+                     child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: tiles )
+                     ),
+                  actions: buttons);
+            });
+      });
+   
+}
+   
 
 Future<void> editBox( BuildContext context, appState, maxWidth, boxHeader, itemHeader, controller, hint, executeFunc, cancelFunc ) async {
 
