@@ -157,12 +157,15 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
 }
 
 
-Future<void> radioDialog( BuildContext context, boxHeader, List<String> choices, executeFunc, cancelFunc ) async {
+Future<void> radioDialog( BuildContext context, boxHeader, List<String> choices, executeFunc, cancelFunc, {execArgs = null} ) async {
 
    String? _choice = choices[0];
+
+   List<dynamic> args = [];
+   if( execArgs != null ) { args = execArgs; }
    
    List<Widget> buttons = [];
-   buttons.add( new TextButton( key: Key( 'Confirm' ), child: new Text("Confirm"), onPressed: () => executeFunc( _choice ) ));
+   buttons.add( new TextButton( key: Key( 'Confirm' ), child: new Text("Confirm"), onPressed: () => Function.apply( executeFunc, [...args, _choice] ) ));
    buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: cancelFunc ));
    
    List<Widget> tiles = [];

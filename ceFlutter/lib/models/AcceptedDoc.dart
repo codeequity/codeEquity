@@ -10,11 +10,40 @@ class _aBox {
    String               type;        // what type of editable values do we expect
    double               percDepth;   // scroll past this depth to see edit box
    bool                 triggered;   // bookkeeping
-   Map<String, String>? values;      // editable values if exist
-   List<String>?        choices;     // available selections
-   String?              choiceTitle; 
+   
+   String?              blankTitle;
+   Map<String, String>? values;      // editable values for blanks type
 
+   String?              radioTitle;
+   List<String>?        rchoices;     // available selections for radio type
+
+   String?              hybridTitle;  // i.e. update radio or blank?
+   List<String>?        hchoices;     // available selections for hybrid meta-type
+
+   
    _aBox( { required this.type, required this.triggered, required this.percDepth });
+
+   bool validate() {
+      bool res = true;
+      bool found = false;
+      if( this.type == "blanks" || this.type == "hybrid" ) {
+         res = res && this.values != null;
+         found = true;
+      }
+      if( type == "hybrid" ) {
+         res = res && this.radioTitle != null;
+         res = res && this.rchoices != null;
+         res = res && this.rchoices!.length >= 1;
+         res = res && this.hybridTitle != null;
+         res = res && this.hchoices != null;
+         res = res && this.hchoices!.length >= 1;
+         found = true;
+      }
+      if( !found ) { res = false; }
+      
+      return res;
+   }
+
 }
 
 class AcceptedDoc {
@@ -51,14 +80,23 @@ class AcceptedDoc {
       boxes = [];
       if( this.docType == DocType.equity ) {
          // preamble  
-         _aBox box = new _aBox( type: "radio", triggered: false, percDepth: 0.2 );
-         box.choices     = ["Collaborator", "Founder"];   // XXX formalize
-         box.choiceTitle = "Partner's Title";
+         _aBox box = new _aBox( type: "hybrid", triggered: false, percDepth: 0.2 );
+         box.radioTitle  = "Partner's Title";
+         box.blankTitle  = "Effective Date";
+
+         // NOTE radioTitle will not be passed to the radio dialog as a selectable option.  It is used to help determine which hybrid option the user chose
+         box.rchoices    = [ box.radioTitle!, "Collaborator", "Founder"];   // XXX formalize.  
+
+         box.hybridTitle = "Which would you like to update?";
+         box.hchoices    = [ box.radioTitle!, box.blankTitle! ];
+
+         box.values = {};
+         box.values!["EffectiveDate"] = this.effectiveDate ?? "";
          
          boxes!.add( box );
-
+         
          // Signature
-         box = new  _aBox( type: "editList", triggered: false, percDepth: 66.0 );
+         box = new  _aBox( type: "blanks", triggered: false, percDepth: 66.0 );
          box.values = {};
 
          // XXX Partner can't sign for exec, vice versa
@@ -74,47 +112,68 @@ class AcceptedDoc {
       }
       
    }
+
+   // User has filled in a blank or choosen a value.  update doc.
+   void modify( appState, Map<String, String> update ) {
+      for( final entry in update.entries ) {
+         switch( entry.key ) {
+         case "PartnerTitle" :
+            partnerTitle = entry.value;
+            break;
+         case "EffectiveDate" :
+            effectiveDate = entry.value;
+            break;
+         default :
+            print( "Missing update item in Accepted Doc: " + entry.key );
+            assert( false );
+         }
+      }
+      return;
+   }
    
    // Replace tags in content
-   String compose( appState, Person cePeep, Agreement agmt, String cevId ) {
+   String compose( appState, Person cePeep, Agreement agmt, String cevId, {useCurrent = false} ) {
       // NOTE if the pattern from is not found, the <codeEquityTag> will be visible at best, or lost part of the doc at worst.
       print( agmt.content.length.toString() + " " + agmt.toString() );
       String res = "";
       if( agmt.type == DocType.equity ) {
 
-         CEVenture? cev = appState.ceVenture[ cevId ];
-         assert( cev != null );
-
-         // Exec
-         List<Person> execs = cev!.getExecutives( appState );
-         assert( execs.length >= 1 );
-
-         // no use signing with yourself
-         execs = execs.where( (p) => p.id != cePeep.id ).toList();
-         if( execs.length == 0 ) { return "-1"; }
-         
          // XXX
          String pMA = cePeep.mailingAddress != "" ? cePeep.mailingAddress : "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
          String oMA = "&nbsp&nbsp&nbsp&nbsp&nbspXXX&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
          String nyi = "XXX";
-
-         // Can edit XXX
-         // All edits should update profile?  Yes.  No parallel existence
-         effectiveDate  = getToday();       
-         partnerTitle   = "Contributor";    // XXX only 2 choices
-
-         // Can NOT edit
-         partnerName    = cePeep.legalName; 
-         partnerEmail   = cePeep.email;     
-         partnerPhone   = cePeep.phone;
-         ventureId      = cevId;
-         ventureName    = cev!.name;
-         ventureWebsite = cev!.web == "" ? "https://www.codeequity.org/XXX" : cev!.web;
          
-         // XXX Any exec will do.  Show first available, but pending tasks for all execs.
-         execName      = execs[0].legalName;
-         execEmail     = execs[0].email;
-         execPhone     = execs[0].phone;
+         if( !useCurrent ) {
+            CEVenture? cev = appState.ceVenture[ cevId ];
+            assert( cev != null );
+            
+            // Exec
+            List<Person> execs = cev!.getExecutives( appState );
+            assert( execs.length >= 1 );
+            
+            // no use signing with yourself
+            execs = execs.where( (p) => p.id != cePeep.id ).toList();
+            if( execs.length == 0 ) { return "-1"; }
+            
+            
+            // Can edit XXX
+            // All edits should update profile?  Yes.  No parallel existence
+            effectiveDate  = getToday();       
+            partnerTitle   = "Contributor";    // XXX only 2 choices
+            
+            // Can NOT edit
+            partnerName    = cePeep.legalName; 
+            partnerEmail   = cePeep.email;     
+            partnerPhone   = cePeep.phone;
+            ventureId      = cevId;
+            ventureName    = cev!.name;
+            ventureWebsite = cev!.web == "" ? "https://www.codeequity.org/XXX" : cev!.web;
+            
+            // XXX Any exec will do.  Show first available, but pending tasks for all execs.
+            execName      = execs[0].legalName;
+            execEmail     = execs[0].email;
+            execPhone     = execs[0].phone;
+         }
          
          res = agmt.content;
          res = res.replaceAll( "<codeEquityTag=\"PartnerTitle\">", "<u>" + partnerTitle! + "</u>" );

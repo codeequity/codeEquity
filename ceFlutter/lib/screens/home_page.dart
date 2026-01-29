@@ -46,6 +46,7 @@ class _CEHomeState extends State<CEHomePage> {
    static const buttonWidth     =  80.0;
    static const vBarWidth       =   5.0;
    late double  rhsFrameMaxWidth;
+   late double  overlayMaxWidth;
 
    late bool toggleRegister;
    late bool toggleVenture; 
@@ -455,7 +456,7 @@ class _CEHomeState extends State<CEHomePage> {
       Navigator.of( context ).pop();      
    }
 
-   void _registerVenture( Person cePeep, DocType docType, double width ) async {
+   void _registerVenture( Person cePeep, DocType docType ) async {
       void _select( TextEditingController cont ) {
          String cev = cont.text;
          final cevEntry = appState.ceVenture.entries.where( ( entry ) => entry.value.name == cev ).toList();
@@ -466,7 +467,7 @@ class _CEHomeState extends State<CEHomePage> {
          }
          String cevId = cevEntry[0].key;
          Navigator.of( context ).pop();
-         _showDoc( cePeep!, DocType.equity, width, cevId: cevId, cevName: cev );
+         _showDoc( cePeep!, DocType.equity, cevId: cevId, cevName: cev );
       }
 
       String choose = "Choose the CodeEquity Venture you wish to register with.";
@@ -477,23 +478,34 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
 
-   void _rewriteDoc( List<TextEditingController> cont ) {
-      Navigator.of( context ).pop();
+   void _updateDoc( Map<String, String> edits ) {
+      Navigator.of( context ).pop();  // radio
+      Navigator.of( context ).pop();  // doc
+
+      scrollDoc.modify( appState, edits );
+      _showDoc( Person.empty(), DocType.equity, useCurrent: true );
    }
 
-   void _rewriteDoccy( String choice ) {
-      print( "Radio sez " + choice );
-      Navigator.of( context ).pop();
+   void _updateDocFixed( String item, String choice ) {
+      Map<String,String> edits = { item: choice };
+      _updateDoc( edits );
    }
 
-
-   void _editBox( final box ) {
-      print( "In editBox" );
+   void _updateDocFree( List<String> item, List<TextEditingController> cont ) {
+      assert( item.length == cont.length );
+      Map<String,String> edits = {};
+      for( var i = 0; i < cont.length; i++ ) {
+         edits[item[i]] = cont[i].text;
+      }
+      _updateDoc( edits );
+   }
+      
+   void _fillInBlanks( final box ) {
       assert( scrollDoc != null );
       assert( scrollDoc.filledIn != null );
+      assert( box.validate() );
 
-      if( box.type == "editList" ) {
-         assert( box.values != null );
+      if( box.type == "blanks" ) {
          List<String>                item = [];
          List<TextEditingController> cont = [];
          List<String>                hint = [];
@@ -504,19 +516,32 @@ class _CEHomeState extends State<CEHomePage> {
          }
          
          Navigator.of( context ).pop();
-         editList( context, appState, "", item, cont, hint, () => _rewriteDoc( cont ), _cancel, null, stepWidth: 45 );
+         editList( context, appState, "", item, cont, hint, () => _updateDocFree( item, cont ), _cancel, null, stepWidth: 45 );
       }
-      else if( box.type == "radio" ) {
-         assert( box.choices != null );
-         assert( box.choices.length >= 1 );
-         assert( box.choiceTitle != null );
-         Navigator.of( context ).pop();
-         radioDialog( context, box.choiceTitle!, box.choices!, _rewriteDoccy, _cancel );
+      else if( box.type == "hybrid" ) { 
+
+         void _popDialog( String choice ) {
+            Navigator.of( context ).pop();
+            if( choice == box.rchoices![0] )      {
+               radioDialog( context, box.radioTitle!, box.rchoices!.sublist(1), _updateDocFixed, _cancel, execArgs: ["PartnerTitle"] );
+            }
+            else {
+               List<String>                item = [];
+               List<TextEditingController> cont = [];
+               List<String>                hint = [];
+               for( final entry in box.values.entries ) {
+                  item.add( entry.key );
+                  hint.add( entry.value );
+                  cont.add( new TextEditingController() );
+               }
+               editList( context, appState, "", item, cont, hint, () => _updateDocFree( item, cont ), _cancel, null );
+            }
+         }
+         
+         // update radio or blank?
+         radioDialog( context, box.hybridTitle!, box.hchoices!, _popDialog, _cancel );
       }
-      
-      // build a new filledInDoc and update view?   probably.
    }
-   
       
    void _onScroll() {
       assert( _scrollController.position.maxScrollExtent > 0 );
@@ -527,15 +552,14 @@ class _CEHomeState extends State<CEHomePage> {
          if( !box.triggered && depth >= box.percDepth ) {
             print("Scrolled past " + box.percDepth.toString() + " Event triggered.");
             box.triggered = true; 
-            
-            confirm( context, "Update Venture Agreement?", "Select continue to edit.", () => _editBox( box ), _cancel);
+            _fillInBlanks( box );
             break;
          }
          if (depth < box.percDepth ) { box.triggered = false; }
       }
    }
    
-   void _showDoc( Person cePeep, DocType docType, double width, { cevId = "", cevName = "" } ) async {
+   void _showDoc( Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false } ) async {
 
       Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
       List<Widget> buttons = [];
@@ -549,23 +573,26 @@ class _CEHomeState extends State<CEHomePage> {
                              return AlertDialog(
                                 scrollable: true,
                                 title: new Text( agmt.title ),
-                                content: Container( width: 0.6 * width, child: new Text( agmt.content )),
+                                content: Container( width: 0.6 * overlayMaxWidth, child: new Text( agmt.content )),
                                 actions: buttons);
                           });
       }
       else {
-         if( !cePeep!.registered ) {
-            showToast( "The required fields of your profile must be completed first." );
-            return;
+         if( !useCurrent ) {
+            if( !cePeep!.registered ) {
+               showToast( "The required fields of your profile must be completed first." );
+               return;
+            }
+            
+            if( cePeep.registeredWithCEV( cevId ) ) {
+               showToast( "You have already signed the CodeEquity Equity Agreement with " + cevName );
+               return;
+            }
+            
+            scrollDoc          = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
          }
 
-         if( cePeep.registeredWithCEV( cevId ) ) {
-            showToast( "You have already signed the CodeEquity Equity Agreement with " + cevName );
-            return;
-         }
-         
-         scrollDoc          = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
-         String filledInDoc = scrollDoc.compose( appState, cePeep!, agmt, cevId );
+         String filledInDoc = scrollDoc.compose( appState, cePeep!, agmt, cevId, useCurrent: useCurrent );
          
          if( filledInDoc == "-1" ) {
             showToast( "No need to sign agreements with yourself." );
@@ -573,6 +600,7 @@ class _CEHomeState extends State<CEHomePage> {
          }
 
          print( "decoded " + filledInDoc.length.toString() );
+
          await showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -601,37 +629,10 @@ class _CEHomeState extends State<CEHomePage> {
                                          ))),
                                 actions: buttons);
                           });
-
-         /*
-         await showDialog(
-            context: context,
-            builder: (BuildContext context) {
-                             return AlertDialog(
-                                scrollable: true,
-                                title: new Text( agmt.title ),
-                                content: Html( data: filledInDoc,
-                                               // seems to require flex display, which pushes all list items into 1 paragraph
-                                               style: Style.fromCss('''         
-                                                                    ul {
-                                                                       list-style-type: none;
-                                                                       padding-left: 0;
-                                                                    },
-                                                                    ul li {
-                                                                    display: block;
-                                                                       column-gap: 0px;
-                                                                       align-items: center;
-                                                                       margin-bottom: 0px;
-                                                                    }
-                                                                    ''',
-                                                                    (css, errors) => errors.toString())
-                                   ),
-                                actions: buttons);
-                          });
-         */
       }
    }
 
-   List<Widget> makeMe( context, container, double width ) {
+   List<Widget> makeMe( context, container ) {
       assert( appState.ceUserId != "" );
       Person? cePeep = appState.cePeople[ appState.ceUserId ];
       assert( cePeep != null );
@@ -640,15 +641,16 @@ class _CEHomeState extends State<CEHomePage> {
       
       List<Widget> subTasks = [];
       
-      if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", width * 0.2, () => _showDoc( cePeep!, DocType.privacy, width ))); }
+      if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", overlayMaxWidth * 0.2, () => _showDoc( cePeep!, DocType.privacy ))); }
       if( !cePeep!.completeProfile() ) {
-         subTasks.add( _makeLink( "Complete profile", width * 0.2, () => editProfile( context, container, cePeep!, width, updateCallback: () => updateCallback() ), last: true ));
+         subTasks.add( _makeLink( "Complete profile", overlayMaxWidth * 0.2,
+                                  () => editProfile( context, container, cePeep!, overlayMaxWidth, updateCallback: () => updateCallback() ), last: true ));
       }
 
       return subTasks;      
    }
    
-   List<Widget> makeGettingStarted( context, container, double width ) {
+   List<Widget> makeGettingStarted( context, container ) {
       List<Widget> subTasks = [];
 
       assert( appState.ceUserId != "" );
@@ -656,16 +658,16 @@ class _CEHomeState extends State<CEHomePage> {
       assert( cePeep != null );
       
       if(  !cePeep!.registered ) { 
-         Widget gettingStarted = makeTitleText( appState, "Getting started", width, false, 1, fontSize: 16 );
+         Widget gettingStarted = makeTitleText( appState, "Getting started", overlayMaxWidth, false, 1, fontSize: 16 );
          subTasks.add( gettingStarted );
-         subTasks.addAll( makeMe( context, container, width ) );
+         subTasks.addAll( makeMe( context, container ) );
       }
       return subTasks;
    }
 
    // Can always register with another CEV.
    // Once registered, can update the same agreement, but not remove it.  For example, mailing address or phone might change.
-   List<Widget> makeRegister( double width ) {
+   List<Widget> makeRegister( ) {
       assert( appState.ceUserId != "" );
       Person? cePeep = appState.cePeople[ appState.ceUserId ];
       assert( cePeep != null );
@@ -674,24 +676,23 @@ class _CEHomeState extends State<CEHomePage> {
       Widget shrink = makeExpander( "toggleRegister", false );
 
       List<Widget> subTasks = [];
-      Widget pending = makeTitleText( appState, "New Ventures & Projects", width * .3, false, 1, fontSize: 16 );
+      Widget pending = makeTitleText( appState, "New Ventures & Projects", overlayMaxWidth * .3, false, 1, fontSize: 16 );
       subTasks.add( Wrap( spacing: 0, children: [ pending, toggleRegister ? expand : shrink ] ));
 
       if( !toggleRegister ) {
-         // subTasks.add( _makeLink( "Register with a Venture", width * 0.2, () => _showDoc( cePeep!, DocType.equity, width )));
-         subTasks.add( _makeLink( "Register with a Venture", width * 0.2, () => _registerVenture( cePeep!, DocType.equity, width )));
+         subTasks.add( _makeLink( "Register with a Venture", overlayMaxWidth * 0.2, () => _registerVenture( cePeep!, DocType.equity )));
          subTasks.addAll( makeVenture() );
          subTasks.addAll( makeProject() );
       }
       return subTasks;
    }
 
-   List<Widget> makePending( double width ) {
+   List<Widget> makePending( ) {
       Widget expand = makeExpander( "togglePending", true );
       Widget shrink = makeExpander( "togglePending", false );
 
       List<Widget> subTasks = [];
-      Widget pending = makeTitleText( appState, "Pending tasks", width / 6.0, false, 1, fontSize: 16 );
+      Widget pending = makeTitleText( appState, "Pending tasks", overlayMaxWidth / 6.0, false, 1, fontSize: 16 );
       subTasks.add( Wrap( spacing: 0, children: [ pending, togglePending ? expand : shrink ] ));
 
       if( !togglePending ) {
@@ -702,13 +703,13 @@ class _CEHomeState extends State<CEHomePage> {
       return subTasks;
    }
 
-   List<Widget> makeDaily( double width ) {
+   List<Widget> makeDaily( ) {
 
       Widget expand = makeExpander( "toggleDaily", true );
       Widget shrink = makeExpander( "toggleDaily", false );
 
       List<Widget> subTasks = [];
-      Widget daily = makeTitleText( appState, "Today's stats", width / 6.0, false, 1, fontSize: 16 );
+      Widget daily = makeTitleText( appState, "Today's stats", overlayMaxWidth / 6.0, false, 1, fontSize: 16 );
       subTasks.add( Wrap( spacing: 0, children: [ daily, toggleDaily ? expand : shrink ] ));
 
       if( !toggleDaily ) {
@@ -723,7 +724,6 @@ class _CEHomeState extends State<CEHomePage> {
    
    Widget _makeActivityZone( context, container ) {
       final w1 = rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
-      final w2 = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
 
       // Turn each getting started off if done
       // Turn pending/daily off if have getting started
@@ -732,10 +732,10 @@ class _CEHomeState extends State<CEHomePage> {
          tasks = [];
          
          // Getting started 
-         tasks.addAll( makeGettingStarted( context, container, w2 ) );
-         tasks.addAll( makeRegister( w2 ) );
-         tasks.addAll( makePending( w2 ) );
-         tasks.addAll( makeDaily( w2 ) );
+         tasks.addAll( makeGettingStarted( context, container ) );
+         tasks.addAll( makeRegister() );
+         tasks.addAll( makePending() );
+         tasks.addAll( makeDaily() );
       
          updateView = false;
       }
@@ -791,6 +791,7 @@ class _CEHomeState extends State<CEHomePage> {
       appState    = container.state;
 
       rhsFrameMaxWidth = appState.MAX_PANE_WIDTH - lhsFrameMaxWidth;
+      overlayMaxWidth  = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
       
       assert( appState != null );
       
