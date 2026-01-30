@@ -52,34 +52,39 @@ class AcceptedDoc {
    String       acceptedDate;  // the date that 'Accept' was pressed
 
    // Equity agreement.  Only fully valid agreements store these values.
-   String? effectiveDate;      // the effective date filled in on the agreement instance
-   String? execName;
-   String? execSignature;
-   String? execEmail;
-   String? execPhone;
-   String? execMailingAddress;
-   String? ventureName;
-   String? ventureId;
-   String? ventureWebsite;
-   String? partnerName;
-   String? partnerSignature;
-   String? partnerEmail;
-   String? partnerPhone;
-   String? partnerMailingAddress;
-   String? partnerTitle;
+   late Map<String,String> equityVals;   // htmlDoc tag to value
 
    String?  filledIn;           //  TRANSIENT do not store
    List<_aBox>? boxes;          //  TRANSIENT do not store
 
    
-   AcceptedDoc( {required this.docType, required this.docId, required this.acceptedDate} );
+   AcceptedDoc( {required this.docType, required this.docId, required this.acceptedDate} ) {
+      equityVals = {};
 
-   // signature all moddable
-   // sched B not moddable.
+      equityVals["EffectiveDate"] = "";             // the effective date filled in on the agreement instance
+      equityVals["VentureName"] = "";
+      equityVals["VentureId"] = "";
+      equityVals["VentureWebsite"] = "";
+      equityVals["OutstandingShares"] = "";
+      equityVals["ExecutiveName"] = "";
+      equityVals["ExecutiveSignature"] = "";
+      equityVals["ExecutiveEmail"] = "";
+      equityVals["ExecutivePhone"] = "";
+      equityVals["ExecutiveMailingAddress"] = "";
+      equityVals["PartnerName"] = "";
+      equityVals["PartnerSignature"] = "";
+      equityVals["PartnerEmail"] = "";
+      equityVals["PartnerPhone"] = "";
+      equityVals["PartnerMailingAddress"] = "";
+      equityVals["PartnerTitle"] = "";
+   }
+
+
+   // Set up which fields can be edited, along with hints for the edit box
    void setEditBox() {
       boxes = [];
       if( this.docType == DocType.equity ) {
-         // preamble  
+         // preamble section
          _aBox box = new _aBox( type: "hybrid", triggered: false, percDepth: 0.2 );
          box.radioTitle  = "Partner's Title";
          box.blankTitle  = "Effective Date";
@@ -91,22 +96,23 @@ class AcceptedDoc {
          box.hchoices    = [ box.radioTitle!, box.blankTitle! ];
 
          box.values = {};
-         box.values!["EffectiveDate"] = this.effectiveDate ?? "";
+         box.values!["EffectiveDate"] = equityVals["EffectiveDate"]!;
          
          boxes!.add( box );
+
          
-         // Signature
+         // Signature section
          box = new  _aBox( type: "blanks", triggered: false, percDepth: 66.0 );
          box.values = {};
 
          // XXX Partner can't sign for exec, vice versa
-         box.values!["ExecutivePhone"]          = this.execPhone ?? "";
-         box.values!["ExecutiveSignature"]      = this.execSignature ?? "";
-         box.values!["ExecutiveMailingAddress"] = this.execMailingAddress ?? "";
+         box.values!["ExecutivePhone"]          = equityVals["ExecutivePhone"]!;
+         box.values!["ExecutiveSignature"]      = equityVals["ExecutiveSignature"] == "" ? "(type your full legal name)" : equityVals["ExecutiveSignature"]!;
+         box.values!["ExecutiveMailingAddress"] = equityVals["ExecutiveMailingAddress"]!;
 
-         box.values!["PartnerPhone"]            = this.partnerPhone ?? "";
-         box.values!["PartnerSignature"]        = this.partnerSignature ?? "";
-         box.values!["PartnerMailingAddress"]   = this.partnerMailingAddress ?? "";
+         box.values!["PartnerPhone"]            = equityVals["PartnerPhone"]!;
+         box.values!["PartnerSignature"]        = equityVals["PartnerSignature"] == "" ? "(type your full legal name)" : equityVals["PartnerSignature"]!;
+         box.values!["PartnerMailingAddress"]   = equityVals["PartnerMailingAddress"]!;
 
          boxes!.add( box );
       }
@@ -116,17 +122,7 @@ class AcceptedDoc {
    // User has filled in a blank or choosen a value.  update doc.
    void modify( appState, Map<String, String> update ) {
       for( final entry in update.entries ) {
-         switch( entry.key ) {
-         case "PartnerTitle" :
-            partnerTitle = entry.value;
-            break;
-         case "EffectiveDate" :
-            effectiveDate = entry.value;
-            break;
-         default :
-            print( "Missing update item in Accepted Doc: " + entry.key );
-            assert( false );
-         }
+         equityVals[entry.key] = entry.value;
       }
       return;
    }
@@ -138,11 +134,6 @@ class AcceptedDoc {
       String res = "";
       if( agmt.type == DocType.equity ) {
 
-         // XXX
-         String pMA = cePeep.mailingAddress != "" ? cePeep.mailingAddress : "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
-         String oMA = "&nbsp&nbsp&nbsp&nbsp&nbspXXX&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
-         String nyi = "XXX";
-         
          if( !useCurrent ) {
             CEVenture? cev = appState.ceVenture[ cevId ];
             assert( cev != null );
@@ -155,53 +146,45 @@ class AcceptedDoc {
             execs = execs.where( (p) => p.id != cePeep.id ).toList();
             if( execs.length == 0 ) { return "-1"; }
             
+            // Each signing instance has multiple values that get filled in, most automatically.  Only a few are editable.
+            // All edits must update required profile elements first, which are used here.  No parallel existence.
+            equityVals["EffectiveDate"]         = getToday();       
+            equityVals["VentureId"]             = cevId;
+            equityVals["VentureName"]           = cev!.name;
+            equityVals["VentureWebsite"]        = cev!.web == "" ? "https://www.codeequity.org/XXX" : cev!.web!;
+            equityVals["OutstandingShares"]     = "987348746";
             
-            // Can edit XXX
-            // All edits should update profile?  Yes.  No parallel existence
-            effectiveDate  = getToday();       
-            partnerTitle   = "Contributor";    // XXX only 2 choices
+            equityVals["PartnerTitle"]          = "Contributor"; 
+            equityVals["PartnerName"]           = cePeep.legalName; 
+            equityVals["PartnerEmail"]          = cePeep.email;     
+            equityVals["PartnerPhone"]          = cePeep.phone;
+            equityVals["PartnerMailingAddress"] = cePeep.mailingAddress;
             
-            // Can NOT edit
-            partnerName    = cePeep.legalName; 
-            partnerEmail   = cePeep.email;     
-            partnerPhone   = cePeep.phone;
-            ventureId      = cevId;
-            ventureName    = cev!.name;
-            ventureWebsite = cev!.web == "" ? "https://www.codeequity.org/XXX" : cev!.web;
-            
-            // XXX Any exec will do.  Show first available, but pending tasks for all execs.
-            execName      = execs[0].legalName;
-            execEmail     = execs[0].email;
-            execPhone     = execs[0].phone;
+            // Any exec will do.  Show first available, but pending tasks for all execs.
+            equityVals["ExecutiveName"]           = execs[0].legalName;
+            equityVals["ExecutiveEmail"]          = execs[0].email;
+            equityVals["ExecutivePhone"]          = execs[0].phone;
+            equityVals["ExecutiveMailingAddress"] = execs[0].mailingAddress;
          }
          
+         // profile may not contain phone, mailing address
+         String spaces = "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
          res = agmt.content;
-         res = res.replaceAll( "<codeEquityTag=\"PartnerTitle\">", "<u>" + partnerTitle! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"EffectiveDate\">", "<u>" + effectiveDate! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"ExecutiveName\">", "<u>" + execName! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"ExecutiveSignature\">", "<u>" + nyi + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"ExecutiveEmail\">", "<u>" + execEmail! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"ExecutivePhone\">", "<u>" + execPhone! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"ExecutiveMailingAddress\">", "<u>" + oMA + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"VentureName\">", "<u>" + ventureName! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"VentureWebsite\">", "<u>" + ventureWebsite! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"PartnerName\">", "<u>" + partnerName! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"PartnerSignature\">", "<u>" + nyi + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"PartnerEmail\">", "<u>" + partnerEmail! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"PartnerPhone\">", "<u>" + partnerPhone! + "</u>" );
-         res = res.replaceAll( "<codeEquityTag=\"PartnerMailingAddress\">", "<u>" + pMA + "</u>" );
+
+         for( final entry in equityVals.entries ) {
+            String tmp =  entry.value == "" ? spaces : entry.value;
+            res = res.replaceAll( "<codeEquityTag=\"" + entry.key + "\">", "<u>" + tmp + "</u>" );
+         }
       }
       setEditBox();
       filledIn = res;
       return res;
    }
-
    dynamic toJson() {
       print( "Encoding acceptedDocs" );
       return { 'docType': enumToStr( docType ), 'docId': docId, 'acceptedDate': acceptedDate };
    }
    
-   // Nothing found.  return empty 
    factory AcceptedDoc.empty() {
       return AcceptedDoc( 
          docType:      DocType.end,

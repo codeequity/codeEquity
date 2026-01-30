@@ -41,7 +41,7 @@ class Person {
       if( acceptedDocs[ DocType.equity ] == null ) { return hasEA; }
       List<AcceptedDoc> ea = acceptedDocs[ DocType.equity ]!;
       for( final accepted in ea ) {
-         if( accepted.ventureId == cevId ) { hasEA = true; break;} 
+         if( accepted.equityVals["VentureId"]! == cevId ) { hasEA = true; break;} 
       }
       return hasEA;
    }
@@ -89,7 +89,7 @@ class Person {
       if( docs == null ) { return res; }
 
       docs.forEach( (d) {
-            if( d.ventureId == cevId ) { res = true; }
+            if( d.equityVals["VentureId"] == cevId ) { res = true; }
          });
       
       return res;
@@ -144,12 +144,12 @@ class Person {
 
       return Person(
          id:             p.id,
-         goesBy:         p.goesBy,
+         goesBy:         p.goesBy ?? "",
          legalName:      p.legalName,
          userName:       p.userName,
-         email:          p.email,
-         phone:          p.phone,
-         mailingAddress: p.mailingAddress,
+         email:          p.email ?? "",
+         phone:          p.phone ?? "",
+         mailingAddress: p.mailingAddress ?? "",
          registered:     p.registered,
          acceptedDocs:   p.acceptedDocs,
          locked:         p.locked,

@@ -509,13 +509,16 @@ class _CEHomeState extends State<CEHomePage> {
          List<String>                item = [];
          List<TextEditingController> cont = [];
          List<String>                hint = [];
+         int fillTo = 0;
          for( final entry in box.values.entries ) {
-            item.add( entry.key );
+            fillTo = max( fillTo, entry.key.length );
+         }
+         for( final entry in box.values.entries ) {
+            item.add( entry.key.padRight( 3 * (fillTo - entry.key.length) ));
             hint.add( entry.value );
             cont.add( new TextEditingController() );
          }
          
-         Navigator.of( context ).pop();
          editList( context, appState, "", item, cont, hint, () => _updateDocFree( item, cont ), _cancel, null, stepWidth: 45 );
       }
       else if( box.type == "hybrid" ) { 
