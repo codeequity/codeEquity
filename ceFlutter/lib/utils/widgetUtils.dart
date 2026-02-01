@@ -113,16 +113,17 @@ Future<void> editForm( BuildContext context, appState, scrollHeader,
 
 Future<void> editList( BuildContext context, appState, scrollHeader,
                        List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc, 
-                       { saveName: "Save", stepWidth: 40 }) async {
-
-   bool edit = scrollHeader.contains( "Edit" );
+                       { saveName: "Save", stepWidth: 40, headerWidth: -1, edit = false }) async {
+   edit = edit || scrollHeader.contains( "Edit" );
    assert( controllers.length == values.length );
    List<Widget> editVals = [];
    Widget c = Container( height: 1, width: appState.MID_PAD );
    for( int i = 0; i < values.length; i++ ) {
       Widget text = makeInputField( appState, values[i], false, controllers[i], keyName: "editRow " + values[i], edit: edit);
+      Widget h = headerWidth > 0 ?
+                 Container( width: headerWidth, child: Text(itemHeaders[i] )) :
+                 IntrinsicWidth( stepWidth: stepWidth, child: Text( itemHeaders[i] ));
       Widget w = IntrinsicWidth( child: text );
-      Widget h = IntrinsicWidth( stepWidth: stepWidth, child: Text( itemHeaders[i] ));
       editVals.add(
          Row( 
             mainAxisSize: MainAxisSize.max,

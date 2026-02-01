@@ -445,15 +445,17 @@ class _CEHomeState extends State<CEHomePage> {
       Navigator.of( context ).pop();
    }
 
-   void _accept( Person cePeep, Agreement agmt ) async {
-      cePeep.accept( agmt, scrollDoc );
+   Future<void> _accept( Person cePeep, DocType docType, {docId = "", controlView = true} ) async {
+      cePeep.accept( docType, scrollDoc, docId );
       String user = json.encode( cePeep );
       String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
       await updateDynamo( context, container, ppostData, "PutPerson" );
 
-      setState(() => updateView = true );
-      appState.hoverChunk = "";      
-      Navigator.of( context ).pop();      
+      if( controlView ) {
+         setState(() => updateView = true );
+         appState.hoverChunk = "";      
+         Navigator.of( context ).pop();
+      }
    }
 
    void _registerVenture( Person cePeep, DocType docType ) async {
@@ -467,7 +469,7 @@ class _CEHomeState extends State<CEHomePage> {
          }
          String cevId = cevEntry[0].key;
          Navigator.of( context ).pop();
-         _showDoc( cePeep!, DocType.equity, cevId: cevId, cevName: cev );
+         _showDoc( context, cePeep!, DocType.equity, cevId: cevId, cevName: cev );
       }
 
       String choose = "Choose the CodeEquity Venture you wish to register with.";
@@ -478,12 +480,20 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
 
-   void _updateDoc( Map<String, String> edits ) {
+   // Have access to context of state class here
+   void _updateDoc( Map<String, String> edits ) async {
       Navigator.of( context ).pop();  // radio
       Navigator.of( context ).pop();  // doc
 
       scrollDoc.modify( appState, edits );
-      _showDoc( Person.empty(), DocType.equity, useCurrent: true );
+
+      assert( appState.ceUserId != "" );
+      Person? cePeep = appState.cePeople[ appState.ceUserId ];
+      assert( cePeep != null );
+
+      await _accept( cePeep!, DocType.equity, controlView: false );
+         
+      _showDoc( context, Person.empty(), DocType.equity, useCurrent: true );
    }
 
    void _updateDocFixed( String item, String choice ) {
@@ -491,11 +501,13 @@ class _CEHomeState extends State<CEHomePage> {
       _updateDoc( edits );
    }
 
-   void _updateDocFree( List<String> item, List<TextEditingController> cont ) {
+   // Hints are created from existing editVals.  If user doesn't edit a field directly when having previously
+   // done so, that previous value is carried over into new update.
+   void _updateDocFree( List<String> item, List<String> hint, List<TextEditingController> cont ) {
       assert( item.length == cont.length );
       Map<String,String> edits = {};
       for( var i = 0; i < cont.length; i++ ) {
-         edits[item[i]] = cont[i].text;
+         edits[item[i]] = cont[i].text != "" ? cont[i].text : hint[i];
       }
       _updateDoc( edits );
    }
@@ -509,17 +521,13 @@ class _CEHomeState extends State<CEHomePage> {
          List<String>                item = [];
          List<TextEditingController> cont = [];
          List<String>                hint = [];
-         int fillTo = 0;
          for( final entry in box.values.entries ) {
-            fillTo = max( fillTo, entry.key.length );
-         }
-         for( final entry in box.values.entries ) {
-            item.add( entry.key.padRight( 3 * (fillTo - entry.key.length) ));
+            item.add( entry.key );
             hint.add( entry.value );
             cont.add( new TextEditingController() );
          }
          
-         editList( context, appState, "", item, cont, hint, () => _updateDocFree( item, cont ), _cancel, null, stepWidth: 45 );
+         editList( context, appState, "", item, cont, hint, () => _updateDocFree( item, hint, cont ), _cancel, null, headerWidth: overlayMaxWidth * 0.3 );
       }
       else if( box.type == "hybrid" ) { 
 
@@ -537,7 +545,7 @@ class _CEHomeState extends State<CEHomePage> {
                   hint.add( entry.value );
                   cont.add( new TextEditingController() );
                }
-               editList( context, appState, "", item, cont, hint, () => _updateDocFree( item, cont ), _cancel, null );
+               editList( context, appState, "", item, cont, hint, () => _updateDocFree( item, hint, cont ), _cancel, null );
             }
          }
          
@@ -545,7 +553,7 @@ class _CEHomeState extends State<CEHomePage> {
          radioDialog( context, box.hybridTitle!, box.hchoices!, _popDialog, _cancel );
       }
    }
-      
+
    void _onScroll() {
       assert( _scrollController.position.maxScrollExtent > 0 );
       double depth = 100 * ( _scrollController.position.pixels /  _scrollController.position.maxScrollExtent );
@@ -562,14 +570,13 @@ class _CEHomeState extends State<CEHomePage> {
       }
    }
    
-   void _showDoc( Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false } ) async {
-
+   void _showDoc( context, Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false } ) async {
       Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
-      List<Widget> buttons = [];
-      buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt ) ));
-      buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
       
       if( docType == DocType.privacy ) {
+         List<Widget> buttons = [];
+         buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt.type, docId: agmt.id ) ));
+         buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
          await showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -592,7 +599,7 @@ class _CEHomeState extends State<CEHomePage> {
                return;
             }
             
-            scrollDoc          = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
+            scrollDoc = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday(), equityVals: {} );
          }
 
          String filledInDoc = scrollDoc.compose( appState, cePeep!, agmt, cevId, useCurrent: useCurrent );
@@ -602,9 +609,13 @@ class _CEHomeState extends State<CEHomePage> {
             return;
          }
 
-         print( "decoded " + filledInDoc.length.toString() );
+         print( "filledIn composed " + filledInDoc.length.toString() );
 
-         await showDialog(
+      List<Widget> buttons = [];
+      buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: _cancel )); // XXX useless?
+      buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
+
+      await showDialog(
             context: context,
             builder: (BuildContext context) {
                              return AlertDialog(
@@ -644,7 +655,7 @@ class _CEHomeState extends State<CEHomePage> {
       
       List<Widget> subTasks = [];
       
-      if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", overlayMaxWidth * 0.2, () => _showDoc( cePeep!, DocType.privacy ))); }
+      if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", overlayMaxWidth * 0.2, () => _showDoc( context, cePeep!, DocType.privacy ))); }
       if( !cePeep!.completeProfile() ) {
          subTasks.add( _makeLink( "Complete profile", overlayMaxWidth * 0.2,
                                   () => editProfile( context, container, cePeep!, overlayMaxWidth, updateCallback: () => updateCallback() ), last: true ));

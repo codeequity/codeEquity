@@ -58,25 +58,29 @@ class AcceptedDoc {
    List<_aBox>? boxes;          //  TRANSIENT do not store
 
    
-   AcceptedDoc( {required this.docType, required this.docId, required this.acceptedDate} ) {
-      equityVals = {};
+   AcceptedDoc( {required this.docType, required this.docId, required this.acceptedDate, required this.equityVals } ) {
 
-      equityVals["EffectiveDate"] = "";             // the effective date filled in on the agreement instance
-      equityVals["VentureName"] = "";
-      equityVals["VentureId"] = "";
-      equityVals["VentureWebsite"] = "";
-      equityVals["OutstandingShares"] = "";
-      equityVals["ExecutiveName"] = "";
-      equityVals["ExecutiveSignature"] = "";
-      equityVals["ExecutiveEmail"] = "";
-      equityVals["ExecutivePhone"] = "";
-      equityVals["ExecutiveMailingAddress"] = "";
-      equityVals["PartnerName"] = "";
-      equityVals["PartnerSignature"] = "";
-      equityVals["PartnerEmail"] = "";
-      equityVals["PartnerPhone"] = "";
-      equityVals["PartnerMailingAddress"] = "";
-      equityVals["PartnerTitle"] = "";
+      if( docType == DocType.privacy ) { equityVals = {}; }
+      else if( docType == DocType.equity ) {
+         if( equityVals.entries.length == 0 ) { 
+            equityVals["EffectiveDate"] = "";             // the effective date filled in on the agreement instance
+            equityVals["VentureName"] = "";
+            equityVals["VentureId"] = "";
+            equityVals["VentureWebsite"] = "";
+            equityVals["OutstandingShares"] = "";
+            equityVals["ExecutiveName"] = "";
+            equityVals["ExecutiveSignature"] = "";
+            equityVals["ExecutiveEmail"] = "";
+            equityVals["ExecutivePhone"] = "";
+            equityVals["ExecutiveMailingAddress"] = "";
+            equityVals["PartnerName"] = "";
+            equityVals["PartnerSignature"] = "";
+            equityVals["PartnerEmail"] = "";
+            equityVals["PartnerPhone"] = "";
+            equityVals["PartnerMailingAddress"] = "";
+            equityVals["PartnerTitle"] = "";
+         }
+      }
    }
 
 
@@ -116,12 +120,12 @@ class AcceptedDoc {
 
          boxes!.add( box );
       }
-      
    }
 
    // User has filled in a blank or choosen a value.  update doc.
    void modify( appState, Map<String, String> update ) {
       for( final entry in update.entries ) {
+         print( "Modify " + entry.key + " => " + entry.value );
          equityVals[entry.key] = entry.value;
       }
       return;
@@ -130,7 +134,6 @@ class AcceptedDoc {
    // Replace tags in content
    String compose( appState, Person cePeep, Agreement agmt, String cevId, {useCurrent = false} ) {
       // NOTE if the pattern from is not found, the <codeEquityTag> will be visible at best, or lost part of the doc at worst.
-      print( agmt.content.length.toString() + " " + agmt.toString() );
       String res = "";
       if( agmt.type == DocType.equity ) {
 
@@ -180,9 +183,14 @@ class AcceptedDoc {
       filledIn = res;
       return res;
    }
+
    dynamic toJson() {
-      print( "Encoding acceptedDocs" );
-      return { 'docType': enumToStr( docType ), 'docId': docId, 'acceptedDate': acceptedDate };
+
+      // do not save signature hint.
+      if( equityVals["ExecutiveSignature"] == "(type your full legal name)" ) { equityVals["ExecutiveSignature"] = ""; }
+      if( equityVals["PartnerSignature"]   == "(type your full legal name)" ) { equityVals["PartnerSignature"] = ""; }
+      
+      return { 'docType': enumToStr( docType ), 'docId': docId, 'acceptedDate': acceptedDate, 'equityVals': equityVals };
    }
    
    factory AcceptedDoc.empty() {
@@ -190,14 +198,25 @@ class AcceptedDoc {
          docType:      DocType.end,
          docId:        "", 
          acceptedDate: "",
+         equityVals:   {}
          );
    }
    
    factory AcceptedDoc.fromJson(Map<String, dynamic> json) {
+      var dynamicVals = json['equityVals'];  
+
+      Map<String, String> vals = {};
+      if( dynamicVals != null ) {
+         dynamicVals.entries.forEach((entry) {
+               vals[entry.key] = entry.value;
+            });
+      }
+      
       return AcceptedDoc(
          docType:      enumFromStr<DocType>( json['docType'] ?? "end", DocType.values ),
          docId:        json['docId'] ?? "",
          acceptedDate: json['acceptedDate'] ?? "",
+         equityVals:   vals
          );
    }
 
@@ -207,6 +226,7 @@ class AcceptedDoc {
          docType:      p.docType,
          docId:        p.docId,
          acceptedDate: p.acceptedDate,
+         equityVals:   p.equityVals
          );
    }
 
@@ -215,6 +235,7 @@ class AcceptedDoc {
       res += "\n   Document type: " + enumToStr( docType );
       res += "\n   Document id: " + docId;
       res += "\n   Date accepted:" + acceptedDate;
+      res += "\n" + equityVals.toString();
 
       return res;
    }
