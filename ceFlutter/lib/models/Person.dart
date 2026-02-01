@@ -21,7 +21,6 @@ class Person {
    
    dynamic toJson() {
       Map<String, List<AcceptedDoc>> encodable = {};
-      print( "Encoding Person's docs" );
       acceptedDocs.forEach( (k,v) {
             encodable[ enumToStr( k ) ] = v; 
          });
@@ -41,7 +40,7 @@ class Person {
       if( acceptedDocs[ DocType.equity ] == null ) { return hasEA; }
       List<AcceptedDoc> ea = acceptedDocs[ DocType.equity ]!;
       for( final accepted in ea ) {
-         if( accepted.ventureId == cevId ) { hasEA = true; break;} 
+         if( accepted.equityVals["VentureId"]! == cevId ) { hasEA = true; break;} 
       }
       return hasEA;
    }
@@ -72,23 +71,42 @@ class Person {
       return false;
    }
    
-   void accept( Agreement agmt ) {
-      AcceptedDoc ad = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday() );
-      if( acceptedDocs[ agmt.type ] == null )  { acceptedDocs[ agmt.type ] = [ ad ];  }
-      else                                     { acceptedDocs[ agmt.type ]!.add( ad ); }
+   void accept( DocType docType, AcceptedDoc ad, String docId  ) {
+      // equity accepted docs come with filled in blank data
+      if( docType != DocType.equity ) {
+         assert( docId != "" );
+         ad = new AcceptedDoc( docType: docType, docId: docId, acceptedDate: getToday(), equityVals: {} );
+         acceptedDocs[ docType ] = [ ad ];
+      }
+
+      if( docType == DocType.equity ) {
+         assert( ad != null );
+         if( hasEquityAgreement( ad.equityVals["VentureId" ]! ) ) {
+            // remove last edited doc to make room for new
+            acceptedDocs[ docType ]!.removeWhere( (d) => d.equityVals["VentureId"] == ad.equityVals["VentureId"] || d.equityVals["VentureId"] == "" );
+         }
+         
+         if( acceptedDocs[ docType ] == null ) { acceptedDocs[ docType ] = [ ad ];   }
+         else                                  { acceptedDocs[ docType ]!.add( ad ); }
+      }
+         
       if( signedPrivacy() && completeProfile()) { registered = true; }
    }
 
+   // XXX oops.  nope not yet
    bool registeredWithCEV( cevId ) {
       bool res = false;
+      return res;
 
+
+      
       List<AcceptedDoc>? docs = acceptedDocs[ DocType.equity ];
       if( docs == null ) { return res; }
-
-      docs.forEach( (d) {
-            if( d.ventureId == cevId ) { res = true; }
-         });
       
+      docs.forEach( (d) {
+            print( "RWC check *" + cevId + "*  *" + (d.equityVals["VentureId"] ?? "" ) + "*" );
+            if( d.equityVals["VentureId"] == cevId ) { res = true; }
+         });
       return res;
    }
    
@@ -141,12 +159,12 @@ class Person {
 
       return Person(
          id:             p.id,
-         goesBy:         p.goesBy,
+         goesBy:         p.goesBy ?? "",
          legalName:      p.legalName,
          userName:       p.userName,
-         email:          p.email,
-         phone:          p.phone,
-         mailingAddress: p.mailingAddress,
+         email:          p.email ?? "",
+         phone:          p.phone ?? "",
+         mailingAddress: p.mailingAddress ?? "",
          registered:     p.registered,
          acceptedDocs:   p.acceptedDocs,
          locked:         p.locked,

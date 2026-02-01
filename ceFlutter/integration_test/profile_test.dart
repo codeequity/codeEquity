@@ -38,7 +38,7 @@ Future<bool> goAri(  WidgetTester tester ) async {
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
    
-   Finder txt = find.text( 'Ari Star' );
+   Finder txt = find.text( 'Ari Star (Ari)' );
    expect( txt, findsOneWidget );
    return true;
 }
@@ -151,8 +151,8 @@ Future<bool> validateFlutProfile( WidgetTester tester ) async {
    await pumpSettle( tester, 2, verbose: true );
 
    expect( find.text( 'Collaborators' ),             findsOneWidget );
-   expect( find.text( 'Ari Star' ),                  findsOneWidget );
-   expect( find.text( 'Connie Star' ),               findsOneWidget );
+   expect( find.text( 'Ari Star (Ari)' ),                  findsOneWidget );
+   expect( find.text( 'Connie Star (Con)' ),               findsOneWidget );
    expect( find.text( 'connieTester (AHLjVaSIlH)' ), findsOneWidget );
    expect( find.text( 'Member of: 4' ),              findsOneWidget );
    expect( find.text( 'Most active in: ' ),          findsNWidgets(2) );
@@ -212,12 +212,12 @@ Future<bool> validateCardSwap( WidgetTester tester ) async {
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
    expect( find.text( 'Collaborators' ),             findsOneWidget );
-   expect( find.text( 'Ari Star' ),                  findsOneWidget );
-   expect( find.text( 'Connie Star' ),               findsOneWidget );
+   expect( find.text( 'Ari Star (Ari)' ),                  findsOneWidget );
+   expect( find.text( 'Connie Star (Con)' ),               findsOneWidget );
 
    // goAri, validate minors
-   expect( find.byKey( Key( 'Ari Star' )), findsOneWidget );
-   await tester.tap( find.byKey( Key( 'Ari Star' )) );
+   expect( find.byKey( Key( 'Ari Star (Ari)' )), findsOneWidget );
+   await tester.tap( find.byKey( Key( 'Ari Star (Ari)' )) );
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
@@ -230,12 +230,12 @@ Future<bool> validateCardSwap( WidgetTester tester ) async {
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
-   expect( find.text( 'Ari Star' ),                  findsOneWidget );
-   expect( find.text( 'Marion Star' ),               findsOneWidget );
+   expect( find.text( 'Ari Star (Ari)' ),                  findsOneWidget );
+   expect( find.text( 'Marion Star (Marion)' ),               findsOneWidget );
 
    // goConnie, val
-   expect( find.byKey( Key( 'Connie Star' )), findsOneWidget );
-   await tester.tap( find.byKey( Key( 'Connie Star' )) );
+   expect( find.byKey( Key( 'Connie Star (Con)' )), findsOneWidget );
+   await tester.tap( find.byKey( Key( 'Connie Star (Con)' )) );
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
