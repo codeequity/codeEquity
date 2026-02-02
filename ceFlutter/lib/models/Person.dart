@@ -1,5 +1,6 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
 
+import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/AcceptedDoc.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 
@@ -71,7 +72,7 @@ class Person {
       return false;
    }
    
-   void accept( DocType docType, AcceptedDoc ad, String docId  ) {
+   void accept( DocType docType, AcceptedDoc ad, String docId, CEVenture cev  ) {
       // equity accepted docs come with filled in blank data
       if( docType != DocType.equity ) {
          assert( docId != "" );
@@ -88,6 +89,8 @@ class Person {
          
          if( acceptedDocs[ docType ] == null ) { acceptedDocs[ docType ] = [ ad ];   }
          else                                  { acceptedDocs[ docType ]!.add( ad ); }
+
+         ad.submitIfReady( cev, this );
       }
          
       if( signedPrivacy() && completeProfile()) { registered = true; }
@@ -96,18 +99,13 @@ class Person {
    // XXX oops.  nope not yet
    bool registeredWithCEV( cevId ) {
       bool res = false;
-      return res;
 
-
-      
-      List<AcceptedDoc>? docs = acceptedDocs[ DocType.equity ];
-      if( docs == null ) { return res; }
-      
-      docs.forEach( (d) {
-            print( "RWC check *" + cevId + "*  *" + (d.equityVals["VentureId"] ?? "" ) + "*" );
-            if( d.equityVals["VentureId"] == cevId ) { res = true; }
-         });
       return res;
+   }
+
+   bool appliedToCEV( CEVenture cev ) {
+      print( "Person:Applied" );
+      return cev.hasApplicant( id );
    }
    
    // No one found.  return empty 

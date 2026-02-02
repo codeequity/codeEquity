@@ -12,6 +12,7 @@ class _aBox {
    bool                 triggered;   // bookkeeping
    
    String?              blankTitle;
+   String?              blankSub;
    Map<String, String>? values;      // editable values for blanks type
 
    String?              radioTitle;
@@ -51,9 +52,12 @@ class AcceptedDoc {
    String       docId;
    String       acceptedDate;  // the date that 'Accept' was pressed
 
+   
    // Equity agreement.  Only fully valid agreements store these values.
    late Map<String,String> equityVals;   // htmlDoc tag to value
 
+   final String sigHint = "(type your full legal name)";
+   
    String?  filledIn;           //  TRANSIENT do not store
    List<_aBox>? boxes;          //  TRANSIENT do not store
 
@@ -85,54 +89,56 @@ class AcceptedDoc {
 
 
    // Set up which fields can be edited, along with hints for the edit box
-   void setEditBox() {
+   void setEditBox( bool applicant ) {
       boxes = [];
       if( this.docType == DocType.equity ) {
+
          // preamble section
-         _aBox box = new _aBox( type: "hybrid", triggered: false, percDepth: 0.2 );
-         box.radioTitle  = "Partner's Title";
-         box.blankTitle  = "Effective Date";
+         // Neither party can change these once other party has signed
+         if( ( applicant &&  !validExecSig() ) ||
+             ( !applicant && !validPartnerSig() ) ) {
 
-         // NOTE radioTitle will not be passed to the radio dialog as a selectable option.  It is used to help determine which hybrid option the user chose
-         box.rchoices    = [ box.radioTitle!, "Collaborator", "Founder"];   // XXX formalize.  
-
-         box.hybridTitle = "Which would you like to update?";
-         box.hchoices    = [ box.radioTitle!, box.blankTitle! ];
-
-         box.values = {};
-         box.values!["EffectiveDate"] = equityVals["EffectiveDate"]!;
+            _aBox box = new _aBox( type: "hybrid", triggered: false, percDepth: 0.2 );
+            box.radioTitle  = "Partner's Title";
+            box.blankTitle  = "Effective Date";
          
-         boxes!.add( box );
-
+            // NOTE radioTitle will not be passed to the radio dialog as a selectable option.  It is used to help determine which hybrid option the user chose
+            box.rchoices    = [ box.radioTitle!, "Collaborator", "Founder"];   // XXX formalize.  
+            
+            box.hybridTitle = "Which would you like to update?";
+            box.hchoices    = [ box.radioTitle!, box.blankTitle! ];
+            
+            box.values = {};
+            box.values!["EffectiveDate"] = equityVals["EffectiveDate"]!;
+            
+            boxes!.add( box );
+         }
          
          // Signature section
-         box = new  _aBox( type: "blanks", triggered: false, percDepth: 66.0 );
+         _aBox box = new  _aBox( type: "blanks", triggered: false, percDepth: 66.0 );
          box.values = {};
 
-         // XXX Partner can't sign for exec, vice versa
-         box.values!["ExecutivePhone"]          = equityVals["ExecutivePhone"]!;
-         box.values!["ExecutiveSignature"]      = equityVals["ExecutiveSignature"] == "" ? "(type your full legal name)" : equityVals["ExecutiveSignature"]!;
-         box.values!["ExecutiveMailingAddress"] = equityVals["ExecutiveMailingAddress"]!;
-
-         box.values!["PartnerPhone"]            = equityVals["PartnerPhone"]!;
-         box.values!["PartnerSignature"]        = equityVals["PartnerSignature"] == "" ? "(type your full legal name)" : equityVals["PartnerSignature"]!;
-         box.values!["PartnerMailingAddress"]   = equityVals["PartnerMailingAddress"]!;
-
+         if( !applicant ) {
+            box.blankTitle = "Executive Signature Page";
+            box.blankSub = "BEFORE SIGNING: verify Partner Title is correct on Page 1!  Your phone number and signature are required.  Your mailing address is strongly recommended. ";
+            box.values!["ExecutivePhone"]          = equityVals["ExecutivePhone"]!;
+            box.values!["ExecutiveSignature"]      = equityVals["ExecutiveSignature"] == "" ? sigHint : equityVals["ExecutiveSignature"]!;
+            box.values!["ExecutiveMailingAddress"] = equityVals["ExecutiveMailingAddress"]!;
+         }
+         else {
+            box.blankTitle = "Partner Signature Page";
+            box.blankSub = "Your phone number and signature are required.  Your mailing address is strongly recommended.  Once signed, this agreement will be ";
+            box.blankSub = box.blankSub! + "submitted to the Founders for review and counter-signature.";
+            box.values!["PartnerPhone"]            = equityVals["PartnerPhone"]!;
+            box.values!["PartnerSignature"]        = equityVals["PartnerSignature"] == "" ? sigHint : equityVals["PartnerSignature"]!;
+            box.values!["PartnerMailingAddress"]   = equityVals["PartnerMailingAddress"]!;
+         }
          boxes!.add( box );
       }
    }
 
-   // User has filled in a blank or choosen a value.  update doc.
-   void modify( appState, Map<String, String> update ) {
-      for( final entry in update.entries ) {
-         print( "Modify " + entry.key + " => " + entry.value );
-         equityVals[entry.key] = entry.value;
-      }
-      return;
-   }
-   
    // Replace tags in content
-   String compose( appState, Person cePeep, Agreement agmt, String cevId, {useCurrent = false} ) {
+   String compose( appState, Person cePeep, Agreement agmt, String cevId, {useCurrent = false, applicant = true} ) {
       // NOTE if the pattern from is not found, the <codeEquityTag> will be visible at best, or lost part of the doc at worst.
       String res = "";
       if( agmt.type == DocType.equity ) {
@@ -179,16 +185,54 @@ class AcceptedDoc {
             res = res.replaceAll( "<codeEquityTag=\"" + entry.key + "\">", "<u>" + tmp + "</u>" );
          }
       }
-      setEditBox();
+      setEditBox( applicant );
       filledIn = res;
       return res;
    }
 
+   // User has filled in a blank or choosen a value.  update doc.
+   void modify( Map<String, String> update ) {
+      for( final entry in update.entries ) {
+         print( "Modify " + entry.key + " => " + entry.value );
+         equityVals[entry.key] = entry.value;
+      }
+      return;
+   }
+
+   // Stored edits
+   bool validExecSig() {
+      return equityVals["ExecutiveSignature"] != sigHint && equityVals["ExecutiveSignature"] == equityVals["ExecutiveName"];
+   }
+   bool validPartnerSig() {
+      return equityVals["PartnerSignature"] != sigHint && equityVals["PartnerSignature"] == equityVals["PartnerName"];
+   }
+   
+   // Current edits possibly to be stored
+   bool validate( Person cePeep, Map<String, String> edits ) {
+      bool valid = true;
+
+      if( edits["ExecutiveSignature"] != sigHint && edits["ExecutiveSignature"] != "" )               { valid = false; }
+      if( edits["PartnerSignature"]   != sigHint && edits["PartnerSignature"]   != cePeep.legalName ) { valid = false; }
+
+      return valid;
+   }
+
+   // If required blanks have been filled in, add id to CEV applicants.
+   void submitIfReady( CEVenture cev, Person cePeep ) {
+      // PartnerB
+      if( equityVals["EffectiveDate"]    != ""               &&   // XXX better date checking pls
+          equityVals["PartnerSignature"] == cePeep.legalName &&
+          equityVals["PartnerPhone"]     != "" ) {                // XXX better phone checking pls
+         
+      }
+      cev.addApplicant( cePeep );
+   }
+   
    dynamic toJson() {
 
       // do not save signature hint.
-      if( equityVals["ExecutiveSignature"] == "(type your full legal name)" ) { equityVals["ExecutiveSignature"] = ""; }
-      if( equityVals["PartnerSignature"]   == "(type your full legal name)" ) { equityVals["PartnerSignature"] = ""; }
+      if( equityVals["ExecutiveSignature"] == sigHint ) { equityVals["ExecutiveSignature"] = ""; }
+      if( equityVals["PartnerSignature"]   == sigHint ) { equityVals["PartnerSignature"] = ""; }
       
       return { 'docType': enumToStr( docType ), 'docId': docId, 'acceptedDate': acceptedDate, 'equityVals': equityVals };
    }

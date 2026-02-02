@@ -113,7 +113,7 @@ Future<void> editForm( BuildContext context, appState, scrollHeader,
 
 Future<void> editList( BuildContext context, appState, scrollHeader,
                        List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc, 
-                       { saveName: "Save", stepWidth: 40, headerWidth: -1, edit = false }) async {
+                       { saveName: "Save", stepWidth: 40, headerWidth: -1, edit = false, subHeader = "" }) async {
    edit = edit || scrollHeader.contains( "Edit" );
    assert( controllers.length == values.length );
    List<Widget> editVals = [];
@@ -144,13 +144,18 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
    }
 
    buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: cancelFunc ));
-   
+
+   Widget title = subHeader == "" ?
+                  new Text( scrollHeader ) :
+                  Container( width: headerWidth*3, child: Wrap( direction: Axis.vertical,
+                                                                children: [new Text( scrollHeader ), makeBodyText( appState, subHeader, headerWidth*2.5, true, 4)] ));
+
    await showDialog(
       context: context,
       builder: (BuildContext context) {
                  return AlertDialog(
                     scrollable: true,
-                    title: new Text( scrollHeader ),
+                    title: title,
                     content: scrollBody,
                     actions: buttons);
               });
@@ -224,7 +229,7 @@ Future<void> editBox( BuildContext context, appState, maxWidth, boxHeader, itemH
               });
 }
 
-void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) {
+Future<void> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) async {
    showDialog(
       context: context,
       builder: (BuildContext context) {

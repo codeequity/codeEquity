@@ -446,11 +446,24 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
    Future<void> _accept( Person cePeep, DocType docType, {docId = "", controlView = true} ) async {
-      cePeep.accept( docType, scrollDoc, docId );
+      assert( scrollDoc.equityVals["VentureId"] != null );
+      CEVenture? cev = appState.ceVenture[ scrollDoc.equityVals["VentureId"]! ];
+      assert( cev != null );
+      cePeep.accept( docType, scrollDoc, docId, cev! );
+
+      // Store new document edits
       String user = json.encode( cePeep );
       String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
       await updateDynamo( context, container, ppostData, "PutPerson" );
 
+      // Store new applicant, if ready
+      if( cev.hasApplicant( cePeep.id ) ) {
+         String cevs = json.encode( cev );
+         String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+         // Don't wait
+         updateDynamo( context, container, ppostData, "UpdateCEV" );
+      }
+      
       if( controlView ) {
          setState(() => updateView = true );
          appState.hoverChunk = "";      
@@ -485,14 +498,18 @@ class _CEHomeState extends State<CEHomePage> {
       Navigator.of( context ).pop();  // radio
       Navigator.of( context ).pop();  // doc
 
-      scrollDoc.modify( appState, edits );
-
       assert( appState.ceUserId != "" );
       Person? cePeep = appState.cePeople[ appState.ceUserId ];
       assert( cePeep != null );
-
-      await _accept( cePeep!, DocType.equity, controlView: false );
-         
+      
+      if( scrollDoc.validate( cePeep!, edits ) ) { 
+         scrollDoc.modify( edits );
+         await _accept( cePeep!, DocType.equity, controlView: false );
+      }
+      else {
+         showToast( "You must sign with your full legal name.  You can not sign for someone else." );
+      }
+      
       _showDoc( context, Person.empty(), DocType.equity, useCurrent: true );
    }
 
@@ -527,7 +544,7 @@ class _CEHomeState extends State<CEHomePage> {
             cont.add( new TextEditingController() );
          }
          
-         editList( context, appState, "", item, cont, hint, () => _updateDocFree( item, hint, cont ), _cancel, null, headerWidth: overlayMaxWidth * 0.3 );
+         editList( context, appState, box.blankTitle, item, cont, hint, () => _updateDocFree( item, hint, cont ), _cancel, null, subHeader: box.blankSub, headerWidth: overlayMaxWidth * 0.3 );
       }
       else if( box.type == "hybrid" ) { 
 
@@ -570,7 +587,7 @@ class _CEHomeState extends State<CEHomePage> {
       }
    }
    
-   void _showDoc( context, Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false } ) async {
+   void _showDoc( context, Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false, applicant = true } ) async {
       Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
       
       if( docType == DocType.privacy ) {
@@ -593,6 +610,15 @@ class _CEHomeState extends State<CEHomePage> {
                showToast( "The required fields of your profile must be completed first." );
                return;
             }
+
+            final cev = appState.ceVenture[cevId];
+            assert( cev != null );
+            if( cePeep.appliedToCEV( cev! ) ) {
+               print( "Home pop confirm?" );
+               // XXXXXX
+               await confirm( context, "More Edits?", "You have already sent a Venture Agreement for " + cevName + " to the Founders.  Do you want to edit it?",
+                              _cancel, _cancel );
+            }
             
             if( cePeep.registeredWithCEV( cevId ) ) {
                showToast( "You have already signed the CodeEquity Equity Agreement with " + cevName );
@@ -610,12 +636,11 @@ class _CEHomeState extends State<CEHomePage> {
          }
 
          print( "filledIn composed " + filledInDoc.length.toString() );
-
-      List<Widget> buttons = [];
-      buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: _cancel )); // XXX useless?
-      buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
-
-      await showDialog(
+         
+         List<Widget> buttons = [];
+         buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
+         
+         await showDialog(
             context: context,
             builder: (BuildContext context) {
                              return AlertDialog(
