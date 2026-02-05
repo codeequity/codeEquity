@@ -9,15 +9,15 @@ class CEVenture {
    final String  name;
    final String? web;
    final Map< String, MemberRole > roles;  // ceUID: role
+   final List<String> applicants;          // CEPeople that have applied to register with this venture
 
-   CEVenture({ required this.ceVentureId, required this.name, this.web, required this.roles });
+   CEVenture({ required this.ceVentureId, required this.name, this.web, required this.roles, required this.applicants });
 
-   // dynamic toJson() => { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web, 'Roles': roles };
    dynamic toJson() {
       final Map< String, String> sRoles = {};
       assert( roles != null );
       roles.forEach( (k,v) { sRoles[k] = enumToStr( v ); } );
-      return { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web, 'Roles': sRoles };
+      return { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web, 'Roles': sRoles, 'Applicants': applicants };
    }
 
    // No CEVenture found.  return empty 
@@ -26,7 +26,8 @@ class CEVenture {
          ceVentureId:  "-1",
          name:         "", 
          web:          "",
-         roles:        {}
+         roles:        {},
+         applicants:   []
          );
    }
       
@@ -34,16 +35,18 @@ class CEVenture {
 
       var dynamicRoles           = json['Roles'];
       Map <String, MemberRole> r = {};
-
-      // if( dynamicRoles != null ) { dynamicRoles.forEach( (k,v) { r[k] = v; }); }
       if( dynamicRoles != null ) { dynamicRoles.forEach( (k,v) { r[k] = enumFromStr<MemberRole>( v, MemberRole.values ); }); }
+
+      var dynamicApps            = json['Applicants'] ?? [];
+      List<String> apps          = new List<String>.from(dynamicApps);
       
       // DynamoDB is not camelCase
       return CEVenture(
          ceVentureId:   json['CEVentureId'],
          name:          json['Name'],
          web:           json['Website'],
-         roles:         r
+         roles:         r,
+         applicants:    apps
          );
    }
 
@@ -57,6 +60,21 @@ class CEVenture {
             }} );
       return res;
    }
+
+   void addApplicant( Person cePeep ) {
+      if( !applicants.contains( cePeep.id ) ) {
+         applicants.add( cePeep.id );
+      }
+   }
+
+   void addNewCollaborator( Person applicant, String title ) {
+      print( "applicants before " + applicants.toString() );
+      applicants.remove( applicant.id );
+      print( "applicants after " + applicants.toString() );
+      roles[applicant.id] = title == "Founder" ? MemberRole.Executive : MemberRole.Member;
+   }
+   
+   bool hasApplicant( String pid ) { return applicants.contains( pid ); }
    
    String toString() {
       String res = "\n" + name + " (" + ceVentureId + ") " + (web ?? "");
@@ -64,6 +82,7 @@ class CEVenture {
       for( MapEntry<String, MemberRole> role in roles.entries ) {
          res += "   " + role.key + ": " + enumToStr( role.value );
       }
+      res += "\nApplicants: " + applicants.toString();
       res += "\n";
       return res;
    }

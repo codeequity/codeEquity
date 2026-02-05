@@ -48,6 +48,7 @@ class _CEHomeState extends State<CEHomePage> {
    late double  rhsFrameMaxWidth;
    late double  overlayMaxWidth;
 
+   // Activity panel
    late bool toggleRegister;
    late bool toggleVenture; 
    late bool toggleProject;
@@ -57,6 +58,9 @@ class _CEHomeState extends State<CEHomePage> {
 
    final ScrollController _scrollController = ScrollController();
    late AcceptedDoc scrollDoc;
+   late Person      applicant;
+   late Person      approver;
+   late CEVenture   targCEV;
    
    late List<Widget> tasks;
    
@@ -440,22 +444,79 @@ class _CEHomeState extends State<CEHomePage> {
       return subTasks;
    }
 
-   void _cancel() {
-      print( "Cancelled" );
-      Navigator.of( context ).pop();
+   void _noop() {
+      Navigator.of( context ).pop( 'noop' );
    }
 
-   Future<void> _accept( Person cePeep, DocType docType, {docId = "", controlView = true} ) async {
-      cePeep.accept( docType, scrollDoc, docId );
+   void _cancel() {
+      Navigator.of( context ).pop( 'Cancel' );
+   }
+
+   // Accept edits.  Perhaps Accept agreement.  cePeep may either be approver or applicant.  
+   Future<void> _accept( Person cePeep, DocType docType, {docId = "", isApplicant = true, controlView = true} ) async {
+
+      print( "Accept for " + cePeep.legalName );
+      cePeep.accept( docType, scrollDoc, docId, targCEV, isApplicant );
+
+      if( docType == DocType.equity && !isApplicant ) {
+         cePeep = applicant;
+         String missing = scrollDoc.checkExecuted( approver, applicant, targCEV );
+         if( missing == "" ) {
+            showToast( "Document is now fully executed." );
+            targCEV.addNewCollaborator( applicant, scrollDoc.equityVals["PartnerTitle"]! );
+            scrollDoc.setExecutionDate();
+
+            // stores new countersigned acceptedDoc for applicant.  The previous accept did any work needed for the approver.
+            applicant.accept( docType, scrollDoc, docId, targCEV, true );   
+         }
+         else {
+            showToast( "Document needs the following items to be fully executed: " + missing );
+         }
+      }
+
+      // Store new document edits, only applicant stores these
       String user = json.encode( cePeep );
       String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
       await updateDynamo( context, container, ppostData, "PutPerson" );
 
+      // Store new applicant, or new member 
+      String cevs = json.encode( targCEV );
+      ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+      // Don't wait
+      updateDynamo( context, container, ppostData, "UpdateCEV" );
+      
       if( controlView ) {
          setState(() => updateView = true );
          appState.hoverChunk = "";      
          Navigator.of( context ).pop();
       }
+   }
+
+   List<Widget> _makeGetApplications() {
+      List<Widget> subTasks = [];
+      assert( appState.ceUserId != "" );
+      Person? cePeep = appState.cePeople[ appState.ceUserId ];
+      assert( cePeep != null );
+
+      // Get all applicants to all CEVs that I'm an executive for.
+      appState.ceVenture.entries.forEach( (entry) {
+            CEVenture cev = entry.value;
+            MemberRole? r = cev.roles[ cePeep!.id ];
+
+            // May be more than 1 application, so can't set class var for applicant here
+            if( r != null && r == MemberRole.Executive ) {
+               cev.applicants.forEach( (a) {
+                     Person? applicant = appState.cePeople[ a ];
+                     assert( applicant != null );
+                     Widget application = _makeLink( applicant!.legalName + " has applied to " + cev.name, overlayMaxWidth * 0.2,
+                                                     () => _showDoc( context, applicant, DocType.equity, cevId: cev.ceVentureId, cevName: cev.name, isApplicant: false ));
+                     subTasks.add( application );
+                  });
+            }
+                
+         });
+      
+      return subTasks;
    }
 
    void _registerVenture( Person cePeep, DocType docType ) async {
@@ -479,24 +540,30 @@ class _CEHomeState extends State<CEHomePage> {
       editList( context, appState, choose, [item], [cont], [hint], () => _select( cont ), _cancel, null, saveName: "Select" );
    }
 
-
-   // Have access to context of state class here
+   // So far, venture equity agreement is the only editable doc
    void _updateDoc( Map<String, String> edits ) async {
       Navigator.of( context ).pop();  // radio
       Navigator.of( context ).pop();  // doc
 
-      scrollDoc.modify( appState, edits );
+      bool isApplicant = approver.id != "-1"  ? false : true;
+      Person tPeep     = isApplicant          ? applicant : approver;
 
-      assert( appState.ceUserId != "" );
-      Person? cePeep = appState.cePeople[ appState.ceUserId ];
-      assert( cePeep != null );
-
-      await _accept( cePeep!, DocType.equity, controlView: false );
+      print( "Update doc applicant? " + isApplicant.toString() );
          
-      _showDoc( context, Person.empty(), DocType.equity, useCurrent: true );
+      if( scrollDoc.validate( tPeep, edits, isApplicant )) { 
+         scrollDoc.modify( edits );
+         await _accept( tPeep, DocType.equity, isApplicant: isApplicant, controlView: false );
+      }
+      else {
+         showToast( "You must sign with your full legal name.  You can not sign for someone else." );
+      }
+
+      // use current is better than running with cePeep - less repeated questions
+      _showDoc( context, applicant, DocType.equity, useCurrent: true, isApplicant: isApplicant );
    }
 
    void _updateDocFixed( String item, String choice ) {
+      print( "UDF " + item + " " + choice );
       Map<String,String> edits = { item: choice };
       _updateDoc( edits );
    }
@@ -527,30 +594,11 @@ class _CEHomeState extends State<CEHomePage> {
             cont.add( new TextEditingController() );
          }
          
-         editList( context, appState, "", item, cont, hint, () => _updateDocFree( item, hint, cont ), _cancel, null, headerWidth: overlayMaxWidth * 0.3 );
+         editList( context, appState, box.blankTitle, item, cont, hint,
+                   () => _updateDocFree( item, hint, cont ), _cancel, null, subHeader: box.blankSub, headerWidth: overlayMaxWidth * 0.3 );
       }
-      else if( box.type == "hybrid" ) { 
-
-         void _popDialog( String choice ) {
-            Navigator.of( context ).pop();
-            if( choice == box.rchoices![0] )      {
-               radioDialog( context, box.radioTitle!, box.rchoices!.sublist(1), _updateDocFixed, _cancel, execArgs: ["PartnerTitle"] );
-            }
-            else {
-               List<String>                item = [];
-               List<TextEditingController> cont = [];
-               List<String>                hint = [];
-               for( final entry in box.values.entries ) {
-                  item.add( entry.key );
-                  hint.add( entry.value );
-                  cont.add( new TextEditingController() );
-               }
-               editList( context, appState, "", item, cont, hint, () => _updateDocFree( item, hint, cont ), _cancel, null );
-            }
-         }
-         
-         // update radio or blank?
-         radioDialog( context, box.hybridTitle!, box.hchoices!, _popDialog, _cancel );
+      else if( box.type == "radio" ) { 
+         radioDialog( context, box.radioTitle!, box.rchoices!.sublist(1), _updateDocFixed, _cancel, execArgs: ["PartnerTitle"] );
       }
    }
 
@@ -569,8 +617,9 @@ class _CEHomeState extends State<CEHomePage> {
          if (depth < box.percDepth ) { box.triggered = false; }
       }
    }
-   
-   void _showDoc( context, Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false } ) async {
+
+   // Every time enter showDoc with relevant doc, roles are set.
+   void _showDoc( context, Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false, isApplicant = true } ) async {
       Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
       
       if( docType == DocType.privacy ) {
@@ -588,21 +637,57 @@ class _CEHomeState extends State<CEHomePage> {
                           });
       }
       else {
-         if( !useCurrent ) {
-            if( !cePeep!.registered ) {
-               showToast( "The required fields of your profile must be completed first." );
-               return;
-            }
-            
-            if( cePeep.registeredWithCEV( cevId ) ) {
-               showToast( "You have already signed the CodeEquity Equity Agreement with " + cevName );
-               return;
-            }
-            
-            scrollDoc = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday(), equityVals: {} );
-         }
 
-         String filledInDoc = scrollDoc.compose( appState, cePeep!, agmt, cevId, useCurrent: useCurrent );
+         assert( appState.ceUserId != "" );
+         Person? tmpPeep = appState.cePeople[ appState.ceUserId ];
+         assert( tmpPeep != null );
+
+         if( !useCurrent ) {
+            assert( cevId != "" );
+            CEVenture? tcev = appState.ceVenture[cevId];
+            assert( tcev != null );
+            targCEV   = tcev!;
+         }
+         
+         if( isApplicant ) {
+            approver  = Person.empty();
+            applicant = tmpPeep!;
+            assert( applicant.id == cePeep!.id );
+
+            if( !useCurrent ) {
+               if( !applicant!.registered ) {
+                  showToast( "The required fields of your profile must be completed first." );
+                  return;
+               }
+               
+               if( applicant.appliedToCEV( targCEV ) ) {
+                  String ret = await confirm( context, "More Edits?", "You have already sent a Venture Agreement for " + cevName + " to the Founders.  Do you want to edit it?",
+                                              _noop, _cancel );
+                  if( ret == 'Cancel' ) { return; }
+                  
+                  // Need to load values from applicant
+                  scrollDoc = applicant.copyStoredEquityVals( targCEV.ceVentureId );
+               }
+               else if( applicant.registeredWithCEV( targCEV ) ) {
+                  showToast( "You have already signed the CodeEquity Equity Agreement with " + cevName );
+                  return;
+               }
+               else {
+                  scrollDoc = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday(), equityVals: {} );
+               }
+            }
+         }
+         else {
+            approver  = tmpPeep!;
+            applicant = cePeep;    // Approver calls makeGetApp which sets cePeep to the applicant. 
+            
+            print( "Doc for applicant: " + applicant.legalName + " to be countersigned by " + approver.legalName );
+
+            // load values from applicant
+            scrollDoc = applicant.copyStoredEquityVals( targCEV.ceVentureId );
+         }
+        
+         String filledInDoc = scrollDoc.compose( appState, applicant, approver, agmt, cevId, useCurrent: useCurrent, isApplicant: isApplicant );
          
          if( filledInDoc == "-1" ) {
             showToast( "No need to sign agreements with yourself." );
@@ -610,12 +695,11 @@ class _CEHomeState extends State<CEHomePage> {
          }
 
          print( "filledIn composed " + filledInDoc.length.toString() );
-
-      List<Widget> buttons = [];
-      buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: _cancel )); // XXX useless?
-      buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
-
-      await showDialog(
+         
+         List<Widget> buttons = [];
+         buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
+         
+         await showDialog(
             context: context,
             builder: (BuildContext context) {
                              return AlertDialog(
@@ -700,7 +784,7 @@ class _CEHomeState extends State<CEHomePage> {
       }
       return subTasks;
    }
-
+   
    List<Widget> makePending( ) {
       Widget expand = makeExpander( "togglePending", true );
       Widget shrink = makeExpander( "togglePending", false );
@@ -712,7 +796,7 @@ class _CEHomeState extends State<CEHomePage> {
       if( !togglePending ) {
          subTasks.add( _makeEntry( "14 pending approvals", 2.0 * appState.MID_PAD, false ) );
          subTasks.add( _makeEntry( "2 pending invites", 2.0 * appState.MID_PAD, false ) );
-         subTasks.add( _makeEntry( "1 pending request", 2.0 * appState.MID_PAD, false, last: true ) );
+         subTasks.addAll( _makeGetApplications() );
       }
       return subTasks;
    }
