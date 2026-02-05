@@ -72,7 +72,7 @@ class Person {
       return false;
    }
    
-   void accept( DocType docType, AcceptedDoc ad, String docId, CEVenture cev  ) {
+   void accept( DocType docType, AcceptedDoc ad, String docId, CEVenture cev, bool isApplicant  ) {
       // equity accepted docs come with filled in blank data
       if( docType != DocType.equity ) {
          assert( docId != "" );
@@ -82,31 +82,42 @@ class Person {
 
       if( docType == DocType.equity ) {
          assert( ad != null );
-         if( hasEquityAgreement( ad.equityVals["VentureId" ]! ) ) {
-            // remove last edited doc to make room for new
-            acceptedDocs[ docType ]!.removeWhere( (d) => d.equityVals["VentureId"] == ad.equityVals["VentureId"] || d.equityVals["VentureId"] == "" );
-         }
-         
-         if( acceptedDocs[ docType ] == null ) { acceptedDocs[ docType ] = [ ad ];   }
-         else                                  { acceptedDocs[ docType ]!.add( ad ); }
+         // No model changes for approver on accept
+         if( isApplicant ) {
+            if( hasEquityAgreement( ad.equityVals["VentureId" ]! ) ) {
+               // remove last edited doc to make room for new
+               acceptedDocs[ docType ]!.removeWhere( (d) => d.equityVals["VentureId"] == ad.equityVals["VentureId"] || d.equityVals["VentureId"] == "" );
+            }
+            
+            if( acceptedDocs[ docType ] == null ) { acceptedDocs[ docType ] = [ ad ];   }
+            else                                  { acceptedDocs[ docType ]!.add( ad ); }
 
-         ad.submitIfReady( cev, this );
+            // Become an applicant if this is not a counter-signature
+            if( ad.equityVals["EffectiveDate"] == "" ) { ad.submitIfReady( cev, this ); }
+         }
       }
          
       if( signedPrivacy() && completeProfile()) { registered = true; }
    }
 
-   // XXX oops.  nope not yet
-   bool registeredWithCEV( cevId ) {
-      bool res = false;
-
-      return res;
+   bool registeredWithCEV( CEVenture cev ) {
+      print( "RWC " + cev.toString() );
+      return cev.roles[ id ] != null;
    }
 
    bool appliedToCEV( CEVenture cev ) {
-      print( "Person:Applied" );
       return cev.hasApplicant( id );
    }
+
+   AcceptedDoc copyStoredEquityVals( String cevId ) {
+      assert( acceptedDocs[DocType.equity] != null );
+      print( "Copy stored equity vals from " + cevId + " to " + legalName );
+      AcceptedDoc doc = acceptedDocs[DocType.equity]!.firstWhere( (d) => d.equityVals["VentureId"] == cevId );
+      AcceptedDoc receiver = AcceptedDoc.from( doc );
+      print( "copy sez " + receiver.toString() );
+      return receiver;
+   }
+
    
    // No one found.  return empty 
    factory Person.empty() {

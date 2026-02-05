@@ -229,8 +229,9 @@ Future<void> editBox( BuildContext context, appState, maxWidth, boxHeader, itemH
               });
 }
 
-Future<void> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) async {
-   showDialog(
+// okFunc and cancelFunc need to return strings.  See home_screen:confirm
+Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) async {
+   return await showDialog(
       context: context,
       builder: (BuildContext context) {
                  return AlertDialog(

@@ -273,7 +273,7 @@ Future<void> initMDState( context, container ) async {
                cepIds.add( cep.ceProjectId );
             }
          }
-         
+         /*
          for( String ceuid in appState.ceHostAccounts.keys ) {
             assert( appState.ceHostAccounts[ceuid] != null );
             List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
@@ -285,6 +285,7 @@ Future<void> initMDState( context, container ) async {
                }
             }
          }
+         */
          // print( cev.roles.toString() );
       }
    }

@@ -27,17 +27,14 @@ class _aBox {
    bool validate() {
       bool res = true;
       bool found = false;
-      if( this.type == "blanks" || this.type == "hybrid" ) {
+      if( this.type == "blanks" ) {
          res = res && this.values != null;
          found = true;
       }
-      if( type == "hybrid" ) {
+      else if( type == "radio" ) {
          res = res && this.radioTitle != null;
          res = res && this.rchoices != null;
          res = res && this.rchoices!.length >= 1;
-         res = res && this.hybridTitle != null;
-         res = res && this.hchoices != null;
-         res = res && this.hchoices!.length >= 1;
          found = true;
       }
       if( !found ) { res = false; }
@@ -93,34 +90,35 @@ class AcceptedDoc {
       boxes = [];
       if( this.docType == DocType.equity ) {
 
+         print( "SEB " + applicant.toString() + " " + (!validExecSig()).toString() );
+         
          // preamble section
          // Neither party can change these once other party has signed
+         // Neither party can change Effective Date - this is fixed upon counter-signature
          if( ( applicant &&  !validExecSig() ) ||
              ( !applicant && !validPartnerSig() ) ) {
 
-            _aBox box = new _aBox( type: "hybrid", triggered: false, percDepth: 0.2 );
+            _aBox box = new _aBox( type: "radio", triggered: false, percDepth: 0.2 );
             box.radioTitle  = "Partner's Title";
-            box.blankTitle  = "Effective Date";
          
             // NOTE radioTitle will not be passed to the radio dialog as a selectable option.  It is used to help determine which hybrid option the user chose
             box.rchoices    = [ box.radioTitle!, "Collaborator", "Founder"];   // XXX formalize.  
-            
-            box.hybridTitle = "Which would you like to update?";
-            box.hchoices    = [ box.radioTitle!, box.blankTitle! ];
-            
-            box.values = {};
-            box.values!["EffectiveDate"] = equityVals["EffectiveDate"]!;
-            
+
+            print( "Box set, radio" );
             boxes!.add( box );
+
          }
          
          // Signature section
+         // Even if the other party has signed, current peep should be able to update these three fields
          _aBox box = new  _aBox( type: "blanks", triggered: false, percDepth: 66.0 );
          box.values = {};
 
+
          if( !applicant ) {
             box.blankTitle = "Executive Signature Page";
-            box.blankSub = "BEFORE SIGNING: verify Partner Title is correct on Page 1!  Your phone number and signature are required.  Your mailing address is strongly recommended. ";
+            box.blankSub = "BEFORE SIGNING: verify Partner Title is correct on Page 1!  Your phone number and signature are required.";
+            box.blankSub = box.blankSub! + "  Your mailing address is strongly recommended.";
             box.values!["ExecutivePhone"]          = equityVals["ExecutivePhone"]!;
             box.values!["ExecutiveSignature"]      = equityVals["ExecutiveSignature"] == "" ? sigHint : equityVals["ExecutiveSignature"]!;
             box.values!["ExecutiveMailingAddress"] = equityVals["ExecutiveMailingAddress"]!;
@@ -137,47 +135,52 @@ class AcceptedDoc {
       }
    }
 
-   // Replace tags in content
-   String compose( appState, Person cePeep, Agreement agmt, String cevId, {useCurrent = false, applicant = true} ) {
+   // Replace tags in content from applicant
+   String compose( appState, Person applicant, Person approver, Agreement agmt, String cevId, { bool useCurrent = false, bool isApplicant = true } ) {
       // NOTE if the pattern from is not found, the <codeEquityTag> will be visible at best, or lost part of the doc at worst.
       String res = "";
       if( agmt.type == DocType.equity ) {
 
-         if( !useCurrent ) {
+         String spaces = "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
+         if( !useCurrent) {
             CEVenture? cev = appState.ceVenture[ cevId ];
             assert( cev != null );
-            
-            // Exec
-            List<Person> execs = cev!.getExecutives( appState );
-            assert( execs.length >= 1 );
-            
-            // no use signing with yourself
-            execs = execs.where( (p) => p.id != cePeep.id ).toList();
-            if( execs.length == 0 ) { return "-1"; }
-            
-            // Each signing instance has multiple values that get filled in, most automatically.  Only a few are editable.
-            // All edits must update required profile elements first, which are used here.  No parallel existence.
-            equityVals["EffectiveDate"]         = getToday();       
+            equityVals["EffectiveDate"]         = "";
             equityVals["VentureId"]             = cevId;
             equityVals["VentureName"]           = cev!.name;
             equityVals["VentureWebsite"]        = cev!.web == "" ? "https://www.codeequity.org/XXX" : cev!.web!;
             equityVals["OutstandingShares"]     = "987348746";
             
-            equityVals["PartnerTitle"]          = "Contributor"; 
-            equityVals["PartnerName"]           = cePeep.legalName; 
-            equityVals["PartnerEmail"]          = cePeep.email;     
-            equityVals["PartnerPhone"]          = cePeep.phone;
-            equityVals["PartnerMailingAddress"] = cePeep.mailingAddress;
+            // no use signing with yourself
+            List<Person> execs = cev!.getExecutives( appState );
+            assert( execs.length >= 1 );
+            execs = execs.where( (p) => p.id != applicant.id ).toList();
+            if( execs.length == 0 ) { return "-1"; }
             
-            // Any exec will do.  Show first available, but pending tasks for all execs.
-            equityVals["ExecutiveName"]           = execs[0].legalName;
-            equityVals["ExecutiveEmail"]          = execs[0].email;
-            equityVals["ExecutivePhone"]          = execs[0].phone;
-            equityVals["ExecutiveMailingAddress"] = execs[0].mailingAddress;
+            equityVals["PartnerName"]           = applicant.legalName; 
+            equityVals["PartnerEmail"]          = applicant.email;     
+            equityVals["PartnerPhone"]          = applicant.phone;
+            equityVals["PartnerMailingAddress"] = applicant.mailingAddress;
+
+            if( isApplicant ) {
+               // We can't know which exec will countersign, yet
+               equityVals["PartnerTitle"]            = "Contributor"; 
+               equityVals["ExecutiveName"]           = "";
+               equityVals["ExecutiveEmail"]          = "";
+               equityVals["ExecutivePhone"]          = "";
+               equityVals["ExecutiveMailingAddress"] = "";
+            }
+            else
+            {
+               assert( approver.id != "" );               
+               equityVals["ExecutiveName"]           = approver!.legalName;     
+               equityVals["ExecutiveEmail"]          = approver!.email;
+               equityVals["ExecutivePhone"]          = approver!.phone;
+               equityVals["ExecutiveMailingAddress"] = approver!.mailingAddress;
+            }
          }
          
          // profile may not contain phone, mailing address
-         String spaces = "&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp";
          res = agmt.content;
 
          for( final entry in equityVals.entries ) {
@@ -185,7 +188,7 @@ class AcceptedDoc {
             res = res.replaceAll( "<codeEquityTag=\"" + entry.key + "\">", "<u>" + tmp + "</u>" );
          }
       }
-      setEditBox( applicant );
+      setEditBox( isApplicant );
       filledIn = res;
       return res;
    }
@@ -199,21 +202,51 @@ class AcceptedDoc {
       return;
    }
 
+   String checkExecuted( Person approver, Person applicant, CEVenture cev ) {
+      String failures = "";
+
+      if( equityVals["VentureName"] != cev.name ) { failures += "\n   Venture name error: " + (equityVals["VentureName"] ?? "") + " vs " + cev.name; }
+      if( equityVals["VentureId"]   != cev.ceVentureId ) { failures += "\n   Venture id error: " + (equityVals["VentureId"] ?? "") + " vs " + cev.ceVentureId; }
+      if( equityVals["VentureWebsite"] == "" ) { failures += "\n   Venture website is blank."; }
+      if( equityVals["OutstandingShares"] == "" ) { failures += "\n   Outstanding shares is blank."; }
+      if( equityVals["ExecutiveName"] != approver.legalName ) { failures += "\n   Executive name error: " + (equityVals["ExecutiveName"] ?? "") + " vs " + approver.legalName; }
+      if( equityVals["ExecutiveSignature"] != approver.legalName ) { failures += "\n   Executive signature."; }
+      if( equityVals["ExecutiveEmail"] == ""  ) { failures += "\n   Executive email is blank."; }
+      if( equityVals["ExecutivePhone"] == "" ) { failures += "\n   Executive phone is blank."; }
+      if( equityVals["PartnerName"] != applicant.legalName ) { failures += "\n   Partner name error: " + (equityVals["PartnerName"] ?? "") + " vs " + applicant.legalName; }
+      if( equityVals["PartnerSignature"] != applicant.legalName ) { failures += "\n   Partner signature."; }
+      if( equityVals["PartnerEmail"] == ""  ) { failures += "\n   Partner email is blank."; }
+      if( equityVals["PartnerPhone"] == "" ) { failures += "\n   Partner phone is blank."; }
+
+      return failures;
+   }
+
+   void setExecutionDate() { equityVals["EffectiveDate"] = getToday(); }
+   
    // Stored edits
    bool validExecSig() {
-      return equityVals["ExecutiveSignature"] != sigHint && equityVals["ExecutiveSignature"] == equityVals["ExecutiveName"];
+      return (equityVals["ExecutiveSignature"] == equityVals["ExecutiveName"]) && equityVals["ExecutiveSignature"] != "";
    }
    bool validPartnerSig() {
-      return equityVals["PartnerSignature"] != sigHint && equityVals["PartnerSignature"] == equityVals["PartnerName"];
+      return (equityVals["PartnerSignature"] == equityVals["PartnerName"]) && equityVals["PartnerSignature"] != "" ;
    }
    
    // Current edits possibly to be stored
-   bool validate( Person cePeep, Map<String, String> edits ) {
+   // Valid is no edits in signature area, or good edits.
+   bool validate( Person cePeep, Map<String, String> edits, bool isApplicant ) {
       bool valid = true;
 
-      if( edits["ExecutiveSignature"] != sigHint && edits["ExecutiveSignature"] != "" )               { valid = false; }
-      if( edits["PartnerSignature"]   != sigHint && edits["PartnerSignature"]   != cePeep.legalName ) { valid = false; }
-
+      if( isApplicant ) {
+         // These are current edits, not stored values
+         assert( edits["ExecutiveSignature"] == null );
+         if( edits["PartnerSignature"] != null && edits["PartnerSignature"] != sigHint && edits["PartnerSignature"]   != cePeep.legalName ) { valid = false; }
+      }
+      else {
+         // approver gets doc after partner signature.  Should be no edits here.
+         assert( edits["PartnerSignature"] == null );
+         if( edits["ExecutiveSignature"] != sigHint && edits["ExecutiveSignature"] != cePeep.legalName ) { valid = false; }
+      }
+      
       return valid;
    }
 

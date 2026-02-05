@@ -13,7 +13,6 @@ class CEVenture {
 
    CEVenture({ required this.ceVentureId, required this.name, this.web, required this.roles, required this.applicants });
 
-   // dynamic toJson() => { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web, 'Roles': roles, 'Applicants': applicants };
    dynamic toJson() {
       final Map< String, String> sRoles = {};
       assert( roles != null );
@@ -68,7 +67,14 @@ class CEVenture {
       }
    }
 
-   bool hasApplicant( String pid ) { print( "CEV checking " + pid + " " + applicants.contains( pid ).toString()); return applicants.contains( pid ); }
+   void addNewCollaborator( Person applicant, String title ) {
+      print( "applicants before " + applicants.toString() );
+      applicants.remove( applicant.id );
+      print( "applicants after " + applicants.toString() );
+      roles[applicant.id] = title == "Founder" ? MemberRole.Executive : MemberRole.Member;
+   }
+   
+   bool hasApplicant( String pid ) { return applicants.contains( pid ); }
    
    String toString() {
       String res = "\n" + name + " (" + ceVentureId + ") " + (web ?? "");

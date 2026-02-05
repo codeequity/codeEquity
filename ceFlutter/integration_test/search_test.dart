@@ -244,7 +244,7 @@ Future<bool> validateScroll( WidgetTester tester ) async {
 Future<bool> validateCollabConnie( WidgetTester tester ) async {
 
    print( "Enter connie" );
-   Finder txt = find.text( 'Connie Star' );
+   Finder txt = find.text( 'Connie Star (Con)' );
    expect( txt, findsOneWidget );
    
    txt = find.text( 'connieTester (AHLjVaSIlH)' );
@@ -253,7 +253,7 @@ Future<bool> validateCollabConnie( WidgetTester tester ) async {
    expect( txt, findsOneWidget );
    txt = find.text( '   Agreements' );
    expect( txt, findsOneWidget );
-   txt = find.text( 'Connie\'s CodeEquity Projects' );
+   txt = find.text( 'Con\'s CodeEquity Projects' );
    expect( txt, findsOneWidget );
    txt = find.text( 'connieCE (U_kgDOBLisTg)' );
    expect( txt, findsOneWidget );
@@ -310,7 +310,7 @@ Future<bool> validateProjGarlic( WidgetTester tester ) async {
 
    txt = find.text( 'Collaborators' );
    expect( txt, findsOneWidget );
-   txt = find.text( 'Connie Star' );
+   txt = find.text( 'Connie Star (Con)' );
    expect( txt, findsOneWidget );
    txt = find.text( 'Member of: 5' );
    expect( txt, findsOneWidget );
