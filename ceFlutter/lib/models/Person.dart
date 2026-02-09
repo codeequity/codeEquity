@@ -114,7 +114,6 @@ class Person {
       print( "Copy stored equity vals from " + cevId + " to " + legalName );
       AcceptedDoc doc = acceptedDocs[DocType.equity]!.firstWhere( (d) => d.equityVals["VentureId"] == cevId );
       AcceptedDoc receiver = AcceptedDoc.from( doc );
-      print( "copy sez " + receiver.toString() );
       return receiver;
    }
 

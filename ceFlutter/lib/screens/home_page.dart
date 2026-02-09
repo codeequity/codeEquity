@@ -16,6 +16,7 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
+import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/AcceptedDoc.dart';
@@ -492,6 +493,60 @@ class _CEHomeState extends State<CEHomePage> {
       }
    }
 
+   // Make sure the (or an) exec has filled in their profile, and accepted the privacy doc
+   // Make sure the equity plan exists
+   void _checkThenShow( Person cePeep, DocType docType, cevId, isApplicant ) async {
+      assert( docType == DocType.equity );
+
+      CEVenture? tcev = appState.ceVenture[cevId];
+      assert( tcev != null );
+      targCEV = tcev!;
+      
+      String msg = "";
+      
+      // Is there a registered founder yet?
+      if( isApplicant ) {
+         approver  = Person.empty();
+         applicant = cePeep;
+         
+         bool regexec = false;
+         List<Person> execs = targCEV.getExecutives( appState );
+         for( final exec in execs ) {
+            if( exec.registered ) { regexec = true; break; }
+         }
+         if( !regexec ) { msg = "The Founder has either not yet accepted the privacy agreement, or completed their profile."; }
+      }
+      else { 
+         assert( appState.ceUserId != "" );
+         Person? tmpPeep = appState.cePeople[ appState.ceUserId ];
+         assert( tmpPeep != null );
+         approver  = tmpPeep!;
+         applicant = cePeep; 
+
+         if( !approver.signedPrivacy() ) {
+            msg = "You must accept the privacy agreement before countersigning.";
+         }
+         
+         if( !approver.completeProfile() ) {
+            if( msg != "" ) { msg = msg + "\n"; }
+            msg = msg + "You must complete your profile before countersigning.";
+         }
+      }
+
+      // is there an equity plan yet?
+      // May need to load equity plan.  Set selected is OK here, will be reset if CEV/CEP item is clicked
+      appState.selectedCEVenture = targCEV.ceVentureId;
+      await reloadCEVentureOnly( context, container );
+      EquityPlan? ep = appState.ceEquityPlans[ cevId ];
+      if( ep == null || ep!.totalAllocation == 0 ) {
+         if( msg != "" ) { msg = msg + "\n"; }
+         msg = msg + "There is no Equity Plan in place yet.";
+      }
+
+      if( msg != "" ) { showToast( "You can't do that yet.\n"+msg ); }
+      else            { _showDoc( applicant, docType, cevId: cevId, cevName: targCEV.name, isApplicant: isApplicant ); }
+   }
+   
    List<Widget> _makeGetApplications() {
       List<Widget> subTasks = [];
       assert( appState.ceUserId != "" );
@@ -509,7 +564,7 @@ class _CEHomeState extends State<CEHomePage> {
                      Person? applicant = appState.cePeople[ a ];
                      assert( applicant != null );
                      Widget application = _makeLink( applicant!.legalName + " has applied to " + cev.name, overlayMaxWidth * 0.2,
-                                                     () => _showDoc( context, applicant, DocType.equity, cevId: cev.ceVentureId, cevName: cev.name, isApplicant: false ));
+                                                     () => _checkThenShow( applicant, DocType.equity, cev.ceVentureId, false ));
                      subTasks.add( application );
                   });
             }
@@ -530,7 +585,7 @@ class _CEHomeState extends State<CEHomePage> {
          }
          String cevId = cevEntry[0].key;
          Navigator.of( context ).pop();
-         _showDoc( context, cePeep!, DocType.equity, cevId: cevId, cevName: cev );
+         _checkThenShow( cePeep!, DocType.equity, cevId, true );
       }
 
       String choose = "Choose the CodeEquity Venture you wish to register with.";
@@ -559,7 +614,7 @@ class _CEHomeState extends State<CEHomePage> {
       }
 
       // use current is better than running with cePeep - less repeated questions
-      _showDoc( context, applicant, DocType.equity, useCurrent: true, isApplicant: isApplicant );
+      _showDoc( applicant, DocType.equity, useCurrent: true, isApplicant: isApplicant );
    }
 
    void _updateDocFixed( String item, String choice ) {
@@ -619,7 +674,8 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
    // Every time enter showDoc with relevant doc, roles are set.
-   void _showDoc( context, Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false, isApplicant = true } ) async {
+   // Called after first entry (through checkThenShow, which sets roles), or as part of chain of current edits through onScroll
+   void _showDoc( Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false, isApplicant = true } ) async {
       Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
       
       if( docType == DocType.privacy ) {
@@ -638,21 +694,7 @@ class _CEHomeState extends State<CEHomePage> {
       }
       else {
 
-         assert( appState.ceUserId != "" );
-         Person? tmpPeep = appState.cePeople[ appState.ceUserId ];
-         assert( tmpPeep != null );
-
-         if( !useCurrent ) {
-            assert( cevId != "" );
-            CEVenture? tcev = appState.ceVenture[cevId];
-            assert( tcev != null );
-            targCEV   = tcev!;
-         }
-         
          if( isApplicant ) {
-            approver  = Person.empty();
-            applicant = tmpPeep!;
-            assert( applicant.id == cePeep!.id );
 
             if( !useCurrent ) {
                if( !applicant!.registered ) {
@@ -665,8 +707,9 @@ class _CEHomeState extends State<CEHomePage> {
                                               _noop, _cancel );
                   if( ret == 'Cancel' ) { return; }
                   
-                  // Need to load values from applicant
+                  // Need to load, then use values from applicant
                   scrollDoc = applicant.copyStoredEquityVals( targCEV.ceVentureId );
+                  useCurrent = true;
                }
                else if( applicant.registeredWithCEV( targCEV ) ) {
                   showToast( "You have already signed the CodeEquity Equity Agreement with " + cevName );
@@ -678,9 +721,6 @@ class _CEHomeState extends State<CEHomePage> {
             }
          }
          else {
-            approver  = tmpPeep!;
-            applicant = cePeep;    // Approver calls makeGetApp which sets cePeep to the applicant. 
-            
             print( "Doc for applicant: " + applicant.legalName + " to be countersigned by " + approver.legalName );
 
             // load values from applicant
@@ -730,7 +770,7 @@ class _CEHomeState extends State<CEHomePage> {
       }
    }
 
-   List<Widget> makeMe( context, container ) {
+   List<Widget> makeMe( ) {
       assert( appState.ceUserId != "" );
       Person? cePeep = appState.cePeople[ appState.ceUserId ];
       assert( cePeep != null );
@@ -739,7 +779,7 @@ class _CEHomeState extends State<CEHomePage> {
       
       List<Widget> subTasks = [];
       
-      if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", overlayMaxWidth * 0.2, () => _showDoc( context, cePeep!, DocType.privacy ))); }
+      if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", overlayMaxWidth * 0.2, () => _showDoc( cePeep!, DocType.privacy ))); }
       if( !cePeep!.completeProfile() ) {
          subTasks.add( _makeLink( "Complete profile", overlayMaxWidth * 0.2,
                                   () => editProfile( context, container, cePeep!, overlayMaxWidth, updateCallback: () => updateCallback() ), last: true ));
@@ -748,7 +788,7 @@ class _CEHomeState extends State<CEHomePage> {
       return subTasks;      
    }
    
-   List<Widget> makeGettingStarted( context, container ) {
+   List<Widget> makeGettingStarted( ) {
       List<Widget> subTasks = [];
 
       assert( appState.ceUserId != "" );
@@ -758,7 +798,7 @@ class _CEHomeState extends State<CEHomePage> {
       if(  !cePeep!.registered ) { 
          Widget gettingStarted = makeTitleText( appState, "Getting started", overlayMaxWidth, false, 1, fontSize: 16 );
          subTasks.add( gettingStarted );
-         subTasks.addAll( makeMe( context, container ) );
+         subTasks.addAll( makeMe( ) );
       }
       return subTasks;
    }
@@ -820,7 +860,7 @@ class _CEHomeState extends State<CEHomePage> {
       return subTasks;
    }
    
-   Widget _makeActivityZone( context, container ) {
+   Widget _makeActivityZone( ) {
       final w1 = rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
 
       // Turn each getting started off if done
@@ -830,7 +870,7 @@ class _CEHomeState extends State<CEHomePage> {
          tasks = [];
          
          // Getting started 
-         tasks.addAll( makeGettingStarted( context, container ) );
+         tasks.addAll( makeGettingStarted() );
          tasks.addAll( makeRegister() );
          tasks.addAll( makePending() );
          tasks.addAll( makeDaily() );
@@ -857,7 +897,7 @@ class _CEHomeState extends State<CEHomePage> {
             ]);
    }
    
-   Widget _makeBody( context, container ) {
+   Widget _makeBody( ) {
       if( appState.loaded ) {
          return
             Wrap(
@@ -873,7 +913,7 @@ class _CEHomeState extends State<CEHomePage> {
                      endIndent: 0,
                      width: vBarWidth,
                      ),
-                  _makeActivityZone( context, container )
+                  _makeActivityZone( )
                   ]);
       }
       else {
@@ -904,7 +944,7 @@ class _CEHomeState extends State<CEHomePage> {
 
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),
-         body: _makeBody( context, container )
+         body: _makeBody( )
          );
    }
 }

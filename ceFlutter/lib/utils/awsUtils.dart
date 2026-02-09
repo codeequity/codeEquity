@@ -218,7 +218,7 @@ Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) asyn
 Future<dynamic> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
-   print( "updateDynamo " + shortName + ": " + postData );
+   // print( "updateDynamo " + shortName + ": " + postData );
    
    final response = await awsPost( shortName, postData, container );
    bool  res      = false;
