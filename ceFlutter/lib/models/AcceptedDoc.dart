@@ -104,9 +104,7 @@ class AcceptedDoc {
             // NOTE radioTitle will not be passed to the radio dialog as a selectable option.  It is used to help determine which hybrid option the user chose
             box.rchoices    = [ box.radioTitle!, "Collaborator", "Founder"];   // XXX formalize.  
 
-            print( "Box set, radio" );
             boxes!.add( box );
-
          }
          
          // Signature section

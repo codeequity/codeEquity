@@ -453,10 +453,39 @@ class _CEHomeState extends State<CEHomePage> {
       Navigator.of( context ).pop( 'Cancel' );
    }
 
+   void _reject() async {
+      assert( targCEV.ceVentureId != "" );
+      assert( applicant.id != "" );
+      assert( targCEV.hasApplicant( applicant.id ));
+
+      targCEV.applicants.remove( applicant.id );
+      applicant.rejectEquity( DocType.equity, targCEV );
+      
+      // update, don't await
+      String user = json.encode( applicant );
+      String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
+      updateDynamo( context, container, ppostData, "PutPerson" );
+
+      String cevs = json.encode( targCEV );
+      ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+      await updateDynamo( context, container, ppostData, "UpdateCEV" );
+      
+      Navigator.of( context ).pop( 'Reject' );
+      appState.hoverChunk = "";      
+      setState(() => updateView = true );
+
+      showToast( "Applicant removed from " + targCEV.name);
+   }
+
    // Accept edits.  Perhaps Accept agreement.  cePeep may either be approver or applicant.  
    Future<void> _accept( Person cePeep, DocType docType, {docId = "", isApplicant = true, controlView = true} ) async {
 
       print( "Accept for " + cePeep.legalName );
+      if( docType != DocType.equity ) {
+         assert( docId != "" );
+         scrollDoc = new AcceptedDoc( docType: docType, docId: docId, acceptedDate: getToday(), equityVals: {} );
+         targCEV   = CEVenture.empty();
+      }
       cePeep.accept( docType, scrollDoc, docId, targCEV, isApplicant );
 
       if( docType == DocType.equity && !isApplicant ) {
@@ -608,6 +637,12 @@ class _CEHomeState extends State<CEHomePage> {
       if( scrollDoc.validate( tPeep, edits, isApplicant )) { 
          scrollDoc.modify( edits );
          await _accept( tPeep, DocType.equity, isApplicant: isApplicant, controlView: false );
+         if( isApplicant ) {
+            String msg = "Congratulations!  Your Equity Agreement has been submitted for counter-signature.";
+            msg += "You will be informed when a Founder has done so.";
+            showToast( msg );
+            return;
+         }
       }
       else {
          showToast( "You must sign with your full legal name.  You can not sign for someone else." );
@@ -737,13 +772,16 @@ class _CEHomeState extends State<CEHomePage> {
          print( "filledIn composed " + filledInDoc.length.toString() );
          
          List<Widget> buttons = [];
-         buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
+         buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: _cancel ));
+         if( !isApplicant ) {
+            buttons.add( new TextButton( key: Key( 'Reject' ), child: new Text("Reject"), onPressed: _reject ));
+         }
          
          await showDialog(
             context: context,
             builder: (BuildContext context) {
                              return AlertDialog(
-                                title: new Text( agmt.title ),
+                                // title: new Text( agmt.title ),
                                 content: SizedBox(
                                    height: 8000,
                                    child: SingleChildScrollView( 
