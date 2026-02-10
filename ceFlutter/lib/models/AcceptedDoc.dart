@@ -3,6 +3,7 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/models/CEVenture.dart';
+import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 import 'package:ceFlutter/models/Person.dart';
 
@@ -53,7 +54,8 @@ class AcceptedDoc {
    // Equity agreement.  Only fully valid agreements store these values.
    late Map<String,String> equityVals;   // htmlDoc tag to value
 
-   final String sigHint = "(type your full legal name)";
+   final String sigHint   = "(type your full legal name)";
+   final String phoneHint = "1 111-222-3333";
    
    String?  filledIn;           //  TRANSIENT do not store
    List<_aBox>? boxes;          //  TRANSIENT do not store
@@ -90,8 +92,6 @@ class AcceptedDoc {
       boxes = [];
       if( this.docType == DocType.equity ) {
 
-         print( "SEB " + applicant.toString() + " " + (!validExecSig()).toString() );
-         
          // preamble section
          // Neither party can change these once other party has signed
          // Neither party can change Effective Date - this is fixed upon counter-signature
@@ -104,9 +104,7 @@ class AcceptedDoc {
             // NOTE radioTitle will not be passed to the radio dialog as a selectable option.  It is used to help determine which hybrid option the user chose
             box.rchoices    = [ box.radioTitle!, "Collaborator", "Founder"];   // XXX formalize.  
 
-            print( "Box set, radio" );
             boxes!.add( box );
-
          }
          
          // Signature section
@@ -119,16 +117,16 @@ class AcceptedDoc {
             box.blankTitle = "Executive Signature Page";
             box.blankSub = "BEFORE SIGNING: verify Partner Title is correct on Page 1!  Your phone number and signature are required.";
             box.blankSub = box.blankSub! + "  Your mailing address is strongly recommended.";
-            box.values!["ExecutivePhone"]          = equityVals["ExecutivePhone"]!;
-            box.values!["ExecutiveSignature"]      = equityVals["ExecutiveSignature"] == "" ? sigHint : equityVals["ExecutiveSignature"]!;
+            box.values!["ExecutivePhone"]          = equityVals["ExecutivePhone"]     == "" ? phoneHint : equityVals["ExecutivePhone"]!;
+            box.values!["ExecutiveSignature"]      = equityVals["ExecutiveSignature"] == "" ? sigHint   : equityVals["ExecutiveSignature"]!;
             box.values!["ExecutiveMailingAddress"] = equityVals["ExecutiveMailingAddress"]!;
          }
          else {
             box.blankTitle = "Partner Signature Page";
             box.blankSub = "Your phone number and signature are required.  Your mailing address is strongly recommended.  Once signed, this agreement will be ";
             box.blankSub = box.blankSub! + "submitted to the Founders for review and counter-signature.";
-            box.values!["PartnerPhone"]            = equityVals["PartnerPhone"]!;
-            box.values!["PartnerSignature"]        = equityVals["PartnerSignature"] == "" ? sigHint : equityVals["PartnerSignature"]!;
+            box.values!["PartnerPhone"]            = equityVals["PartnerPhone"]     == "" ? phoneHint : equityVals["PartnerPhone"]!;
+            box.values!["PartnerSignature"]        = equityVals["PartnerSignature"] == "" ? sigHint   : equityVals["PartnerSignature"]!;
             box.values!["PartnerMailingAddress"]   = equityVals["PartnerMailingAddress"]!;
          }
          boxes!.add( box );
@@ -145,11 +143,14 @@ class AcceptedDoc {
          if( !useCurrent) {
             CEVenture? cev = appState.ceVenture[ cevId ];
             assert( cev != null );
+            EquityPlan? ep = appState.ceEquityPlans[ cevId ];
+            assert( ep != null );
+               
             equityVals["EffectiveDate"]         = "";
             equityVals["VentureId"]             = cevId;
             equityVals["VentureName"]           = cev!.name;
             equityVals["VentureWebsite"]        = cev!.web == "" ? "https://www.codeequity.org/XXX" : cev!.web!;
-            equityVals["OutstandingShares"]     = "987348746";
+            equityVals["OutstandingShares"]     = addCommas( ep!.totalAllocation );
             
             // no use signing with yourself
             List<Person> execs = cev!.getExecutives( appState );

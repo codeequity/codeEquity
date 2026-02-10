@@ -73,13 +73,9 @@ class Person {
    }
    
    void accept( DocType docType, AcceptedDoc ad, String docId, CEVenture cev, bool isApplicant  ) {
-      // equity accepted docs come with filled in blank data
-      if( docType != DocType.equity ) {
-         assert( docId != "" );
-         ad = new AcceptedDoc( docType: docType, docId: docId, acceptedDate: getToday(), equityVals: {} );
-         acceptedDocs[ docType ] = [ ad ];
-      }
+      if( docType != DocType.equity ) { acceptedDocs[ docType ] = [ ad ]; }
 
+      // equity accepted docs come with filled in blank data
       if( docType == DocType.equity ) {
          assert( ad != null );
          // No model changes for approver on accept
@@ -100,8 +96,15 @@ class Person {
       if( signedPrivacy() && completeProfile()) { registered = true; }
    }
 
+   // Only called if Founder rejects application
+   void rejectEquity( DocType docType, CEVenture cev ) {
+      assert( docType == DocType.equity );
+      if( acceptedDocs[ docType ] != null ) {
+         acceptedDocs[ docType ]!.removeWhere( (d) => d.equityVals["VentureId"] == cev.ceVentureId );
+      }
+   }
+   
    bool registeredWithCEV( CEVenture cev ) {
-      print( "RWC " + cev.toString() );
       return cev.roles[ id ] != null;
    }
 
@@ -114,7 +117,6 @@ class Person {
       print( "Copy stored equity vals from " + cevId + " to " + legalName );
       AcceptedDoc doc = acceptedDocs[DocType.equity]!.firstWhere( (d) => d.equityVals["VentureId"] == cevId );
       AcceptedDoc receiver = AcceptedDoc.from( doc );
-      print( "copy sez " + receiver.toString() );
       return receiver;
    }
 
