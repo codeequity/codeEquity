@@ -222,6 +222,8 @@ def runTests( test = "focus" ):
         tsum = runTest( "repair_test.dart", False, False, False )
     elif( test == "launch" ):
         tsum = runTest( "launch_test.dart", False, False, False )
+    elif( test == "onboard" ):
+        tsum = runTest( "onboard_test.dart", False, False, False )
         
 
     resultsSum  += tsum
@@ -268,7 +270,7 @@ def main( cmd ):
     assert( verifyEmulator() )
 
     summary = ""
-    if( cmd == "" ) : summary = runTests( test = "projectPact" )  # FOCUS AREA
+    if( cmd == "" ) : summary = runTests( test = "onboard" )  # FOCUS AREA
     elif( cmd == "projectMain" ) : summary = runTests( test = "projectMain" )
     elif( cmd == "projectPact" ) : summary = runTests( test = "projectPact" )
     elif( cmd == "equity" ) : summary = runTests( test = "equity" )
@@ -276,6 +278,7 @@ def main( cmd ):
     elif( cmd == "profile" ) : summary = runTests( test = "profile" )
     elif( cmd == "repair" ) : summary = runTests( test = "repair" )
     elif( cmd == "launch" ) : summary = runTests( test = "launch" )
+    elif( cmd == "onboard" ) : summary = runTests( test = "onboard" )
     else :
         thread = Thread( target=globals()[cmd]( ) )
         thread.start()

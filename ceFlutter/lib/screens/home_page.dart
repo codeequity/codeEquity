@@ -355,7 +355,7 @@ class _CEHomeState extends State<CEHomePage> {
          {
             await func();
          },
-         key: Key( txt ),
+         key: Key( txt+"GD" ),
          child: last ?
          makeActionableText( appState, txt, txt, _setLink, _unsetLink, width, false, 1, sub: true, lgap: gap, bgap: gap * 0.25 ) :
          makeActionableText( appState, txt, txt, _setLink, _unsetLink, width, false, 1, sub: true, lgap: gap )
@@ -434,13 +434,15 @@ class _CEHomeState extends State<CEHomePage> {
       Widget shrink = makeExpander( "toggleProject", false );
 
       List<Widget> subTasks = [];
-      Widget project     = _makeEntry( "Create CodeEquity Project", 0, true, last: toggleProject );
+      // Widget project     = _makeEntry( "Create CodeEquity Project", 0, true, last: toggleProject );
+      Widget project     = _makeEntry( "Create CodeEquity Project", 0, true);
       subTasks.add( Wrap( spacing: 0, children: [ project, toggleProject ? expand : shrink ] ));
 
       if( !toggleProject ) {
          subTasks.add( _makeEntry( "Complete Project Profile", 3.0 * appState.MID_PAD, false ));
          subTasks.add( _makeEntry( "Associate with a Host", 3.0 * appState.MID_PAD, false ));
-         subTasks.add( _makeEntry( "Associate Host projects with Equity Plan", 3.0 * appState.MID_PAD, false, last: true ));
+         subTasks.add( _makeEntry( "Associate Host projects with Equity Plan", 3.0 * appState.MID_PAD, false ));
+         // subTasks.add( _makeEntry( "Associate Host projects with Equity Plan", 3.0 * appState.MID_PAD, false, last: true ));
       }
       return subTasks;
    }
@@ -459,7 +461,7 @@ class _CEHomeState extends State<CEHomePage> {
       assert( targCEV.hasApplicant( applicant.id ));
 
       targCEV.applicants.remove( applicant.id );
-      applicant.rejectEquity( DocType.equity, targCEV );
+      applicant.reject( DocType.equity, cev: targCEV );
       
       // update, don't await
       String user = json.encode( applicant );
@@ -477,6 +479,33 @@ class _CEHomeState extends State<CEHomePage> {
       showToast( "Applicant removed from " + targCEV.name);
    }
 
+   void _withdraw( Person cePeep ) async {
+      String msg = "This action will end your participation in CodeEquity and any CodeEquity Ventures.\n All Provisional Equity that hasn't vested already will be terminated.\n";
+      msg       += "Press \'Continue\' to withdraw.";
+      String ret = await confirm( context, "Withdraw from CodeEquity?", msg, _noop, _cancel );
+
+      if( ret == "noop" ) {
+
+         List<CEVenture> cevs = cePeep.getCEVs( appState.ceVenture );
+         cePeep.withdraw();
+         logout( context, appState );
+
+         for( CEVenture cev in cevs ) {
+            cev.drop( cePeep );
+
+            // Don't wait
+            String cevs = json.encode( cev );
+            String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+            updateDynamo( context, container, ppostData, "UpdateCEV" );
+         }
+            
+         // don't await
+         String user = json.encode( cePeep );
+         String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
+         updateDynamo( context, container, ppostData, "PutPerson" );
+      }
+   }
+   
    // Accept edits.  Perhaps Accept agreement.  cePeep may either be approver or applicant.  
    Future<void> _accept( Person cePeep, DocType docType, {docId = "", isApplicant = true, controlView = true} ) async {
 
@@ -617,7 +646,7 @@ class _CEHomeState extends State<CEHomePage> {
          _checkThenShow( cePeep!, DocType.equity, cevId, true );
       }
 
-      String choose = "Choose the CodeEquity Venture you wish to register with.";
+      String choose = "Choose the CodeEquity Venture you wish to register with";
       String item   = "Venture name";
       TextEditingController cont = new TextEditingController();
       String hint   = "Search is available if you need a hint";
@@ -733,7 +762,7 @@ class _CEHomeState extends State<CEHomePage> {
 
             if( !useCurrent ) {
                if( !applicant!.registered ) {
-                  showToast( "The required fields of your profile must be completed first." );
+                  showToast( "You must accept the privacy statement, and complete your profile first." );
                   return;
                }
                
@@ -782,6 +811,7 @@ class _CEHomeState extends State<CEHomePage> {
             builder: (BuildContext context) {
                              return AlertDialog(
                                 // title: new Text( agmt.title ),
+                                key: Key( agmt.title ),
                                 content: SizedBox(
                                    height: 8000,
                                    child: SingleChildScrollView( 
@@ -852,13 +882,14 @@ class _CEHomeState extends State<CEHomePage> {
       Widget shrink = makeExpander( "toggleRegister", false );
 
       List<Widget> subTasks = [];
-      Widget pending = makeTitleText( appState, "New Ventures & Projects", overlayMaxWidth * .3, false, 1, fontSize: 16 );
+      Widget pending = makeTitleText( appState, "Ventures & Projects", overlayMaxWidth * .3, false, 1, fontSize: 16 );
       subTasks.add( Wrap( spacing: 0, children: [ pending, toggleRegister ? expand : shrink ] ));
 
       if( !toggleRegister ) {
          subTasks.add( _makeLink( "Register with a Venture", overlayMaxWidth * 0.2, () => _registerVenture( cePeep!, DocType.equity )));
          subTasks.addAll( makeVenture() );
          subTasks.addAll( makeProject() );
+         subTasks.add( _makeLink( "Withdraw", overlayMaxWidth * 0.2, () => _withdraw( cePeep! ) ));
       }
       return subTasks;
    }

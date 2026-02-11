@@ -46,7 +46,7 @@ class Person {
       return hasEA;
    }
    
-   List<String> getEditable() { return ["Legal name", "Goes by", "Email", "Phone", "Mailing Address"]; }
+   List<String> getEditable() { return ["Legal name", "Goes by", "Email", "Phone", "Mailing address"]; }
    List<String> getCurVal()   { return [ legalName,    goesBy,    email,   phone,   mailingAddress ]; }
    List<bool>   getRequired() { return [true,          false,     true,    true,    false ]; }
    List<String> getToolTip() {
@@ -97,11 +97,38 @@ class Person {
    }
 
    // Only called if Founder rejects application
-   void rejectEquity( DocType docType, CEVenture cev ) {
-      assert( docType == DocType.equity );
-      if( acceptedDocs[ docType ] != null ) {
-         acceptedDocs[ docType ]!.removeWhere( (d) => d.equityVals["VentureId"] == cev.ceVentureId );
+   void reject( DocType docType, { cev = null } ) {
+      if( docType == DocType.equity ) {
+         if( acceptedDocs[ docType ] != null ) {
+            if( cev != null ) { acceptedDocs[ docType ]!.removeWhere( (d) => d.equityVals["VentureId"] == cev.ceVentureId ); }
+            else              { acceptedDocs.remove( docType ); }
+         }
       }
+      else if( docType == DocType.privacy ) {
+         if( acceptedDocs[ docType ] != null ) { acceptedDocs.remove( docType ); }
+         registered = false;
+      }
+   }
+
+   void withdraw() {
+      reject( DocType.equity );
+      reject( DocType.privacy );
+      phone = "";
+      assert( acceptedDocs.length == 0 );
+   }
+
+   List<CEVenture> getCEVs( Map<String, CEVenture> knownCEVs ) {
+      List<CEVenture> cevs = [];
+
+      if( acceptedDocs[ DocType.equity ] == null ) { return cevs; }
+      
+      for( AcceptedDoc ad in acceptedDocs[ DocType.equity ]! ) {
+         assert( ad.equityVals["VentureId"] != null );
+         CEVenture? cev = knownCEVs[ ad.equityVals["VentureId"]! ];
+         assert( cev != null );
+         cevs.add( cev! );
+      }
+      return cevs;
    }
    
    bool registeredWithCEV( CEVenture cev ) {

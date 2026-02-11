@@ -73,6 +73,12 @@ class CEVenture {
       print( "applicants after " + applicants.toString() );
       roles[applicant.id] = title == "Founder" ? MemberRole.Executive : MemberRole.Member;
    }
+
+   // Peep is withdrawing.  remove roles, applications.
+   void drop( Person cePeep ) {
+      applicants.remove( cePeep.id );
+      roles.remove( cePeep.id );
+   }
    
    bool hasApplicant( String pid ) { return applicants.contains( pid ); }
    

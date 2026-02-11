@@ -566,7 +566,6 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
    final miniSpace   = Container( width: appState.MID_PAD );
    Widget search     = CESearch();
    
-   TextEditingController tc = new TextEditingController();   
    return PreferredSize(
       preferredSize: Size.fromHeight( appState.screenHeight*.054 ),
       child: AppBar(
