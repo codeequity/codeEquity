@@ -18,7 +18,8 @@ class _aBox {
 
    String?              radioTitle;
    List<String>?        rchoices;     // available selections for radio type
-
+   String?              rInitChoice;  // What is the radio option initially set to
+   
    String?              hybridTitle;  // i.e. update radio or blank?
    List<String>?        hchoices;     // available selections for hybrid meta-type
 
@@ -35,7 +36,9 @@ class _aBox {
       else if( type == "radio" ) {
          res = res && this.radioTitle != null;
          res = res && this.rchoices != null;
+         res = res && this.rInitChoice != null;
          res = res && this.rchoices!.length >= 1;
+         res = res && this.rchoices!.contains( this.rInitChoice );
          found = true;
       }
       if( !found ) { res = false; }
@@ -88,7 +91,7 @@ class AcceptedDoc {
 
 
    // Set up which fields can be edited, along with hints for the edit box
-   void setEditBox( bool applicant ) {
+   void setEditBox( bool applicant, bool useCurrent ) {
       boxes = [];
       if( this.docType == DocType.equity ) {
 
@@ -102,7 +105,8 @@ class AcceptedDoc {
             box.radioTitle  = "Partner's Title";
          
             // NOTE radioTitle will not be passed to the radio dialog as a selectable option.  It is used to help determine which hybrid option the user chose
-            box.rchoices    = [ box.radioTitle!, "Collaborator", "Founder"];   // XXX formalize.  
+            box.rchoices    = [ box.radioTitle!, "Collaborator", "Founder"];            // XXX formalize.
+            box.rInitChoice = useCurrent ? equityVals["PartnerTitle"] : "Collaborator";
 
             boxes!.add( box );
          }
@@ -189,7 +193,7 @@ class AcceptedDoc {
             res = res.replaceAll( "<codeEquityTag=\"" + entry.key + "\">", "<u>" + tmp + "</u>" );
          }
       }
-      setEditBox( isApplicant );
+      setEditBox( isApplicant, useCurrent );
       filledIn = res;
       return res;
    }
@@ -240,7 +244,7 @@ class AcceptedDoc {
       if( isApplicant ) {
          // These are current edits, not stored values
          assert( edits["ExecutiveSignature"] == null );
-         if( edits["PartnerSignature"] != null && edits["PartnerSignature"] != sigHint && edits["PartnerSignature"]   != cePeep.legalName ) { valid = false; }
+         if( edits["PartnerSignature"] != null && edits["PartnerSignature"] != sigHint && edits["PartnerSignature"] != cePeep.legalName ) { valid = false; }
       }
       else {
          // approver gets doc after partner signature.  Should be no edits here.

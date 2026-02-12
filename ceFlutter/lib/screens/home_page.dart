@@ -521,6 +521,7 @@ class _CEHomeState extends State<CEHomePage> {
          cePeep = applicant;
          String missing = scrollDoc.checkExecuted( approver, applicant, targCEV );
          if( missing == "" ) {
+            controlView = true;
             showToast( "Document is now fully executed." );
             targCEV.addNewCollaborator( applicant, scrollDoc.equityVals["PartnerTitle"]! );
             scrollDoc.setExecutionDate();
@@ -538,10 +539,9 @@ class _CEHomeState extends State<CEHomePage> {
       String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
       await updateDynamo( context, container, ppostData, "PutPerson" );
 
-      // Store new applicant, or new member 
+      // Store new applicant, or new member .. don't wait
       String cevs = json.encode( targCEV );
       ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
-      // Don't wait
       updateDynamo( context, container, ppostData, "UpdateCEV" );
       
       if( controlView ) {
@@ -662,19 +662,23 @@ class _CEHomeState extends State<CEHomePage> {
       Person tPeep     = isApplicant          ? applicant : approver;
 
       print( "Update doc applicant? " + isApplicant.toString() );
-         
-      if( scrollDoc.validate( tPeep, edits, isApplicant )) { 
-         scrollDoc.modify( edits );
-         await _accept( tPeep, DocType.equity, isApplicant: isApplicant, controlView: false );
-         if( isApplicant ) {
-            String msg = "Congratulations!  Your Equity Agreement has been submitted for counter-signature.";
-            msg += "You will be informed when a Founder has done so.";
-            showToast( msg );
-            return;
-         }
+
+      // Problem in signature area?  Untouched is fine
+      if( !scrollDoc.validate( tPeep, edits, isApplicant )) { 
+         showToast( "You must sign with your full legal name.  You can not sign for someone else." );
       }
       else {
-         showToast( "You must sign with your full legal name.  You can not sign for someone else." );
+         scrollDoc.modify( edits );
+         await _accept( tPeep, DocType.equity, isApplicant: isApplicant, controlView: false );
+         if( scrollDoc.validPartnerSig() ) {
+            if( isApplicant ) {
+               String msg = "Congratulations!  Your Equity Agreement has been submitted for counter-signature.";
+               msg += "You will be informed when a Founder has done so.";
+               showToast( msg );
+               return;
+            }
+         }
+         
       }
 
       // use current is better than running with cePeep - less repeated questions
@@ -682,7 +686,6 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
    void _updateDocFixed( String item, String choice ) {
-      print( "UDF " + item + " " + choice );
       Map<String,String> edits = { item: choice };
       _updateDoc( edits );
    }
@@ -717,7 +720,7 @@ class _CEHomeState extends State<CEHomePage> {
                    () => _updateDocFree( item, hint, cont ), _cancel, null, subHeader: box.blankSub, headerWidth: overlayMaxWidth * 0.3 );
       }
       else if( box.type == "radio" ) { 
-         radioDialog( context, box.radioTitle!, box.rchoices!.sublist(1), _updateDocFixed, _cancel, execArgs: ["PartnerTitle"] );
+         radioDialog( context, box.radioTitle!, box.rchoices!.sublist(1), box.rInitChoice, _updateDocFixed, _cancel, execArgs: ["PartnerTitle"] );
       }
    }
 
@@ -816,6 +819,7 @@ class _CEHomeState extends State<CEHomePage> {
                                    height: 8000,
                                    child: SingleChildScrollView( 
                                       scrollDirection: Axis.vertical,
+                                      key: Key( "scrollDoc" ),
                                       controller: _scrollController, 
                                       child: Html( data: filledInDoc,
                                                // seems to require flex display, which pushes all list items into 1 paragraph

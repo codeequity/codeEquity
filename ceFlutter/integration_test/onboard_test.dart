@@ -47,7 +47,8 @@ Future<bool> validateAriFillProfile( tester ) async {
    expect( saveProf, findsOneWidget );
 
    await tester.tap( saveProf );
-   await pumpSettle( tester, 1 );
+   await pumpSettle( tester, 2 );
+   await tester.pumpAndSettle();
    await tester.pumpAndSettle();
    
    return true;
@@ -73,6 +74,55 @@ Future<bool> validateAriAcceptPrivacy( tester ) async {
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
    
+   return true;
+}
+
+Future<bool> verifyPreambleEdit( tester ) async {
+   expect( find.text("Partner's Title"),   findsOneWidget );
+   expect( find.text("Collaborator" ),     findsOneWidget );
+   expect( find.text("Founder" ),          findsOneWidget );
+   expect( find.text("Confirm" ),          findsOneWidget );
+   expect( find.text("Cancel" ),           findsOneWidget );
+
+   final Finder collab  = find.byKey( const Key( "Collaborator" ) );
+   final Finder founder = find.byKey( const Key( "Founder" ) );
+   expect( collab, findsOneWidget );
+   expect( founder, findsOneWidget );
+   return true;
+}
+
+Future<bool> verifyPartnerSigEdit( tester ) async {
+   expect( find.text("Partner Signature Page"),   findsOneWidget );
+   expect( find.textContaining( "review and counter-signature" ), findsOneWidget );
+   expect( find.text("PartnerPhone" ),     findsOneWidget );
+   expect( find.text("PartnerSignature" ),          findsOneWidget );
+   expect( find.text("PartnerMailingAddress" ),          findsOneWidget );
+   expect( find.text("1 111-222-3333" ),          findsOneWidget );
+   expect( find.text("(type your full legal name)" ),          findsOneWidget );
+   expect( find.text("Save" ),          findsOneWidget );
+   expect( find.text("Cancel" ),           findsOneWidget );
+
+   final Finder save  = find.byKey( const Key( "Save" ) );
+   final Finder cancel = find.byKey( const Key( "Cancel" ) );
+   expect( save, findsOneWidget );
+   expect( cancel, findsOneWidget );
+   return true;
+}
+
+Future<bool> validatePartnerSig( tester ) async {
+   // Phone is filled already.
+   final Finder sig = find.byKey( const Key( "editRow (type your full legal name)" ));
+   expect( sig, findsOneWidget );
+   tester.enterText( sig, "Ari Star" );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   
+   final Finder save  = find.byKey( const Key( "Save" ) );
+   expect( save, findsOneWidget );
+   await tester.tap( save );
+   await pumpSettle( tester, 2 );
+   await tester.pumpAndSettle();
+
    return true;
 }
 
@@ -119,12 +169,54 @@ Future<bool> validateAriRegister( tester ) async {
    expect( find.textContaining( getToday() ),                       findsNothing );
    expect( find.textContaining( "rmusick+connieTester@gmail.com" ), findsNothing );
    expect( find.textContaining( "Connie Star" ),                    findsNothing );
-   expect( find.textContaining( CEMD_VENT_NAME ),                   findsOneWidget );
-   expect( find.textContaining( "http://www.codeequity.org" ),      findsOneWidget );
-   expect( find.textContaining( "Ari Star" ),                       findsOneWidget );
-   expect( find.textContaining( "rmusick+ariTester@gmail.com" ),    findsOneWidget );
+   expect( find.textContaining( CEMD_VENT_NAME ),                   findsNWidgets(2) );
+   expect( find.textContaining( "http://www.codeequity.org" ),      findsNWidgets(1) );
+   expect( find.textContaining( "Ari Star" ),                       findsNWidgets(2) );  // 2 locations
+   expect( find.textContaining( "rmusick+ariTester@gmail.com" ),    findsNWidgets(2) );
    expect( find.textContaining( "Contributor of the Venture" ),     findsOneWidget );
    expect( find.textContaining( "Founder of the Venture" ),         findsNothing );
+
+
+   final scroll = find.byKey( const Key( "scrollDoc" ) );
+   expect( scroll, findsOneWidget );
+   await tester.drag( scroll, Offset(0.0, -100.0) );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
+   expect( await verifyPreambleEdit( tester ), true );
+   final Finder founder = find.byKey( const Key( "Founder" ) );
+   expect( founder, findsOneWidget );
+   await tester.tap( founder );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   final Finder confirm = find.byKey( const Key( "Confirm" ) );
+   expect( confirm, findsOneWidget );
+   await tester.tap( confirm );
+   await pumpSettle( tester, 2 );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
+   expect( find.textContaining( "Contributor of the Venture" ),     findsNothing );
+   expect( find.textContaining( "Founder of the Venture" ),         findsOneWidget );
+
+   // dismiss 2nd preamble popup
+   await tester.drag( scroll, Offset(0.0, -100.0) );
+   final Finder cancel = find.byKey( const Key( "Cancel" ) );
+   expect( cancel, findsOneWidget );
+   await tester.tap( cancel );
+   await pumpSettle( tester, 1 );
+   await tester.pumpAndSettle();
+   
+   await tester.drag( scroll, Offset(0.0, -2000.0) );
+   await tester.drag( scroll, Offset(0.0, -2000.0) );
+   await tester.drag( scroll, Offset(0.0, -2000.0) );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
+   expect( await verifyPartnerSigEdit( tester ), true );
+   expect( await validatePartnerSig( tester ), true );
+
+   expect( find.textContaining( "submitted for counter" ), findsOneWidget );
    
    return true;
 }
@@ -187,6 +279,10 @@ void main() {
 
          expect( await verifyAriHome( tester ), true );
 
+         expect( await validateAriWithdraw( tester ), true );  // start from scratch
+         await login( tester, true );
+         expect( await verifyAriHome( tester ), true );
+         
          expect( await verifyActivityStart( tester ), true );
          expect( await validateAriFillProfile( tester ), true );
 
@@ -195,6 +291,12 @@ void main() {
 
          expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
          expect( await validateAriRegister( tester ), true );
+
+         expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
+
+
+
+
 
          expect( await validateAriWithdraw( tester ), true );
 
