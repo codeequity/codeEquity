@@ -112,28 +112,29 @@ class AcceptedDoc {
          }
          
          // Signature section
-         // Even if the other party has signed, current peep should be able to update these three fields
-         _aBox box = new  _aBox( type: "blanks", triggered: false, percDepth: 66.0 );
-         box.values = {};
-
-
-         if( !applicant ) {
-            box.blankTitle = "Executive Signature Page";
-            box.blankSub = "BEFORE SIGNING: verify Partner Title is correct on Page 1!  Your phone number and signature are required.";
-            box.blankSub = box.blankSub! + "  Your mailing address is strongly recommended.";
-            box.values!["ExecutivePhone"]          = equityVals["ExecutivePhone"]     == "" ? phoneHint : equityVals["ExecutivePhone"]!;
-            box.values!["ExecutiveSignature"]      = equityVals["ExecutiveSignature"] == "" ? sigHint   : equityVals["ExecutiveSignature"]!;
-            box.values!["ExecutiveMailingAddress"] = equityVals["ExecutiveMailingAddress"]!;
+         // Even if the other party has signed, current peep should be able to update these three fields, unless doc is fully executed
+         if( !validExecSig() || !validPartnerSig() ) {
+            _aBox box = new  _aBox( type: "blanks", triggered: false, percDepth: 66.0 );
+            box.values = {};
+            
+            if( !applicant ) {
+               box.blankTitle = "Executive Signature Page";
+               box.blankSub = "BEFORE SIGNING: verify Partner Title is correct on Page 1!  Your phone number and signature are required.";
+               box.blankSub = box.blankSub! + "  Your mailing address is strongly recommended.";
+               box.values!["ExecutivePhone"]          = equityVals["ExecutivePhone"]     == "" ? phoneHint : equityVals["ExecutivePhone"]!;
+               box.values!["ExecutiveSignature"]      = equityVals["ExecutiveSignature"] == "" ? sigHint   : equityVals["ExecutiveSignature"]!;
+               box.values!["ExecutiveMailingAddress"] = equityVals["ExecutiveMailingAddress"]!;
+            }
+            else {
+               box.blankTitle = "Partner Signature Page";
+               box.blankSub = "Your phone number and signature are required.  Your mailing address is strongly recommended.  Once signed, this agreement will be ";
+               box.blankSub = box.blankSub! + "submitted to the Founders for review and counter-signature.";
+               box.values!["PartnerPhone"]            = equityVals["PartnerPhone"]     == "" ? phoneHint : equityVals["PartnerPhone"]!;
+               box.values!["PartnerSignature"]        = equityVals["PartnerSignature"] == "" ? sigHint   : equityVals["PartnerSignature"]!;
+               box.values!["PartnerMailingAddress"]   = equityVals["PartnerMailingAddress"]!;
+            }
+            boxes!.add( box );
          }
-         else {
-            box.blankTitle = "Partner Signature Page";
-            box.blankSub = "Your phone number and signature are required.  Your mailing address is strongly recommended.  Once signed, this agreement will be ";
-            box.blankSub = box.blankSub! + "submitted to the Founders for review and counter-signature.";
-            box.values!["PartnerPhone"]            = equityVals["PartnerPhone"]     == "" ? phoneHint : equityVals["PartnerPhone"]!;
-            box.values!["PartnerSignature"]        = equityVals["PartnerSignature"] == "" ? sigHint   : equityVals["PartnerSignature"]!;
-            box.values!["PartnerMailingAddress"]   = equityVals["PartnerMailingAddress"]!;
-         }
-         boxes!.add( box );
       }
    }
 

@@ -521,7 +521,6 @@ class _CEHomeState extends State<CEHomePage> {
          cePeep = applicant;
          String missing = scrollDoc.checkExecuted( approver, applicant, targCEV );
          if( missing == "" ) {
-            controlView = true;
             showToast( "Document is now fully executed." );
             targCEV.addNewCollaborator( applicant, scrollDoc.equityVals["PartnerTitle"]! );
             scrollDoc.setExecutionDate();
@@ -539,10 +538,12 @@ class _CEHomeState extends State<CEHomePage> {
       String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
       await updateDynamo( context, container, ppostData, "PutPerson" );
 
-      // Store new applicant, or new member .. don't wait
-      String cevs = json.encode( targCEV );
-      ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
-      updateDynamo( context, container, ppostData, "UpdateCEV" );
+      // Store new applicant, or new member .. don't wait.  Nothing to update if not type equity.
+      if( docType == DocType.equity ) {
+         String cevs = json.encode( targCEV );
+         ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+         updateDynamo( context, container, ppostData, "UpdateCEV" );
+      }
       
       if( controlView ) {
          setState(() => updateView = true );
@@ -805,7 +806,7 @@ class _CEHomeState extends State<CEHomePage> {
          
          List<Widget> buttons = [];
          buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: _cancel ));
-         if( !isApplicant ) {
+         if( !isApplicant && !applicant.registeredWithCEV( targCEV ) ) {
             buttons.add( new TextButton( key: Key( 'Reject' ), child: new Text("Reject"), onPressed: _reject ));
          }
          
