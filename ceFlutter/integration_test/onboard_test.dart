@@ -49,7 +49,7 @@ Future<bool> togglePending( tester ) async {
    return true;
 }
 
-Future<bool> regVenture( tester ) async {
+Future<bool> popRegVenture( tester ) async {
    final Finder reg = find.byKey( const Key( "Register with a Venture" ));
    expect( reg, findsOneWidget );
 
@@ -281,11 +281,11 @@ Future<bool> findSignatureSection( tester, String finder ) async {
    return true;
 }
 
-Future<bool> validateAriRegister( tester ) async {
+Future<bool> registerVenture( tester, String cevName ) async {
    expect( find.text( 'Ventures & Projects' ), findsOneWidget );
 
    expect( await( toggleVnP( tester )), true );
-   expect( await( regVenture( tester )), true );
+   expect( await( popRegVenture( tester )), true );
 
    String hint    = "Search is available if you need a hint";
    final String keyName = "editRow " + hint;
@@ -307,6 +307,13 @@ Future<bool> validateAriRegister( tester ) async {
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
 
+   return true;
+}
+
+Future<bool> validateAriRegister( tester ) async {
+
+   expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
+   
    // Agreement should now be showing.  No connie, most ari
    final Finder doc = find.byKey( const Key( "Equity Agreement" ));
    expect( doc, findsOneWidget );
@@ -319,7 +326,6 @@ Future<bool> validateAriRegister( tester ) async {
    expect( find.textContaining( "rmusick+ariTester@gmail.com" ),    findsNWidgets(2) );
    expect( find.textContaining( "Contributor of the Venture" ),     findsOneWidget );
    expect( find.textContaining( "Founder of the Venture" ),         findsNothing );
-
 
    final scroll = find.byKey( const Key( "scrollDoc" ) );
    expect( scroll, findsOneWidget );
@@ -408,6 +414,16 @@ Future<bool> validateConCounter( tester ) async {
 
 Future<bool> verifyAriRegistered( tester ) async {
 
+   expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
+
+   // This should not exist - was a toast indicating already registered.
+   final Finder doc = find.byKey( const Key( "Equity Agreement" ));
+   try{ 
+      expect( doc, findsOneWidget );
+      expect( true, false );
+   }
+   catch(e) { }
+   
    return true;
 }
 
@@ -462,6 +478,7 @@ void main() {
          await login( tester, true );
          expect( await verifyAriHome( tester ), true );
          expect( await verifyAriRegistered( tester ), true );
+         await logout( tester );
          
          report( 'Onboard basics' );
       });
