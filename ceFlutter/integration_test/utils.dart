@@ -256,6 +256,51 @@ Future<bool> verifyAriHome( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> verifyActivityStart( tester, {profile = "", privacy = ""} ) async {
+   expect( find.text( 'Activity' ),            findsOneWidget );
+   expect( find.text( 'Ventures & Projects' ), findsOneWidget );
+   expect( find.text( 'Pending tasks' ),       findsOneWidget );
+   expect( find.text( 'Today\'s stats' ),       findsOneWidget );
+
+   if( privacy == "" || profile == "" ) { expect( find.text( 'Getting started' ),     findsOneWidget ); }
+
+   // add GD to avoid same key for gesture detector, and underlying actionable text
+   if( privacy == "" ) { expect( find.byKey( const Key('Privacy NoticeGD')),   findsOneWidget ); }
+   if( profile == "" ) { expect( find.byKey( const Key('Complete profileGD')), findsOneWidget ); }
+
+
+   expect( find.byIcon( Icons.arrow_drop_down ),        findsNWidgets(3) );   
+   expect( find.byIcon( Icons.arrow_drop_down_circle ), findsNWidgets(0) );   
+   return true;
+}
+
+Future<bool> verifyAriEditProfile( tester ) async {
+   expect( find.text( 'Edit ariTester\'s Profile' ), findsOneWidget );
+   expect( find.text( 'Legal name' ),                findsOneWidget );
+   expect( find.text( 'Goes by' ),                   findsOneWidget );
+   expect( find.text( 'Email' ),                     findsOneWidget );
+   expect( find.text( 'Phone' ),                     findsNWidgets(2) );
+   expect( find.text( 'Mailing address' ),           findsNWidgets(2) );
+
+   // TextEditingController:value and text
+   expect( find.text( 'Ari' ),                         findsNWidgets(2) );
+   expect( find.text( 'Ari Star' ),                    findsNWidgets(2) );
+   expect( find.text( 'rmusick+ariTester@gmail.com' ), findsNWidgets(2) );
+   expect( find.text( '*' ),                           findsNWidgets(3) );
+
+   expect( find.byKey( const Key('editForm Legal name')),      findsOneWidget );
+   expect( find.byKey( const Key('editForm Goes by')),         findsOneWidget );
+   expect( find.byKey( const Key('editForm Email')),           findsOneWidget );
+   expect( find.byKey( const Key('editForm Phone')),           findsOneWidget );
+   expect( find.byKey( const Key('editForm Mailing address')), findsOneWidget );
+   
+   expect( find.byKey( const Key('Save')),   findsOneWidget );
+   expect( find.byKey( const Key('Cancel')), findsOneWidget );
+
+   return true;
+}
+
+
 Future<bool> verifyConnieHome( WidgetTester tester ) async {
 
    expect( await verifyOnHomePage( tester ), true );   

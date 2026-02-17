@@ -163,9 +163,9 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
 }
 
 
-Future<void> radioDialog( BuildContext context, boxHeader, List<String> choices, executeFunc, cancelFunc, {execArgs = null} ) async {
+Future<void> radioDialog( BuildContext context, boxHeader, List<String> choices, String initChoice, executeFunc, cancelFunc, {execArgs = null} ) async {
 
-   String? _choice = choices[0];
+   String? _choice = initChoice;
 
    List<dynamic> args = [];
    if( execArgs != null ) { args = execArgs; }
@@ -176,7 +176,7 @@ Future<void> radioDialog( BuildContext context, boxHeader, List<String> choices,
    
    List<Widget> tiles = [];
    for( var i = 0; i < choices.length; i++ ) {
-      tiles.add( RadioListTile<String>( title: Text( choices[i] ), value: choices[i] ));
+      tiles.add( RadioListTile<String>( key: Key( choices[i] ), title: Text( choices[i] ), value: choices[i] ));
    }
    
    await showDialog(
@@ -566,7 +566,6 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
    final miniSpace   = Container( width: appState.MID_PAD );
    Widget search     = CESearch();
    
-   TextEditingController tc = new TextEditingController();   
    return PreferredSize(
       preferredSize: Size.fromHeight( appState.screenHeight*.054 ),
       child: AppBar(
