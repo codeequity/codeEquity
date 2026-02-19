@@ -749,7 +749,7 @@ class _CEHomeState extends State<CEHomePage> {
       if( docType == DocType.privacy ) {
          List<Widget> buttons = [];
          buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt.type, docId: agmt.id ) ));
-         buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
+         buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: _cancel ));
          await showDialog(
             context: context,
             builder: (BuildContext context) {

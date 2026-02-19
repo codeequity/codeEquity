@@ -105,8 +105,8 @@ class AcceptedDoc {
             box.radioTitle  = "Partner's Title";
          
             // NOTE radioTitle will not be passed to the radio dialog as a selectable option.  It is used to help determine which hybrid option the user chose
-            box.rchoices    = [ box.radioTitle!, "Collaborator", "Founder"];            // XXX formalize.
-            box.rInitChoice = useCurrent ? equityVals["PartnerTitle"] : "Collaborator";
+            box.rchoices    = [ box.radioTitle!, "Contributor", "Founder"];            // XXX formalize.
+            box.rInitChoice = useCurrent ? equityVals["PartnerTitle"] : "Contributor";
 
             boxes!.add( box );
          }
@@ -258,13 +258,11 @@ class AcceptedDoc {
 
    // If required blanks have been filled in, add id to CEV applicants.
    void submitIfReady( CEVenture cev, Person cePeep ) {
-      // PartnerB
-      if( equityVals["EffectiveDate"]    != ""               &&   // XXX better date checking pls
+      if( equityVals["EffectiveDate"]    == ""               &&   // XXX better date checking pls
           equityVals["PartnerSignature"] == cePeep.legalName &&
           equityVals["PartnerPhone"]     != "" ) {                // XXX better phone checking pls
-         
+         cev.addApplicant( cePeep );
       }
-      cev.addApplicant( cePeep );
    }
    
    dynamic toJson() {

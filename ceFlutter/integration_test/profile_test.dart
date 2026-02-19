@@ -14,36 +14,6 @@ import 'package:ceFlutter/customIcons.dart';
 import 'utils.dart';
 
 
-Future<bool> goHome(  WidgetTester tester ) async {
-
-   final Finder home = find.byIcon( customIcons.home_here );
-   try { expect( home, findsOneWidget ); }
-   catch (e) {
-      final Finder goHome = find.byIcon( customIcons.home );
-      expect( goHome, findsOneWidget );
-      await tester.tap( goHome );
-      await pumpSettle( tester, 2, verbose: true );
-      await pumpSettle( tester, 2, verbose: true );    
-   }
-   return true;
-}
-
-// go home first, might be in proj profile
-Future<bool> goAri(  WidgetTester tester ) async {
-   await goHome( tester );
-
-   expect( find.byIcon( customIcons.profile ),  findsOneWidget );
-   await tester.tap( find.byIcon( customIcons.profile ));
-   await pumpSettle( tester, 2, verbose: true );    
-   await pumpSettle( tester, 2, verbose: true );
-   await pumpSettle( tester, 2, verbose: true );
-   
-   Finder txt = find.text( 'Ari Star (Ari)' );
-   expect( txt, findsOneWidget );
-   return true;
-}
-
-
 
 Future<bool> validateAriPeqs(  WidgetTester tester ) async {
    print( "Enter ariPeqs" );

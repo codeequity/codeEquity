@@ -59,6 +59,25 @@ Future<bool> popRegVenture( tester ) async {
    return true;
 }
 
+Future<bool> save( tester ) async {
+   final Finder save  = find.byKey( const Key( "Save" ) );
+   expect( save, findsOneWidget );
+   await tester.tap( save );
+   await pumpSettle( tester, 2 );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   return true;
+}
+
+Future<bool> dismiss( tester ) async {
+   final Finder dismiss  = find.byKey( const Key( "Dismiss" ) );
+   expect( dismiss, findsOneWidget );
+   await tester.tap( dismiss );
+   await pumpSettle( tester, 1 );
+   await tester.pumpAndSettle();
+   return true;
+}
+   
 Future<bool> openApplied( tester ) async {
    final Finder app = find.byKey( const Key( "Ari Star has applied to CE_Flut TestGD" ));
    expect( app, findsOneWidget );
@@ -70,8 +89,7 @@ Future<bool> openApplied( tester ) async {
    return true;
 }
 
-
-Future<bool> validateAriFillProfile( tester ) async {
+Future<bool> openProfile( tester ) async {
 
    final Finder editProf = find.byKey( const Key('Complete profileGD'));
    expect( editProf, findsOneWidget );
@@ -81,20 +99,25 @@ Future<bool> validateAriFillProfile( tester ) async {
    await tester.pumpAndSettle();
    
    expect( await verifyAriEditProfile( tester ), true );
+   return true;
+}
 
-   // Test is only modding phone
+Future<bool> editPhone( tester, String phone ) async {
    final Finder editPhone = find.byKey( const Key('editForm Phone'));
    expect( editPhone, findsOneWidget );
 
-   await tester.enterText( editPhone, "1 111-222-3333" );   
+   await tester.enterText( editPhone, phone );   
 
-   final Finder saveProf = find.byKey( const Key('Save'));
-   expect( saveProf, findsOneWidget );
+   expect( await save( tester ), true );
+   return true;
+}
 
-   await tester.tap( saveProf );
-   await pumpSettle( tester, 2 );
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
+Future<bool> validateAriFillProfile( tester ) async {
+
+   expect( await openProfile( tester ), true );
+
+   // Test is only modding phone
+   expect( await editPhone( tester, "1 111-222-3333" ), true );
    
    return true;
 }
@@ -105,7 +128,7 @@ Future<bool> validateAriAcceptPrivacy( tester ) async {
    expect( privacy, findsOneWidget );
 
    await tester.tap( privacy );
-   await tester.pumpAndSettle();
+   await pumpSettle( tester, 1 );
    await tester.pumpAndSettle();
 
    expect( find.text( "Privacy Statement" ), findsOneWidget );
@@ -118,6 +141,24 @@ Future<bool> validateAriAcceptPrivacy( tester ) async {
    await tester.tap( accept );
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
+   
+   return true;
+}
+
+Future<bool> validateAriRejectPrivacy( tester ) async {
+
+   final Finder privacy = find.byKey( const Key( "Privacy Notice" ));
+   expect( privacy, findsOneWidget );
+
+   await tester.tap( privacy );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
+   expect( find.text( "Privacy Statement" ), findsOneWidget );
+   expect( find.text( "Accept Statement" ), findsOneWidget );
+   expect( find.text( "Dismiss" ), findsOneWidget );
+
+   expect( await dismiss( tester ), true );
    
    return true;
 }
@@ -146,12 +187,12 @@ Future<bool> verifyPreambleComplete( tester, {founder=true} ) async {
 
 Future<bool> verifyPreambleEdit( tester ) async {
    expect( find.text("Partner's Title"),   findsOneWidget );
-   expect( find.text("Collaborator" ),     findsOneWidget );
+   expect( find.text("Contributor" ),     findsOneWidget );
    expect( find.text("Founder" ),          findsOneWidget );
    expect( find.text("Confirm" ),          findsOneWidget );
    expect( find.text("Cancel" ),           findsOneWidget );
 
-   final Finder collab  = find.byKey( const Key( "Collaborator" ) );
+   final Finder collab  = find.byKey( const Key( "Contributor" ) );
    final Finder founder = find.byKey( const Key( "Founder" ) );
    expect( collab, findsOneWidget );
    expect( founder, findsOneWidget );
@@ -176,19 +217,15 @@ Future<bool> verifyPartnerSigEdit( tester ) async {
    return true;
 }
 
-Future<bool> validatePartnerSig( tester ) async {
+Future<bool> partnerSig( tester, String psig ) async {
    // Phone is filled already.
    final Finder sig = find.byKey( const Key( "editRow (type your full legal name)" ));
    expect( sig, findsOneWidget );
-   await tester.enterText( sig, "Ari Star" );
+   await tester.enterText( sig, psig );
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
    
-   final Finder save  = find.byKey( const Key( "Save" ) );
-   expect( save, findsOneWidget );
-   await tester.tap( save );
-   await pumpSettle( tester, 2 );
-   await tester.pumpAndSettle();
+   expect( await save( tester ), true );
 
    return true;
 }
@@ -220,29 +257,23 @@ Future<bool> verifyPartnerSig( tester ) async {
    return true;
 }
 
-Future<bool> validateExecSig( tester ) async {
+Future<bool> execSig( tester, String esig, {ptitle="Founder"}) async {
    // Phone is filled already.
    final Finder sig = find.byKey( const Key( "editRow (type your full legal name)" ));
    expect( sig, findsOneWidget );
-   await tester.enterText( sig, "Connie Star" );
+   await tester.enterText( sig, esig );
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
    
-   final Finder save  = find.byKey( const Key( "Save" ) );
-   expect( save, findsOneWidget );
-   await tester.tap( save );
-   await pumpSettle( tester, 2 );
-   await tester.pumpAndSettle();
+   expect( await save( tester ), true );
 
-   expect( await verifyPreambleComplete( tester ), true );
-   expect( await verifyExecSig( tester ), true );
-   expect( await verifyPartnerSig( tester ), true );
-   
-   final Finder dismiss  = find.byKey( const Key( "Dismiss" ) );
-   expect( dismiss, findsOneWidget );
-   await tester.tap( dismiss );
-   await pumpSettle( tester, 1 );
-   await tester.pumpAndSettle();
+   if( esig == "Connie Star" ) {
+      expect( await verifyPreambleComplete( tester, founder: ptitle == "Founder" ), true );
+      expect( await verifyExecSig( tester ), true );
+      expect( await verifyPartnerSig( tester ), true );
+   }
+
+   expect( await dismiss( tester ), true );
    
    return true;
 }
@@ -281,12 +312,12 @@ Future<bool> findSignatureSection( tester, String finder ) async {
    return true;
 }
 
-Future<bool> registerVenture( tester, String cevName ) async {
+Future<bool> registerVenture( tester, String cevName, {editing = false} ) async {
    expect( find.text( 'Ventures & Projects' ), findsOneWidget );
 
    expect( await( toggleVnP( tester )), true );
    expect( await( popRegVenture( tester )), true );
-
+   
    String hint    = "Search is available if you need a hint";
    final String keyName = "editRow " + hint;
    expect( find.text( "Choose the CodeEquity Venture you wish to register with" ), findsOneWidget );
@@ -298,7 +329,7 @@ Future<bool> registerVenture( tester, String cevName ) async {
    // bad key name
    final Finder choose = find.byKey( Key( keyName ));
    expect( choose, findsOneWidget );
-   await tester.enterText( choose, CEMD_VENT_NAME );      
+   await tester.enterText( choose, cevName );
    
    final Finder select = find.byKey( const Key( "Select" ));
    expect( select, findsOneWidget );
@@ -307,13 +338,21 @@ Future<bool> registerVenture( tester, String cevName ) async {
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
 
+   // extra dialog to work with for partner
+   if( editing ) {
+      expect( find.text( "More Edits?" ), findsOneWidget );
+      expect( find.textContaining( "Do you want to edit it?" ), findsOneWidget );
+      final Finder cont = find.byKey( const Key( "confirmContinue" ) );
+      expect( cont, findsOneWidget );
+      await tester.tap( cont ); 
+      await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
+   }
+
    return true;
 }
 
-Future<bool> validateAriRegister( tester ) async {
-
-   expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
-   
+Future<bool> verifyEquityInit( tester ) async {
    // Agreement should now be showing.  No connie, most ari
    final Finder doc = find.byKey( const Key( "Equity Agreement" ));
    expect( doc, findsOneWidget );
@@ -326,6 +365,10 @@ Future<bool> validateAriRegister( tester ) async {
    expect( find.textContaining( "rmusick+ariTester@gmail.com" ),    findsNWidgets(2) );
    expect( find.textContaining( "Contributor of the Venture" ),     findsOneWidget );
    expect( find.textContaining( "Founder of the Venture" ),         findsNothing );
+   return true;
+}
+
+Future<bool> chooseTitle( tester, String atitle, {alreadyValid = false } ) async {
 
    final scroll = find.byKey( const Key( "scrollDoc" ) );
    expect( scroll, findsOneWidget );
@@ -334,9 +377,9 @@ Future<bool> validateAriRegister( tester ) async {
    await tester.pumpAndSettle();
 
    expect( await verifyPreambleEdit( tester ), true );
-   final Finder founder = find.byKey( const Key( "Founder" ) );
-   expect( founder, findsOneWidget );
-   await tester.tap( founder );
+   final Finder title = find.byKey( Key( atitle ) );
+   expect( title, findsOneWidget );
+   await tester.tap( title );
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
    final Finder confirm = find.byKey( const Key( "Confirm" ) );
@@ -346,28 +389,83 @@ Future<bool> validateAriRegister( tester ) async {
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
 
-   expect( find.textContaining( "Contributor of the Venture" ),     findsNothing );
-   expect( find.textContaining( "Founder of the Venture" ),         findsOneWidget );
+   if( !alreadyValid ) {
+      if( atitle == "Founder" ) {
+         expect( find.textContaining( "Contributor of the Venture" ),     findsNothing );
+         expect( find.textContaining( "Founder of the Venture" ),         findsOneWidget );
+      }
+      else if( atitle == "Contributor" ) {
+         expect( find.textContaining( "Contributor of the Venture" ),     findsOneWidget );
+         expect( find.textContaining( "Founder of the Venture" ),         findsNothing );
+      }
+      else {
+         expect( true, false );
+      }
+      
+      // dismiss 2nd preamble popup
+      await tester.drag( scroll, Offset(0.0, -100.0) );
+      await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
+      
+      final Finder cancel = find.byKey( const Key( "Cancel" ) );
+      expect( cancel, findsOneWidget );
+      await tester.tap( cancel );
+      await pumpSettle( tester, 1 );
+      await tester.pumpAndSettle();
+   }
 
-   // dismiss 2nd preamble popup
-   await tester.drag( scroll, Offset(0.0, -100.0) );
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
+   return true;
+}
 
-   final Finder cancel = find.byKey( const Key( "Cancel" ) );
-   expect( cancel, findsOneWidget );
-   await tester.tap( cancel );
-   await pumpSettle( tester, 1 );
-   await tester.pumpAndSettle();
+Future<bool> validateAriRegister( tester ) async {
+
+   expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
+   expect( await verifyEquityInit( tester ), true );
+
+   // Pick founder
+   expect( await chooseTitle( tester, "Founder" ), true );
 
    expect( await findSignatureSection( tester, "PartnerSignature" ), true );
 
    expect( await verifyPartnerSigEdit( tester ), true );
-   expect( await validatePartnerSig( tester ), true );
+   expect( await partnerSig( tester, "Ari Star" ), true );
 
    expect( await toggleVnP( tester ), true );
    
    // Toast shows here, hard to catch
+   
+   return true;
+}
+
+Future<bool> failAriRegister( tester ) async {
+
+   expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
+   expect( await verifyEquityInit( tester ), true );
+
+   // Pick founder
+   expect( await chooseTitle( tester, "Founder" ), true );
+
+   expect( await findSignatureSection( tester, "PartnerSignature" ), true );
+
+   expect( await verifyPartnerSigEdit( tester ), true );
+   expect( await partnerSig( tester, "Ari star" ), true );
+
+   // Toast shows here, hard to catch
+
+   expect( await dismiss( tester ), true );
+   expect( await toggleVnP( tester ), true );
+   
+   return true;
+}
+
+Future<bool> editAriTitle( tester, String title ) async {
+
+   expect( await registerVenture( tester, CEMD_VENT_NAME, editing: true ), true );
+
+   // sets title, and with edit after valid submission, simply re-submits
+   expect( await chooseTitle( tester, title, alreadyValid: true ), true );
+
+   expect( await toggleVnP( tester ), true );
    
    return true;
 }
@@ -397,7 +495,7 @@ Future<bool> validateAriWithdraw( tester ) async {
    return true;
 }
 
-Future<bool> validateConCounter( tester ) async {
+Future<bool> validateConCounter( tester, {ptitle = "Founder"} ) async {
    expect( await( verifyConnieHome( tester )), true );
 
    expect( await( togglePending( tester )), true );
@@ -405,7 +503,65 @@ Future<bool> validateConCounter( tester ) async {
    expect( await( findSignatureSection( tester, "ExecutiveSignature" )), true );
 
    expect( await verifyExecSigEdit( tester ), true );
-   expect( await validateExecSig( tester ), true );
+   expect( await execSig( tester, "Connie Star", ptitle: ptitle ), true );
+
+   expect( await togglePending( tester ), true );
+   
+   return true;
+}
+
+Future<bool> execReject( tester ) async {
+   expect( await( verifyConnieHome( tester )), true );
+
+   expect( await( togglePending( tester )), true );
+   expect( await( openApplied( tester )), true );
+
+   final Finder reject  = find.byKey( const Key( "Reject" ) );
+   expect( reject, findsOneWidget );
+   await tester.tap( reject );
+   await pumpSettle( tester, 1 );
+   await tester.pumpAndSettle();
+
+   expect( await togglePending( tester ), true );
+   
+   return true;
+}
+
+Future<bool> failConCounter( tester ) async {
+   expect( await( verifyConnieHome( tester )), true );
+
+   expect( await( togglePending( tester )), true );
+   expect( await( openApplied( tester )), true );
+   expect( await( findSignatureSection( tester, "ExecutiveSignature" )), true );
+
+   expect( await verifyExecSigEdit( tester ), true );
+   expect( await execSig( tester, "Connie Sa" ), true );
+
+   expect( await togglePending( tester ), true );
+   
+   return true;
+}
+
+// msg contains toast expectation - but so far not tested for (need key)
+Future<bool> noDoc( tester, String msg ) async {
+   final Finder doc = find.byKey( const Key( "Equity Agreement" ));
+   try{ 
+      expect( doc, findsOneWidget );
+      expect( true, false );
+   }
+   catch(e) { }
+   print( "No doc showing, " + msg );
+   return true;
+}
+
+Future<bool> docAvailable( tester ) async {
+   expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
+   
+   final Finder doc = find.byKey( const Key( "Equity Agreement" ));
+   try{       expect( doc, findsOneWidget ); }
+   catch(e) { expect( true, false ); }
+
+   expect( await dismiss( tester ), true );
 
    expect( await toggleVnP( tester ), true );
    
@@ -415,18 +571,76 @@ Future<bool> validateConCounter( tester ) async {
 Future<bool> verifyAriRegistered( tester ) async {
 
    expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
+   expect( await noDoc( tester, "already registered" ), true );
 
-   // This should not exist - was a toast indicating already registered.
-   final Finder doc = find.byKey( const Key( "Equity Agreement" ));
-   try{ 
-      expect( doc, findsOneWidget );
-      expect( true, false );
-   }
-   catch(e) { }
-   
    return true;
 }
 
+Future<bool> verifyRole( tester, String role ) async {
+   expect( await goAri( tester ), true );
+
+   final Finder vent = find.byKey( const Key( CEMD_VENT_NAME));
+   expect( vent, findsOneWidget );
+   await tester.tap( vent );
+   await pumpSettle( tester, 2 );
+   await pumpSettle( tester, 1 );
+   await tester.pumpAndSettle();
+
+   expect( find.text( "Ari Star (Ari)" ), findsOneWidget );
+   if( role == "Founder" ) {
+      expect( find.byKey( Key( TESTER_ID + "ExecutiveCheck") ), findsOneWidget );  // yes
+      expect( find.byKey( Key( TESTER_ID + "GrantorNoCheck") ), findsOneWidget );
+      expect( find.byKey( Key( TESTER_ID + "MemberNoCheck") ),  findsOneWidget );
+   }
+   else if( role == "Contributor" ) {
+      expect( find.byKey( Key( TESTER_ID + "ExecutiveNoCheck") ), findsOneWidget );
+      expect( find.byKey( Key( TESTER_ID + "GrantorNoCheck") ),   findsOneWidget );
+      expect( find.byKey( Key( TESTER_ID + "MemberCheck") ),      findsOneWidget ); // yes
+   }
+   else {
+      expect( find.byKey( Key( TESTER_ID + "ExecutiveNoCheck") ), findsOneWidget );
+      expect( find.byKey( Key( TESTER_ID + "GrantorNoCheck") ),   findsOneWidget );
+      expect( find.byKey( Key( TESTER_ID + "MemberNoCheck") ),    findsOneWidget );
+   }
+   
+   expect( await goHome( tester ), true );
+   return true;
+}
+
+Future<bool> partnerDirtySubmission( tester ) async {
+   await login( tester, true );
+
+   // make sure start from scratch
+   expect( await verifyAriHome( tester ), true );
+   expect( await validateAriWithdraw( tester ), true );  // start from scratch
+   await login( tester, true );
+   expect( await verifyAriHome( tester ), true );
+   
+   // Accept privacy, profile
+   print( "Accept basics" );
+   expect( await verifyActivityStart( tester ), true );
+   expect( await validateAriFillProfile( tester ), true );
+   expect( await verifyActivityStart( tester, profile: "complete" ), true );
+   expect( await validateAriAcceptPrivacy( tester ), true );
+   expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
+   
+   // Bad ari sig
+   print( "Bad ari sig" );
+   expect( await failAriRegister( tester ), true );
+   expect( await docAvailable( tester ), true );
+   
+   // Fix sig, submit
+   print( "Fix, submit" );
+   expect( await validateAriRegister( tester ), true );
+   
+   // Change to collab (i.e. has doc)
+   print( "Edit mailing addr, submit" );
+   expect( await editAriTitle( tester, "Contributor" ), true );
+   
+   await logout( tester );
+   return true;
+}
+   
 void main() {
 
    String repo = "codeequity/ceFlutterTester";
@@ -453,11 +667,12 @@ void main() {
          // This controls driver window size.  Driven window size is set on command line to flutter driver
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
+         // make sure start from scratch
          expect( await verifyAriHome( tester ), true );
-
          expect( await validateAriWithdraw( tester ), true );  // start from scratch
          await login( tester, true );
          expect( await verifyAriHome( tester ), true );
+         expect( await verifyRole( tester, "None" ), true );
          
          expect( await verifyActivityStart( tester ), true );
          expect( await validateAriFillProfile( tester ), true );
@@ -467,6 +682,7 @@ void main() {
 
          expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
          expect( await validateAriRegister( tester ), true );
+         expect( await verifyRole( tester, "None" ), true );
 
          expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
          await logout( tester );
@@ -477,11 +693,135 @@ void main() {
          await logout( tester );
          await login( tester, true );
          expect( await verifyAriHome( tester ), true );
+         expect( await verifyRole( tester, "Founder" ), true );         
          expect( await verifyAriRegistered( tester ), true );
+
          await logout( tester );
-         
          report( 'Onboard basics' );
       });
 
+   // Error cases:
+
+   // reject privacy attempt to register
+   print( "Reject privacy" );
+   //testWidgets('Reject privacy', skip:true, (WidgetTester tester) async {
+   testWidgets('Reject privacy', skip:skip, (WidgetTester tester) async {
+
+         await restart( tester );
+         await login( tester, true );
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
+
+         // make sure start from scratch
+         expect( await verifyAriHome( tester ), true );
+         expect( await validateAriWithdraw( tester ), true );  // start from scratch
+         await login( tester, true );
+         expect( await verifyAriHome( tester ), true );
+         
+         expect( await verifyActivityStart( tester ), true );
+         expect( await validateAriFillProfile( tester ), true );
+
+         expect( await verifyActivityStart( tester, profile: "complete" ), true );
+         expect( await validateAriRejectPrivacy( tester ), true );
+
+         expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
+         expect( await noDoc( tester, "must complete privacy agmt" ), true );
+         
+         await logout( tester );
+         report( 'Reject privacy' );
+      });
+
+   // incomplete profile, attempt to register
+   // Profile can't have empty name or email.  There is no error checking on either, so
+   // the only useful test right now is to empty the phone.
+   print( "Bad profile" );
+   //testWidgets('Bad profile', skip:true, (WidgetTester tester) async {
+   testWidgets('Bad profile', skip:skip, (WidgetTester tester) async {
+
+         await restart( tester );
+         await login( tester, true );
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
+
+         // make sure start from scratch
+         expect( await verifyAriHome( tester ), true );
+         expect( await validateAriWithdraw( tester ), true );  // start from scratch
+         await login( tester, true );
+         expect( await verifyAriHome( tester ), true );
+
+         // Accept privacy
+         expect( await verifyActivityStart( tester ), true );
+         expect( await validateAriAcceptPrivacy( tester ), true );
+         expect( await verifyActivityStart( tester, privacy: "complete" ), true );
+
+         // clear phone
+         expect( await openProfile( tester ), true );
+         expect( await editPhone( tester, "" ), true );
+         
+         expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
+         expect( await noDoc( tester, "must complete profile" ), true );
+         
+         await logout( tester );
+         report( 'Bad profile' );
+      });
+
+   // chain of edits, mistakes
+   print( "partner sig mistake, Submit, reopen, edit, register, exec mistake sig, accept" );
+   //testWidgets('Mistakes accept', skip:true, (WidgetTester tester) async {
+   testWidgets('Mistakes accept', skip:skip, (WidgetTester tester) async {
+
+         await restart( tester );
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
+
+         expect( await partnerDirtySubmission( tester ), true );
+
+         await login( tester, true, tester2: true );
+
+         // exec sig bad
+         print( "Bad connie sig" );
+         expect( await failConCounter( tester ), true );
+
+         // exec good sig
+         expect( await validateConCounter( tester, ptitle: "Contributor" ), true );
+
+         // Verify Ari is good
+         await logout( tester );
+         await login( tester, true );
+         expect( await verifyAriHome( tester ), true );
+         expect( await verifyRole( tester, "Contributor" ), true );         
+         expect( await verifyAriRegistered( tester ), true );
+         await logout( tester );
+
+         report( 'Mistakes accept' );
+      });
+
+
+   // chain of edits, mistakes
+   print( "partner sig mistake, Submit, reopen, edit, register, exec mistake sig, reject" );
+   //testWidgets('Mistakes reject', skip:true, (WidgetTester tester) async {
+   testWidgets('Mistakes reject', skip:skip, (WidgetTester tester) async {
+
+         await restart( tester );
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
+
+         expect( await partnerDirtySubmission( tester ), true );
+
+         // Connie
+         await login( tester, true, tester2: true );
+
+         // exec reject
+         expect( await execReject( tester ), true );
+
+         // Verify Ari registration is gone
+         await logout( tester );
+         await login( tester, true );
+         expect( await verifyAriHome( tester ), true );
+         expect( await docAvailable( tester ), true );
+         await logout( tester );
+
+         report( 'Mistakes reject' );
+      });
+
+   
+   // Choose founder, check role in cev
+   // Choose collab, check role in cev
 }
      
