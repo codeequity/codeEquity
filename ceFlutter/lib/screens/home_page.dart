@@ -688,7 +688,14 @@ class _CEHomeState extends State<CEHomePage> {
 
    void _updateDocFixed( String item, String choice ) {
       Map<String,String> edits = { item: choice };
-      _updateDoc( edits );
+
+      // Has anything changed?  if not, back out to avoid infinite confirm
+      if( scrollDoc.equityVals[ item ] != null && scrollDoc.equityVals[ item ]! == choice ) {
+         _cancel();
+      }
+      else {
+         _updateDoc( edits );
+      }
    }
 
    // Hints are created from existing editVals.  If user doesn't edit a field directly when having previously

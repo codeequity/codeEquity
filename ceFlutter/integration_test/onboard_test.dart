@@ -448,7 +448,7 @@ Future<bool> failAriRegister( tester ) async {
    expect( await findSignatureSection( tester, "PartnerSignature" ), true );
 
    expect( await verifyPartnerSigEdit( tester ), true );
-   expect( await partnerSig( tester, "Ari star" ), true );
+   expect( await partnerSig( tester, "Ari str" ), true );
 
    // Toast shows here, hard to catch
 
