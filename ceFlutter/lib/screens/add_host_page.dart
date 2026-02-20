@@ -39,6 +39,7 @@ class _CEAddHostState extends State<CEAddHostPage> {
 
    @override
    void dispose() {
+      pat.dispose();
       super.dispose();
    }
 

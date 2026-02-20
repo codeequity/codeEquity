@@ -331,11 +331,11 @@ void editProfile( context, container, Person cePeep, double width, {void Functio
       // Note: userName assigned during signup, can not change.
       // Note: email assigned during signup, this can change.
       assert( controller.length == 5 );
-      String na = controller[0].text;
-      String gb = controller[1].text;
-      String em = controller[2].text;
-      String ph = controller[3].text;
-      String pa = controller[4].text;
+      String na = controller[0].text;  controller[0].dispose();
+      String gb = controller[1].text;  controller[1].dispose();
+      String em = controller[2].text;  controller[2].dispose();
+      String ph = controller[3].text;  controller[3].dispose();
+      String pa = controller[4].text;  controller[4].dispose();
       
       cePeep.legalName      = na != "" ? na : cePeep.legalName;
       cePeep.email          = em != "" ? em : cePeep.email;

@@ -19,7 +19,7 @@ import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/Person.dart';
-import 'package:ceFlutter/models/AcceptedDoc.dart';
+import 'package:ceFlutter/models/UserDoc.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 
 import 'package:ceFlutter/screens/add_host_page.dart';
@@ -58,7 +58,7 @@ class _CEHomeState extends State<CEHomePage> {
    late bool updateView;
 
    final ScrollController _scrollController = ScrollController();
-   late AcceptedDoc scrollDoc;
+   late UserDoc scrollDoc;
    late Person      applicant;
    late Person      approver;
    late CEVenture   targCEV;
@@ -512,7 +512,7 @@ class _CEHomeState extends State<CEHomePage> {
       print( "Accept for " + cePeep.legalName );
       if( docType != DocType.equity ) {
          assert( docId != "" );
-         scrollDoc = new AcceptedDoc( docType: docType, docId: docId, acceptedDate: getToday(), equityVals: {} );
+         scrollDoc = new UserDoc( docType: docType, docId: docId, acceptedDate: getToday(), equityVals: {} );
          targCEV   = CEVenture.empty();
       }
       cePeep.accept( docType, scrollDoc, docId, targCEV, isApplicant );
@@ -636,6 +636,7 @@ class _CEHomeState extends State<CEHomePage> {
    void _registerVenture( Person cePeep, DocType docType ) async {
       void _select( TextEditingController cont ) {
          String cev = cont.text;
+         cont.dispose();
          final cevEntry = appState.ceVenture.entries.where( ( entry ) => entry.value.name == cev ).toList();
          assert( cevEntry.length <= 1 );
          if( cevEntry.length < 1 ) {
@@ -705,6 +706,9 @@ class _CEHomeState extends State<CEHomePage> {
       Map<String,String> edits = {};
       for( var i = 0; i < cont.length; i++ ) {
          edits[item[i]] = cont[i].text != "" ? cont[i].text : hint[i];
+
+         // controller no longer used.
+         cont[i].dispose();
       }
       _updateDoc( edits );
    }
@@ -791,7 +795,7 @@ class _CEHomeState extends State<CEHomePage> {
                   return;
                }
                else {
-                  scrollDoc = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday(), equityVals: {} );
+                  scrollDoc = new UserDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday(), equityVals: {} );
                }
             }
          }

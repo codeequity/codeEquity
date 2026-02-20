@@ -1,7 +1,7 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/models/CEVenture.dart';
-import 'package:ceFlutter/models/AcceptedDoc.dart';
+import 'package:ceFlutter/models/UserDoc.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 
 // Dynamodb serializes primary key before using it... so...
@@ -15,19 +15,19 @@ class Person {
    String       mailingAddress;
    bool         registered;        // with CodeEquity.  i.e. signed privacy, completed profile
    bool         locked;
-   Map< DocType, List<AcceptedDoc>> acceptedDocs;   // { privacy: AcceptedDoc, equity with venture 1, 2: AcceptedDoc}
+   Map< DocType, List<UserDoc>> userDocs;   // { privacy: UserDoc, equity with venture 1, 2: UserDoc}
 
    Person({required this.id, required this.goesBy, required this.legalName, required this.userName,
-            required this.email, required this.phone, required this.mailingAddress, required this.registered, required this.acceptedDocs, required this.locked});
+            required this.email, required this.phone, required this.mailingAddress, required this.registered, required this.userDocs, required this.locked});
    
    dynamic toJson() {
-      Map<String, List<AcceptedDoc>> encodable = {};
-      acceptedDocs.forEach( (k,v) {
+      Map<String, List<UserDoc>> encodable = {};
+      userDocs.forEach( (k,v) {
             encodable[ enumToStr( k ) ] = v; 
          });
       
       return { 'id': id, 'goesBy': goesBy, 'legalName': legalName, 'userName': userName, 'email': email, 'phone': phone,
-            'mailingAddress': mailingAddress, 'locked': false, 'registered': registered, 'acceptedDocs': encodable }; 
+            'mailingAddress': mailingAddress, 'locked': false, 'registered': registered, 'userDocs': encodable }; 
    }
 
    String getFullName() {
@@ -38,8 +38,8 @@ class Person {
 
    bool hasEquityAgreement( String cevId ) {
       bool hasEA = false;
-      if( acceptedDocs[ DocType.equity ] == null ) { return hasEA; }
-      List<AcceptedDoc> ea = acceptedDocs[ DocType.equity ]!;
+      if( userDocs[ DocType.equity ] == null ) { return hasEA; }
+      List<UserDoc> ea = userDocs[ DocType.equity ]!;
       for( final accepted in ea ) {
          if( accepted.equityVals["VentureId"]! == cevId ) { hasEA = true; break;} 
       }
@@ -58,7 +58,7 @@ class Person {
 
    bool signedPrivacy() {
       if( registered )                              { return true; }
-      if( acceptedDocs[ DocType.privacy ] == null ) { return false; }
+      if( userDocs[ DocType.privacy ] == null ) { return false; }
 
       return true;
    }
@@ -72,8 +72,8 @@ class Person {
       return false;
    }
    
-   void accept( DocType docType, AcceptedDoc ad, String docId, CEVenture cev, bool isApplicant  ) {
-      if( docType != DocType.equity ) { acceptedDocs[ docType ] = [ ad ]; }
+   void accept( DocType docType, UserDoc ad, String docId, CEVenture cev, bool isApplicant  ) {
+      if( docType != DocType.equity ) { userDocs[ docType ] = [ ad ]; }
 
       // equity accepted docs come with filled in blank data
       if( docType == DocType.equity ) {
@@ -82,11 +82,11 @@ class Person {
          if( isApplicant ) {
             if( hasEquityAgreement( ad.equityVals["VentureId" ]! ) ) {
                // remove last edited doc to make room for new
-               acceptedDocs[ docType ]!.removeWhere( (d) => d.equityVals["VentureId"] == ad.equityVals["VentureId"] || d.equityVals["VentureId"] == "" );
+               userDocs[ docType ]!.removeWhere( (d) => d.equityVals["VentureId"] == ad.equityVals["VentureId"] || d.equityVals["VentureId"] == "" );
             }
             
-            if( acceptedDocs[ docType ] == null ) { acceptedDocs[ docType ] = [ ad ];   }
-            else                                  { acceptedDocs[ docType ]!.add( ad ); }
+            if( userDocs[ docType ] == null ) { userDocs[ docType ] = [ ad ];   }
+            else                                  { userDocs[ docType ]!.add( ad ); }
 
             // Become an applicant if this is not a counter-signature
             if( ad.equityVals["EffectiveDate"] == "" ) { ad.submitIfReady( cev, this ); }
@@ -99,13 +99,13 @@ class Person {
    // Only called if Founder rejects application
    void reject( DocType docType, { cev = null } ) {
       if( docType == DocType.equity ) {
-         if( acceptedDocs[ docType ] != null ) {
-            if( cev != null ) { acceptedDocs[ docType ]!.removeWhere( (d) => d.equityVals["VentureId"] == cev.ceVentureId ); }
-            else              { acceptedDocs.remove( docType ); }
+         if( userDocs[ docType ] != null ) {
+            if( cev != null ) { userDocs[ docType ]!.removeWhere( (d) => d.equityVals["VentureId"] == cev.ceVentureId ); }
+            else              { userDocs.remove( docType ); }
          }
       }
       else if( docType == DocType.privacy ) {
-         if( acceptedDocs[ docType ] != null ) { acceptedDocs.remove( docType ); }
+         if( userDocs[ docType ] != null ) { userDocs.remove( docType ); }
          registered = false;
       }
    }
@@ -114,15 +114,15 @@ class Person {
       reject( DocType.equity );
       reject( DocType.privacy );
       phone = "";
-      assert( acceptedDocs.length == 0 );
+      assert( userDocs.length == 0 );
    }
 
    List<CEVenture> getCEVs( Map<String, CEVenture> knownCEVs ) {
       List<CEVenture> cevs = [];
 
-      if( acceptedDocs[ DocType.equity ] == null ) { return cevs; }
+      if( userDocs[ DocType.equity ] == null ) { return cevs; }
       
-      for( AcceptedDoc ad in acceptedDocs[ DocType.equity ]! ) {
+      for( UserDoc ad in userDocs[ DocType.equity ]! ) {
          assert( ad.equityVals["VentureId"] != null );
          CEVenture? cev = knownCEVs[ ad.equityVals["VentureId"]! ];
          assert( cev != null );
@@ -139,11 +139,11 @@ class Person {
       return cev.hasApplicant( id );
    }
 
-   AcceptedDoc copyStoredEquityVals( String cevId ) {
-      assert( acceptedDocs[DocType.equity] != null );
+   UserDoc copyStoredEquityVals( String cevId ) {
+      assert( userDocs[DocType.equity] != null );
       print( "Copy stored equity vals from " + cevId + " to " + legalName );
-      AcceptedDoc doc = acceptedDocs[DocType.equity]!.firstWhere( (d) => d.equityVals["VentureId"] == cevId );
-      AcceptedDoc receiver = AcceptedDoc.from( doc );
+      UserDoc doc = userDocs[DocType.equity]!.firstWhere( (d) => d.equityVals["VentureId"] == cevId );
+      UserDoc receiver = UserDoc.from( doc );
       return receiver;
    }
 
@@ -159,22 +159,22 @@ class Person {
          phone:          "",
          mailingAddress: "",
          registered:     false,
-         acceptedDocs:   {},
+         userDocs:   {},
          locked:         false,
          );
    }
    
    factory Person.fromJson(Map<String, dynamic> json) {
 
-      var dynamicDocs = json['AcceptedDocs'];  // json arriving as Map<String,Map<String,String>>
+      var dynamicDocs = json['UserDocs'];  // json arriving as Map<String,Map<String,String>>
 
-      Map<DocType, List<AcceptedDoc>> docs = {};
+      Map<DocType, List<UserDoc>> docs = {};
       if( dynamicDocs != null ) {
          dynamicDocs.entries.forEach((entry) {
                DocType key = enumFromStr<DocType>( entry.key, DocType.values );
-               // docs[key] = entry.value.map( (accepted) => AcceptedDoc.fromJson( accepted )).toList();
-               List<AcceptedDoc> a = [];
-               entry.value.forEach( (v) => a.add( AcceptedDoc.fromJson( v )) );
+               // docs[key] = entry.value.map( (accepted) => UserDoc.fromJson( accepted )).toList();
+               List<UserDoc> a = [];
+               entry.value.forEach( (v) => a.add( UserDoc.fromJson( v )) );
                docs[key] = a;
             });
       }
@@ -188,7 +188,7 @@ class Person {
          phone:          json['Phone'] ?? "",
          mailingAddress: json['mailingAddress'] ?? "",
          registered:     json['Registered'] ?? false,
-         acceptedDocs:   docs,
+         userDocs:   docs,
          locked:         json['Locked'],
          );
    }
@@ -204,7 +204,7 @@ class Person {
          phone:          p.phone ?? "",
          mailingAddress: p.mailingAddress ?? "",
          registered:     p.registered,
-         acceptedDocs:   p.acceptedDocs,
+         userDocs:   p.userDocs,
          locked:         p.locked,
          );
    }
@@ -217,7 +217,7 @@ class Person {
       res += "\n   mailingAddress: " + mailingAddress;
       res += "\n   id: " + id;
       res += "\n   Accepted Docs: ";
-      (acceptedDocs ?? {}).forEach( (k,v) => res += "\n     " + v.toString() );
+      (userDocs ?? {}).forEach( (k,v) => res += "\n     " + v.toString() );
 
       return res;
    }

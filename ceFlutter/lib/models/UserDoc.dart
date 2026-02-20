@@ -48,10 +48,10 @@ class _aBox {
 
 }
 
-class AcceptedDoc {
+class UserDoc {
    DocType      docType;  
    String       docId;
-   String       acceptedDate;  // the date that 'Accept' was pressed
+   String       acceptedDate;  // the date that 'Accept' was pressed, or for multi-state docs like equity agreement, this is basically 'lastMod'.
 
    
    // Equity agreement.  Only fully valid agreements store these values.
@@ -64,7 +64,7 @@ class AcceptedDoc {
    List<_aBox>? boxes;          //  TRANSIENT do not store
 
    
-   AcceptedDoc( {required this.docType, required this.docId, required this.acceptedDate, required this.equityVals } ) {
+   UserDoc( {required this.docType, required this.docId, required this.acceptedDate, required this.equityVals } ) {
 
       if( docType == DocType.privacy ) { equityVals = {}; }
       else if( docType == DocType.equity ) {
@@ -281,8 +281,8 @@ class AcceptedDoc {
       return { 'docType': enumToStr( docType ), 'docId': docId, 'acceptedDate': acceptedDate, 'equityVals': equityVals };
    }
    
-   factory AcceptedDoc.empty() {
-      return AcceptedDoc( 
+   factory UserDoc.empty() {
+      return UserDoc( 
          docType:      DocType.end,
          docId:        "", 
          acceptedDate: "",
@@ -290,7 +290,7 @@ class AcceptedDoc {
          );
    }
    
-   factory AcceptedDoc.fromJson(Map<String, dynamic> json) {
+   factory UserDoc.fromJson(Map<String, dynamic> json) {
       var dynamicVals = json['equityVals'];  
 
       Map<String, String> vals = {};
@@ -300,7 +300,7 @@ class AcceptedDoc {
             });
       }
       
-      return AcceptedDoc(
+      return UserDoc(
          docType:      enumFromStr<DocType>( json['docType'] ?? "end", DocType.values ),
          docId:        json['docId'] ?? "",
          acceptedDate: json['acceptedDate'] ?? "",
@@ -308,9 +308,9 @@ class AcceptedDoc {
          );
    }
 
-   factory AcceptedDoc.from(p) {
+   factory UserDoc.from(p) {
 
-      return AcceptedDoc(
+      return UserDoc(
          docType:      p.docType,
          docId:        p.docId,
          acceptedDate: p.acceptedDate,

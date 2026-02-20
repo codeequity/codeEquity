@@ -45,6 +45,10 @@ class _CESignupState extends State<CESignupPage> {
 
    @override
    void dispose() {
+      usernameController.dispose();
+      passwordController.dispose();
+      attributeController.dispose();
+      confirmationCodeController.dispose();
       super.dispose();
    }
    
@@ -124,7 +128,7 @@ class _CESignupState extends State<CESignupPage> {
                   appState.ceUserId = pid;
                   
                   Person user = new Person( id: pid, goesBy: "Marion", legalName: "Marion Star", userName: usernameController.text,
-                                            email: attributeController.text, phone: "", mailingAddress: "", acceptedDocs: {}, registered: false, locked: false );
+                                            email: attributeController.text, phone: "", mailingAddress: "", userDocs: {}, registered: false, locked: false );
                   
                   String newUser = json.encode( user );
                   String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $newUser, "Verify": "true" }';

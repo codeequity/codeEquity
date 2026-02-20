@@ -39,8 +39,10 @@ class _CELoginState extends State<CELoginPage> {
    
   @override
   void dispose() {
-    super.dispose();
-    if( appState.verbose >= 2 ) { print( "LoginPage Disposessed!" ); }
+     usernameController.dispose();
+     passwordController.dispose();
+     super.dispose();
+     if( appState.verbose >= 2 ) { print( "LoginPage Disposessed!" ); }
   }
 
 
