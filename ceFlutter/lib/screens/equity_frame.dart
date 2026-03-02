@@ -142,9 +142,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          setState(() => appState.updateEquityView = true );                  
       }
 
-      titleController.dispose();
-      amountController.dispose();
-      hpNameController.dispose();
+      // titleController.dispose();
+      // amountController.dispose();
+      // hpNameController.dispose();
       
       Navigator.of( context ).pop();
    }
@@ -177,9 +177,9 @@ class _CEEquityState extends State<CEEquityFrame> {
       EquityTree t = EquityLeaf( tval, amtInt, hval, tot, width );
       (tot as EquityNode).addLeaf( t );
 
-      title.dispose();
-      amount.dispose();
-      hproj.dispose();
+      // title.dispose();
+      // amount.dispose();
+      // hproj.dispose();
       
       setState(() => appState.updateEquityView = true );                  
 

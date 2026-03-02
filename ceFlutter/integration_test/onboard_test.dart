@@ -607,6 +607,31 @@ Future<bool> verifyRole( tester, String role ) async {
    return true;
 }
 
+Future<bool> partnerCleanSubmission( tester ) async {
+   await login( tester, true );
+
+   // make sure start from scratch
+   expect( await verifyAriHome( tester ), true );
+   expect( await validateAriWithdraw( tester ), true );  // start from scratch
+   await login( tester, true );
+   expect( await verifyAriHome( tester ), true );
+   expect( await verifyRole( tester, "None" ), true );
+   
+   expect( await verifyActivityStart( tester ), true );
+   expect( await validateAriFillProfile( tester ), true );
+   
+   expect( await verifyActivityStart( tester, profile: "complete" ), true );
+   expect( await validateAriAcceptPrivacy( tester ), true );
+   
+   expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
+   expect( await validateAriRegister( tester ), true );
+   expect( await verifyRole( tester, "None" ), true );
+   
+   expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
+   await logout( tester );
+
+}
+
 Future<bool> partnerDirtySubmission( tester ) async {
    await login( tester, true );
 
@@ -656,49 +681,6 @@ void main() {
    if( override == "True" ) { skip = false; }
    
    report( 'Onboard', group:true );
-
-   print( "Basics" );
-   // testWidgets('Onboard basics', skip:true, (WidgetTester tester) async {
-   testWidgets('Onboard basics', skip:skip, (WidgetTester tester) async {
-
-         await restart( tester );
-         await login( tester, true );
-
-         // This controls driver window size.  Driven window size is set on command line to flutter driver
-         tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
-
-         // make sure start from scratch
-         expect( await verifyAriHome( tester ), true );
-         expect( await validateAriWithdraw( tester ), true );  // start from scratch
-         await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
-         expect( await verifyRole( tester, "None" ), true );
-         
-         expect( await verifyActivityStart( tester ), true );
-         expect( await validateAriFillProfile( tester ), true );
-
-         expect( await verifyActivityStart( tester, profile: "complete" ), true );
-         expect( await validateAriAcceptPrivacy( tester ), true );
-
-         expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
-         expect( await validateAriRegister( tester ), true );
-         expect( await verifyRole( tester, "None" ), true );
-
-         expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
-         await logout( tester );
-         await login( tester, true, tester2: true );
-         
-         expect( await validateConCounter( tester ), true );
-
-         await logout( tester );
-         await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
-         expect( await verifyRole( tester, "Founder" ), true );         
-         expect( await verifyAriRegistered( tester ), true );
-
-         await logout( tester );
-         report( 'Onboard basics' );
-      });
 
    // Error cases:
 
@@ -820,8 +802,33 @@ void main() {
          report( 'Mistakes reject' );
       });
 
-   
-   // Choose founder, check role in cev
-   // Choose collab, check role in cev
+
+   // 
+   // NOTE Run this last to leave Ari as a founder, else next set of ceServer tests will fail
+   // 
+   print( "Basics" );
+   // testWidgets('Onboard basics', skip:true, (WidgetTester tester) async {
+   testWidgets('Onboard basics', skip:skip, (WidgetTester tester) async {
+
+         await restart( tester );
+         // This controls driver window size.  Driven window size is set on command line to flutter driver
+         tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
+
+         expect( await partnerCleanSubmission( tester ), true );
+
+         await login( tester, true, tester2: true );
+         
+         expect( await validateConCounter( tester ), true );
+
+         await logout( tester );
+         await login( tester, true );
+         expect( await verifyAriHome( tester ), true );
+         expect( await verifyRole( tester, "Founder" ), true );         
+         expect( await verifyAriRegistered( tester ), true );
+
+         await logout( tester );
+         report( 'Onboard basics' );
+      });
+
 }
      
