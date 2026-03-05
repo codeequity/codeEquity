@@ -629,6 +629,7 @@ Future<bool> partnerCleanSubmission( tester ) async {
    
    expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
    await logout( tester );
+   return true;
 
 }
 
