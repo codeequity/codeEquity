@@ -12,7 +12,6 @@ from subprocess import call, check_output, Popen, PIPE, STDOUT
 import shlex
 
 from threading import Thread
-#import concurrent.futures
 
 
 # python testCEFlutter.py overrideAllOn
@@ -114,7 +113,17 @@ def clean( output, filterExp ) :
 
 
 def runCmd( cmd, filterExp ):
+
     process = Popen(shlex.split(cmd), stderr=STDOUT, stdout=PIPE, encoding='utf8')
+    #process = Popen(shlex.split(cmd), stderr=STDOUT, stdout=PIPE, text=True, bufsize=1, encoding='utf8')
+    #process = Popen(shlex.split(cmd), stderr=STDOUT, stdout=PIPE, text=True, bufsize=1)
+    #process = Popen(shlex.split(cmd), stderr=STDOUT, stdout=PIPE, text=True)
+    #process = Popen(shlex.split("ls -l"), stderr=STDOUT, stdout=PIPE, text=True)
+
+    
+    #stdout, stderr = process.communicate()
+    #return stdout
+
     resultsSum = ""
     while True:
         output = process.stdout.readline()
@@ -194,6 +203,7 @@ def runTests( test = "focus" ):
     #os.chdir( "./" )
 
     resultsSum = ""
+    tSum = ""
 
     if( test == "projectMain" ):
 
@@ -241,7 +251,7 @@ def runTests( test = "focus" ):
     logging.info( "" )
     logging.info( "" )
     logging.info( "================================" )
-    logging.info( "Summary:" )
+    logging.info( "Logging Summary:" )
     logging.info( "================================" )
     logging.info( resultsSum )
     logging.info( "================================" )
@@ -249,7 +259,7 @@ def runTests( test = "focus" ):
     summary  = "\n"
     summary += "\n"
     summary += "================================\n"
-    summary += "Summary:\n"
+    summary += "Print Summary:\n"
     summary += "================================\n"
     summary += resultsSum + "\n"
     summary += "================================\n"

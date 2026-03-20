@@ -48,10 +48,12 @@ function execAWS_CLI( table, flutterTest ) {
 async function runTests( flutterTest ) {
 
     if( typeof flutterTest === 'undefined' ) { flutterTest = false; }
+
+    // Uncomment if saving for flutter
+    // flutterTest = true;
     
     let testStatus = [ 0, 0, []];
     let success = false;
-
 
     // turn this on when not testing in parts
     success = execAWS_CLI( "CEPEQs", flutterTest );
@@ -94,7 +96,7 @@ async function runTests( flutterTest ) {
     return testStatus
 }
 
-// Switch to runTests rather than exports if npm run testSave  (true version for flutter)
+// Switch to runTests rather than exports if npm run testSave. Remember flutterTest = true for flutter.
 //runTests(true);
 //runTests();
 export default runTests;

@@ -71,7 +71,9 @@ class EquityPlan {
       List<String> newCat = new List<String>.from( cat );
       int newAlloc = -1;
       assert( newCat.length >= 1 );
+      // print( "Attempting to site " + newCat.toString() );
       for( int i = 0; i < hostNames.length; i++ ) {
+         // print( "Compare " + newCat[0] + " to " + hostNames[i] );
          if( newCat[0] == hostNames[i] ) {
             // How much of this to keep?  All.
             // categories might be [Software Contributions Flut, Github Operations Flx] or [Software Contributions Flx, Github Operations Flut]
@@ -79,7 +81,7 @@ class EquityPlan {
             // In either case, keep entire category and all but first of the old
             newCat = categories[i] + newCat.sublist( 1, newCat.length);
             newAlloc = amounts[i];
-            // print( "  resited " + cat.toString() + " into " + newCat.toString() + " with amount " + newAlloc.toString() );
+            //print( "  resited " + cat.toString() + " into " + newCat.toString() + " with amount " + newAlloc.toString() );
             break;
          }
       }
@@ -88,9 +90,10 @@ class EquityPlan {
       // hierarch elements have been added during previous call to site.  Now, just need alloc amount.
       if( newAlloc == -1 ) {
          for( int i = 0; i < categories.length; i++ ) {
+            //print( "Hmm.. check " + newCat[0] + " vs " + categories[i].last );
             if( newCat[0] == categories[i].last ) {
                newAlloc = amounts[i];
-               // print( "  " + newCat[0] + " hierarchical element found, amout:  " + newAlloc.toString() );
+               //print( "  " + newCat[0] + " hierarchical element found, amout:  " + newAlloc.toString() );
                break;
             }
          }
