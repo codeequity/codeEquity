@@ -1678,9 +1678,11 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	    subTest = tu.checkEq( splitIss.assignees.length, assignCnt, subTest, "Issue assignee count" );
 	
 	    // Check comment on splitIss
+	    // XXX Comments are taking a long time to show.  Build in a pause here.
+	    await utils.sleep( 1000 );	    
 	    const comments = await getComments( authData, splitDat[0] );
 	    subTest = tu.checkEq( typeof comments !== 'undefined',                      true,   subTest, "Comment not yet ready" );
-	    subTest = tu.checkEq( typeof comments[0] !== 'undefined',                   true,   subTest, "Comment not yet ready" );
+	    subTest = tu.checkEq( typeof comments[0] !== 'undefined',                   true,   subTest, "Comment 0 not yet ready" );
 	    if( typeof comments !== 'undefined' && typeof comments[0] !== 'undefined' ) {
 		subTest = tu.checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
 	    }
