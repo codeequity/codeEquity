@@ -1,5 +1,6 @@
 @Timeout(Duration(minutes: 25))
 
+import 'package:flutter/services.dart';  // sysnav pop
 import 'dart:convert';  // json encode/decode
 import 'dart:async';    // timer
 
@@ -805,5 +806,6 @@ void main() {
          report( 'Equity Mvmt Page' );
       });
 
+   SystemNavigator.pop();
 }
      

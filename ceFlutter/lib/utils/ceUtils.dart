@@ -318,24 +318,23 @@ String ceUIDFromHost( appState, String hostUID ) {
 
 
 
+void editProfile( context, container, Person cePeep, {void Function()? updateCallback} ) async {
 
-void editProfile( context, container, Person cePeep, double width, {void Function()? updateCallback} ) async {
-   
    void _cancelEdit( context ) {
       print( "Cancel update profile" );
       Navigator.of( context ).pop();
    }
    
-   void _saveProfile( context, container, Person cePeep, List<TextEditingController> controller, updateCallback) {
+   void _saveProfile( List<TextEditingController> controller ) {
       final appState  = container.state;      
       // Note: userName assigned during signup, can not change.
       // Note: email assigned during signup, this can change.
       assert( controller.length == 5 );
-      String na = controller[0].text;  controller[0].dispose();
-      String gb = controller[1].text;  controller[1].dispose();
-      String em = controller[2].text;  controller[2].dispose();
-      String ph = controller[3].text;  controller[3].dispose();
-      String pa = controller[4].text;  controller[4].dispose();
+      String na = controller[0].text;
+      String gb = controller[1].text;
+      String em = controller[2].text;
+      String ph = controller[3].text;
+      String pa = controller[4].text;
       
       cePeep.legalName      = na != "" ? na : cePeep.legalName;
       cePeep.email          = em != "" ? em : cePeep.email;
@@ -358,20 +357,20 @@ void editProfile( context, container, Person cePeep, double width, {void Functio
    List<bool>   required                  = cePeep.getRequired();
    List<String> curVal                    = cePeep.getCurVal();
    List<String> toolTip                   = cePeep.getToolTip();
-   List<TextEditingController> controller = [];
 
    assert( header.length == required.length );
    assert( header.length == curVal.length );
    assert( header.length == toolTip.length );
-   header.forEach( (h) => controller.add( new TextEditingController() ) );
-
-   final appState = container.state;
-   String popupTitle = "Edit " + cePeep.userName + "'s Profile";      
-   await editForm( context, appState, popupTitle, header, controller, curVal, required, toolTip,
-                   () => _saveProfile( context, container, cePeep, controller, updateCallback), () => _cancelEdit( context ) );
-}
    
+   final appState = container.state;
+   String popupTitle = "Edit " + cePeep.userName + "'s Profile";
 
+   // This construction allows editForm to return a widget that we apply here.
+   await showDialog(
+      context: context,
+      builder: (BuildContext context) => EditForm( appState: appState, scrollHeader: popupTitle, header: header, curVal: curVal,
+                                                   required: required, toolTip: toolTip, saveFunc: _saveProfile, cancelFunc: _cancelEdit ));
+}
 
 
 // Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.

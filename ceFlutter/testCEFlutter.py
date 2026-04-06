@@ -179,6 +179,7 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     # cmd = cmd + " --enable-software-rendering"
     # cmd = cmd + " --verbose"
     # cmd = cmd + " --no-headless"
+    cmd = cmd + " --enable-impeller" 
         
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
@@ -187,8 +188,10 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     
     # poll for realtime stdout
     tmpSum  = "\n"
-    tmpSum += runCmd( cmd, grepFilter )
+    tmpSum += runCmd( cmd, grepFilter );
 
+    logging.info( "OI!" );
+    
     return tmpSum
 
 

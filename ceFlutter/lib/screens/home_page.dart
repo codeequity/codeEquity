@@ -636,13 +636,13 @@ class _CEHomeState extends State<CEHomePage> {
    void _registerVenture( Person cePeep, DocType docType ) async {
       void _select( TextEditingController cont ) {
          String cev = cont.text;
-         cont.dispose();
          final cevEntry = appState.ceVenture.entries.where( ( entry ) => entry.value.name == cev ).toList();
          assert( cevEntry.length <= 1 );
          if( cevEntry.length < 1 ) {
             showToast( "Venture not found.  Please re-enter the name of the Venture." );
             return;
          }
+         // cont.dispose();
          String cevId = cevEntry[0].key;
          Navigator.of( context ).pop();
          _checkThenShow( cePeep!, DocType.equity, cevId, true );
@@ -708,7 +708,7 @@ class _CEHomeState extends State<CEHomePage> {
          edits[item[i]] = cont[i].text != "" ? cont[i].text : hint[i];
 
          // controller no longer used.
-         cont[i].dispose();
+         // cont[i].dispose();
       }
       _updateDoc( edits );
    }
@@ -864,11 +864,11 @@ class _CEHomeState extends State<CEHomePage> {
       List<Widget> subTasks = [];
       
       if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", overlayMaxWidth * 0.2, () => _showDoc( cePeep!, DocType.privacy ))); }
+
       if( !cePeep!.completeProfile() ) {
          subTasks.add( _makeLink( "Complete profile", overlayMaxWidth * 0.2,
-                                  () => editProfile( context, container, cePeep!, overlayMaxWidth, updateCallback: () => updateCallback() ), last: true ));
+                                  () => editProfile( context, container, cePeep!, updateCallback: () => updateCallback() ), last: true ));
       }
-
       return subTasks;      
    }
    

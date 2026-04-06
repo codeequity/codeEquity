@@ -107,6 +107,9 @@ Future<bool> editPhone( tester, String phone ) async {
    expect( editPhone, findsOneWidget );
 
    await tester.enterText( editPhone, phone );   
+   await pumpSettle( tester, 2);
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
 
    expect( await save( tester ), true );
    return true;
@@ -616,7 +619,7 @@ Future<bool> partnerCleanSubmission( tester ) async {
    await login( tester, true );
    expect( await verifyAriHome( tester ), true );
    expect( await verifyRole( tester, "None" ), true );
-   
+
    expect( await verifyActivityStart( tester ), true );
    expect( await validateAriFillProfile( tester ), true );
    

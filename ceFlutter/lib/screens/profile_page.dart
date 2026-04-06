@@ -1064,7 +1064,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
                  itsMe ? 
                  Wrap( children: [ Container( width: appState.GAP_PAD ),
-                                   makeActionButtonFixed( appState, 'Edit profile', lhsFrameMaxWidth / 3.0, () => editProfile( context, container, cePeep, rhsFrameMaxWidth )),
+                                   makeActionButtonFixed( appState, 'Edit profile', lhsFrameMaxWidth / 3.0, () => editProfile( context, container, cePeep )),
                                    makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 3.0, () async {
                                          MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
                                          confirmedNav( context, container, newPage );

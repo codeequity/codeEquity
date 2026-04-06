@@ -618,9 +618,7 @@ void report( descr, {group = false} ) {
 
 Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
 
-   print( "IN LOGIN" );
    await pumpSettle(tester, 2);
-   print( "AFTER PUMP" );
    expect( await verifyOnLaunchPage( tester ), true );
 
    final Finder loginButton = find.byKey(const Key( 'Login' ));
@@ -653,11 +651,8 @@ Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
    
    // Login, jump to homepage
    await tester.tap( login2Button );
-   print( "first pump" );
    await tester.pumpAndSettle(); // for auth
-   print( "second pump" );
    await tester.pumpAndSettle(); // for .. toast?
-   print( "third pump" );
    await pumpSettle(tester, 5); // for aws
    await pumpSettle(tester, 2);
    await pumpSettle(tester, 1); // Ugggg debug cognito is soooooo slow
@@ -713,7 +708,11 @@ Future<bool> logout( WidgetTester tester ) async {
    }
    
    await tester.tap( logoutButton );
+   // Cognito can take a little while to catch up
    await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+
    
    // Verify signin page
    expect( await verifyOnLaunchPage( tester ), true );
