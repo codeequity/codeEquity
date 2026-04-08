@@ -50,6 +50,7 @@ Future<bool> togglePending( tester ) async {
 }
 
 Future<bool> popRegVenture( tester ) async {
+   print( "Pop reg venture" );
    final Finder reg = find.byKey( const Key( "Register with a Venture" ));
    expect( reg, findsOneWidget );
 
@@ -316,6 +317,7 @@ Future<bool> findSignatureSection( tester, String finder ) async {
 }
 
 Future<bool> registerVenture( tester, String cevName, {editing = false} ) async {
+   print( "Register Venture" );
    expect( find.text( 'Ventures & Projects' ), findsOneWidget );
 
    expect( await( toggleVnP( tester )), true );
@@ -333,6 +335,7 @@ Future<bool> registerVenture( tester, String cevName, {editing = false} ) async 
    final Finder choose = find.byKey( Key( keyName ));
    expect( choose, findsOneWidget );
    await tester.enterText( choose, cevName );
+   await tester.pumpAndSettle();
    
    final Finder select = find.byKey( const Key( "Select" ));
    expect( select, findsOneWidget );
@@ -357,6 +360,7 @@ Future<bool> registerVenture( tester, String cevName, {editing = false} ) async 
 
 Future<bool> verifyEquityInit( tester ) async {
    // Agreement should now be showing.  No connie, most ari
+   print( "Verify equity init" );
    final Finder doc = find.byKey( const Key( "Equity Agreement" ));
    expect( doc, findsOneWidget );
    expect( find.textContaining( getToday() ),                       findsNothing );
@@ -420,28 +424,56 @@ Future<bool> chooseTitle( tester, String atitle, {alreadyValid = false } ) async
    return true;
 }
 
-Future<bool> validateAriRegister( tester ) async {
+Future<bool> validateAriRegister( tester, { all = false } ) async {
 
-   expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
-   expect( await verifyEquityInit( tester ), true );
+   if( !all ) {
+      expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
+      expect( await verifyEquityInit( tester ), true );
+      
+      // Pick founder
+      expect( await chooseTitle( tester, "Founder" ), true );
+      
+      expect( await findSignatureSection( tester, "PartnerSignature" ), true );
+      
+      expect( await verifyPartnerSigEdit( tester ), true );
+      expect( await partnerSig( tester, "Ari Star" ), true );
+      
+      expect( await toggleVnP( tester ), true );
+      
+      // Toast shows here, hard to catch
+   }
+   else {
+      expect( await registerVenture( tester, CESE_VENT_NAME ), true );      
+      expect( await verifyEquityInit( tester ), true );
+      expect( await chooseTitle( tester, "Founder" ), true );
+      expect( await findSignatureSection( tester, "PartnerSignature" ), true );
+      expect( await verifyPartnerSigEdit( tester ), true );
+      expect( await partnerSig( tester, "Ari Star" ), true );
+      
+      expect( await registerVenture( tester, CEAL_VENT_NAME ), true );      
+      expect( await verifyEquityInit( tester ), true );
+      expect( await chooseTitle( tester, "Founder" ), true );
+      expect( await findSignatureSection( tester, "PartnerSignature" ), true );
+      expect( await verifyPartnerSigEdit( tester ), true );
+      expect( await partnerSig( tester, "Ari Star" ), true );
 
-   // Pick founder
-   expect( await chooseTitle( tester, "Founder" ), true );
+      expect( await registerVenture( tester, CE_VENT_NAME ), true );      
+      expect( await verifyEquityInit( tester ), true );
+      expect( await chooseTitle( tester, "Founder" ), true );
+      expect( await findSignatureSection( tester, "PartnerSignature" ), true );
+      expect( await verifyPartnerSigEdit( tester ), true );
+      expect( await partnerSig( tester, "Ari Star" ), true );
 
-   expect( await findSignatureSection( tester, "PartnerSignature" ), true );
+      expect( await toggleVnP( tester ), true );
+   }
 
-   expect( await verifyPartnerSigEdit( tester ), true );
-   expect( await partnerSig( tester, "Ari Star" ), true );
-
-   expect( await toggleVnP( tester ), true );
-   
-   // Toast shows here, hard to catch
    
    return true;
 }
 
 Future<bool> failAriRegister( tester ) async {
 
+   print( "Fail ari register" );
    expect( await registerVenture( tester, CEMD_VENT_NAME ), true );
    expect( await verifyEquityInit( tester ), true );
 
@@ -485,6 +517,21 @@ Future<bool> validateAriWithdraw( tester ) async {
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
    
+   expect( find.text( "Withdraw from which?" ), findsOneWidget );
+   final Finder ce  = find.byKey( const Key( "All of CodeEquity" ));
+   final Finder cev = find.byKey( const Key( "A specific CodeEquity Venture" ));
+   expect( ce, findsOneWidget );
+   expect( cev, findsOneWidget );
+
+   await tester.tap( ce );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   final Finder confirm = find.byKey( const Key( "Confirm" ) );
+   expect( confirm, findsOneWidget );
+   await tester.tap( confirm );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
    expect( find.text( "Withdraw from CodeEquity?" ), findsOneWidget );
    final Finder cont = find.byKey( const Key( "confirmContinue" ));
    final Finder dism = find.byKey( const Key( "cancelContinue" ));
@@ -636,7 +683,23 @@ Future<bool> partnerCleanSubmission( tester ) async {
 
 }
 
+// Only called during recovery, after clean submission
+Future<bool> partnerRegisterAll( tester ) async {
+   await login( tester, true );
+
+   // make sure start from scratch
+   expect( await verifyAriHome( tester ), true );
+   expect( await verifyActivityStart( tester, profile: "complete", privacy: "complete" ), true );
+   
+   expect( await validateAriRegister( tester, all: true ), true );
+
+   await logout( tester );
+   return true;
+
+}
+
 Future<bool> partnerDirtySubmission( tester ) async {
+   print( "Partner dirty submission" );
    await login( tester, true );
 
    // make sure start from scratch
@@ -809,19 +872,20 @@ void main() {
 
    // 
    // NOTE Run this last to leave Ari as a founder, else next set of ceServer tests will fail
+   // XXX  Connie Counter not yet complete - gap in onboarding prevents this (no equity plan yet)
    // 
-   print( "Basics" );
-   // testWidgets('Onboard basics', skip:true, (WidgetTester tester) async {
-   testWidgets('Onboard basics', skip:skip, (WidgetTester tester) async {
+   print( "Recover" );
+   // testWidgets('Onboard recover', skip:true, (WidgetTester tester) async {
+   testWidgets('Onboard recover', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          // This controls driver window size.  Driven window size is set on command line to flutter driver
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
          expect( await partnerCleanSubmission( tester ), true );
+         // expect( await partnerRegisterAll( tester ), true );
 
          await login( tester, true, tester2: true );
-         
          expect( await validateConCounter( tester ), true );
 
          await logout( tester );
@@ -831,7 +895,7 @@ void main() {
          expect( await verifyAriRegistered( tester ), true );
 
          await logout( tester );
-         report( 'Onboard basics' );
+         report( 'Onboard recover' );
       });
 
 }

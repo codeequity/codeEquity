@@ -136,8 +136,9 @@ class _EditFormState extends State<EditForm> {
 
 Future<void> editList( BuildContext context, appState, scrollHeader,
                        List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc, 
-                       { saveName: "Save", stepWidth: 40, headerWidth: -1, edit = false, subHeader = "" }) async {
-   edit = edit || scrollHeader.contains( "Edit" );
+                       { saveName: "Save", headerWidth: -1, subHeader = "" }) async {
+   double stepWidth = 40;
+   bool edit = scrollHeader.contains( "Edit" );
    assert( controllers.length == values.length );
    List<Widget> editVals = [];
    Widget c = Container( height: 1, width: appState.MID_PAD );
@@ -183,6 +184,90 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
                     actions: buttons);
               });
    // print( "Edit row finished" );
+}
+
+class EditList extends StatefulWidget {
+
+   final appState;
+   final scrollHeader;
+   final itemHeaders;
+   final values;
+   final saveFunc;
+   final cancelFunc;
+   final deleteFunc;
+   final saveName;
+   final saveArgs;
+   final headerWidth;
+   final subHeader;
+   // saveName, headerWidth, subHeader were optional args in the function form of this
+   EditList({ Key? key, this.appState, this.scrollHeader, this.itemHeaders, this.values, this.saveFunc, this.cancelFunc, this.deleteFunc,
+            this.saveName, this.saveArgs, this.headerWidth, this.subHeader }) : super( key: key );
+         
+   @override
+    _EditListState createState() => _EditListState();
+} 
+
+class _EditListState extends State<EditList> {
+
+   List<TextEditingController> controller = [];
+
+        @override
+        void initState() {
+           super.initState();
+        }
+           
+        @override
+        void dispose() {
+           controller.forEach( (c) => c.dispose() );
+           super.dispose();
+        }
+        
+        Widget build(BuildContext context) {
+           double stepWidth = 40;
+           bool edit = widget.scrollHeader.contains( "Edit" );
+           List<Widget> editVals = [];
+           Widget c = Container( height: 1, width: widget.appState.MID_PAD );
+           
+           for( int i = 0; i < widget.values.length; i++ ) {
+              controller.add( new TextEditingController() );
+              Widget text = makeInputField( widget.appState, widget.values[i], false, controller[i], keyName: "editRow " + widget.values[i], edit: edit);
+              Widget h = widget.headerWidth > 0 ?
+                         Container( width: widget.headerWidth, child: Text(widget.itemHeaders[i] )) :
+                         IntrinsicWidth( stepWidth: stepWidth, child: Text( widget.itemHeaders[i] ));
+              Widget w = IntrinsicWidth( child: text );
+              editVals.add(
+                 Row( 
+                    mainAxisSize: MainAxisSize.max,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [h, c, w, c] ) );
+           }
+           
+           Widget scrollBody = Column(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: editVals );
+
+           List<Widget> buttons = [];
+           buttons.add( new TextButton( key: Key( widget.saveName ), child: new Text( widget.saveName ),
+                                        onPressed: () => Function.apply( widget.saveFunc, [ ...widget.saveArgs, controller ] )));
+           
+           if( widget.deleteFunc != null ) {
+              buttons.add( new TextButton( key: Key( 'Delete' ), child: new Text("Delete"), onPressed: widget.deleteFunc ) );
+           }
+           
+           buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: widget.cancelFunc ));
+           
+           Widget title = widget.subHeader == "" ?
+                          new Text( widget.scrollHeader ) :
+                          Container( width: widget.headerWidth*3,
+                                     child: Wrap( direction: Axis.vertical,
+                                                  children: [new Text( widget.scrollHeader ), makeBodyText( widget.appState, widget.subHeader, widget.headerWidth*2.5, true, 4)] ));
+           return AlertDialog(
+              scrollable: true,
+              title: title,
+              content: scrollBody,
+              actions: buttons );
+        }
 }
 
 
