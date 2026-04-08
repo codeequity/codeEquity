@@ -75,6 +75,12 @@ class _CEEquityState extends State<CEEquityFrame> {
    // Keep size of headers for equity frame view.  This is used to mod indexes on the way in to equityPlan
    late int equityTop; 
 
+
+   // Class vars to allow disposal
+   TextEditingController? addTitle;
+   TextEditingController? addAmount;
+   TextEditingController? addHproj;
+   
    // Common spacers
    late Widget gapPad;
    late Widget fatPad;
@@ -88,6 +94,13 @@ class _CEEquityState extends State<CEEquityFrame> {
 
    @override
    void dispose() {
+
+      if( addTitle != null ) {
+         print( "\ndispose controllers" );
+         addTitle!.dispose(); 
+         addAmount!.dispose();
+         addHproj!.dispose();
+      }
       super.dispose();
 
       // NOTE This should be cheap.  If not, save state as with allocTree in summary_frame
@@ -96,15 +109,16 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
 
    
-   void _saveEdit( EquityTree t, titleController, amountController, hpNameController) async {
-      print( "Save edit " + titleController.text + " " + amountController.text + " " + hpNameController.text );
-
+   void _saveEdit( EquityTree t) async {
+      // print( "Save edit " + addTitle.text + " " + addAmount.text + " " + addHproj.text );
+      assert( addAmount != null );
+      
       // Do not allow if changing host project name away from a currently active host project.  Such changes should only be driven by the host.
       // Host project is active if it has peqs.  locs may exist without active peqs.
       // To see any details in equity plan, selectedCEVenture must be set.. selectedCEProject possibly is not.
       String cepId = appState.selectedCEProject;
       bool redFlag = false;
-      bool editHPN = t.getHostName() != hpNameController.text;
+      bool editHPN = t.getHostName() != addHproj!.text;
       if( editHPN && cepId == "" ) {
          showToast( "Please select a Code Equity project for this venture before attempting to edit a host project name" );
          redFlag = true;
@@ -124,16 +138,16 @@ class _CEEquityState extends State<CEEquityFrame> {
          }
       }
       
-      if( !redFlag && ( titleController.text != t.getTitle() || amountController.text != t.getAmount.toString() || editHPN ) )
+      if( !redFlag && ( addTitle!.text != t.getTitle() || addAmount!.text != t.getAmount.toString() || editHPN ) )
       {
          print( "Change detected " );
-         String title = titleController.text;
+         String title = addTitle!.text;
          if( title == "" ) { title = "NOT YET NAMED"; }
          t.setTitle( title );
-         String amt = amountController.text.replaceAll( ',', "" );
+         String amt = addAmount!.text.replaceAll( ',', "" );
          if( amt == "" ) { amt = "0"; }
          t.setAmount( int.parse( amt ));
-         String hpName = hpNameController.text;
+         String hpName = addHproj!.text;
          if( hpName == "" ) { hpName = "NO PROJECT ASSOCIATION"; }
          t.setHostName( hpName );
          print( "... se: " + t.getTitle() + " HOI " + t.getHostName() );
@@ -160,30 +174,35 @@ class _CEEquityState extends State<CEEquityFrame> {
       Navigator.of( context ).pop();
    }
 
-   void _saveAdd( EquityTree tot, TextEditingController title, TextEditingController amount, TextEditingController hproj) {
+   void _saveAdd( EquityTree tot ) {
       final width = frameMinWidth - 2*appState.FAT_PAD;
 
-      // print( "SAVE ADD " + title.text + " " + title.value.toString() );
+      // print( "SAVE ADD " + title.text + " " + addTitle.value.toString() );
 
-      String tval = title.text == "" ? "NOT YET NAMED" : title.text;
-      String hval = hproj.text == "" ? "---" : hproj.text;
-      String amt  = amount.text.replaceAll( ',', "" );
+      assert( addTitle != null );
+      String tval = addTitle!.text == "" ? "NOT YET NAMED" : addTitle!.text;
+      String hval = addHproj!.text == "" ? "---" : addHproj!.text;
+      String amt  = addAmount!.text.replaceAll( ',', "" );
       int amtInt  = amt == "" ? 0 : int.parse( amt );
       
       EquityTree t = EquityLeaf( tval, amtInt, hval, tot, width );
       (tot as EquityNode).addLeaf( t );
-      
+
       setState(() => appState.updateEquityView = true );                  
 
       Navigator.of( context ).pop();
    }
    
    Future<void> _add( EquityTree tot) async {
-      TextEditingController tc = new TextEditingController();
-      TextEditingController ac = new TextEditingController();
-      TextEditingController hp = new TextEditingController();
+      if( addTitle == null ) {
+         print( "\nRebuild controllers" );
+         addTitle  = new TextEditingController();
+         addAmount = new TextEditingController();
+         addHproj  = new TextEditingController();
+      }
+      
       String popupTitle = "Add new entry";      
-      await editList( context, appState, popupTitle, lhInternal, [tc, ac, hp], lhInternal, () => _saveAdd( tot, tc, ac, hp ), () => _cancelEdit(), null );
+      await editList( context, appState, popupTitle, lhInternal, [addTitle!, addAmount!, addHproj!], lhInternal, () => _saveAdd( tot ), () => _cancelEdit(), null );
    }
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
@@ -280,11 +299,14 @@ class _CEEquityState extends State<CEEquityFrame> {
                String title = t.getTitle();
                String amt   = t.getAmount().toString();
                String hproj = t.getHostName();
-               TextEditingController tc = new TextEditingController();
-               TextEditingController ac = new TextEditingController();
-               TextEditingController hp = new TextEditingController();
+               if( addTitle == null ) {
+                  print( "\nRebuild controllers" );
+                  addTitle  = new TextEditingController();
+                  addAmount = new TextEditingController();
+                  addHproj  = new TextEditingController();
+               }
                String popupTitle = "Edit existing entry";
-               editList( context, appState, popupTitle, lhInternal, [tc, ac, hp], [title, amt, hproj], () => _saveEdit( t, tc, ac, hp ), () => _cancelEdit(), () => _delete(t) );
+               editList( context, appState, popupTitle, lhInternal, [addTitle!, addAmount!, addHproj!], [title, amt, hproj], () => _saveEdit( t ), () => _cancelEdit(), () => _delete(t) );
             },
             key: Key( 'catEditable ' + treeIndex.toString() ),
             child: makeClickTableText( appState, t.getTitle(), _setTitle, _unsetTitle, width, false, 1, mux: (depth+1) * .5 )
@@ -551,7 +573,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       fatPad    = Container( width: appState.FAT_PAD, height: 1 );
       midPad    = Container( width: appState.MID_PAD, height: 1 );
       empty = Container( width: 1, height: 1 );
-
+      
       if( appState.verbose >= 4 ) { print( "EQUITY BUILD. " + (appState == Null).toString()); }
       
       // Set this here to update view if minimized, then recovered.

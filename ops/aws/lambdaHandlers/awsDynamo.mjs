@@ -561,7 +561,7 @@ async function putPerson( newPerson ) {
 	    "Locked":         newPerson.locked,
 	    "ImagePng":       newPerson.imagePng,
             "Registered":     newPerson.registered,
-            "AcceptedDocs":   newPerson.acceptedDocs
+            "UserDocs":       newPerson.userDocs
 	}
     };
     const putCmd = new PutCommand( params );

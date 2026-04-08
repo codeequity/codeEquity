@@ -151,8 +151,37 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	else {
 	    console.log( authData.who, "carded issue with status -> peq issue" );
 	    // link can still be -1 if issue was created on GH with project, then moved, before label or create notices arrive
+	    // XXX card can be created in column that should be unreachable yet - do not accept as OK.
 	    // link can also be -1 if issue created on GH with project, then carded.  notification sequence can be label move create
-	    if( link === -1 ) { link = {}; }
+	    if( link === -1 ) {
+
+		// GH already created card.  Is it good?
+		// XXX Expensive.
+		let newNameIndex = config.PROJ_COLS.indexOf( card.columnName );	    
+		if( newNameIndex >= config.PROJ_PEND ) {
+		    let assignees = await ghV2.getAssignees( authData, pd.issueId );
+		    if( assignees.length == 0 ) {
+			console.log( authData.who, "Race condition discovered.  Card was created on host before issue creation finished, and is improper." );
+			let msg = "WARNING. " + card.columnName + " is reserved, can not create cards here. Leaving card in " + config.PROJ_COLS[config.PROJ_PLAN];
+
+   			// MUST await here to avoid possible race condition
+			let rejectLoc = -1;
+			const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": card.pid } );		    
+			for( const aloc of locs ) {
+			    if( aloc.hostColumnName == config.PROJ_COLS[config.PROJ_PLAN] ) {
+				rejectLoc = { ...aloc };  
+				break;
+			    }
+			}
+
+			// Reject, then relocate card.  This could be cheaper, but is a rare case.
+			await ingestUtils.rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, true );
+			card = await ghV2.getCardFromIssue( authData, pd.issueId );
+		    }
+		}
+		
+		link = {};
+	    }
 	}
 
 	assert( pd.issueNum >= 0 );

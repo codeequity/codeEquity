@@ -48,10 +48,10 @@ class _aBox {
 
 }
 
-class AcceptedDoc {
+class UserDoc {
    DocType      docType;  
    String       docId;
-   String       acceptedDate;  // the date that 'Accept' was pressed
+   String       acceptedDate;  // the date that 'Accept' was pressed, or for multi-state docs like equity agreement, this is basically 'lastMod'.
 
    
    // Equity agreement.  Only fully valid agreements store these values.
@@ -64,7 +64,7 @@ class AcceptedDoc {
    List<_aBox>? boxes;          //  TRANSIENT do not store
 
    
-   AcceptedDoc( {required this.docType, required this.docId, required this.acceptedDate, required this.equityVals } ) {
+   UserDoc( {required this.docType, required this.docId, required this.acceptedDate, required this.equityVals } ) {
 
       if( docType == DocType.privacy ) { equityVals = {}; }
       else if( docType == DocType.equity ) {
@@ -105,8 +105,8 @@ class AcceptedDoc {
             box.radioTitle  = "Partner's Title";
          
             // NOTE radioTitle will not be passed to the radio dialog as a selectable option.  It is used to help determine which hybrid option the user chose
-            box.rchoices    = [ box.radioTitle!, "Collaborator", "Founder"];            // XXX formalize.
-            box.rInitChoice = useCurrent ? equityVals["PartnerTitle"] : "Collaborator";
+            box.rchoices    = [ box.radioTitle!, "Contributor", "Founder"];            // XXX formalize.
+            box.rInitChoice = useCurrent ? equityVals["PartnerTitle"] : "Contributor";
 
             boxes!.add( box );
          }
@@ -210,17 +210,19 @@ class AcceptedDoc {
 
    String checkExecuted( Person approver, Person applicant, CEVenture cev ) {
       String failures = "";
-
+      assert( equityVals["ExecutiveSignature"] != null );
+      assert( equityVals["PartnerSignature"] != null );
+      
       if( equityVals["VentureName"] != cev.name ) { failures += "\n   Venture name error: " + (equityVals["VentureName"] ?? "") + " vs " + cev.name; }
       if( equityVals["VentureId"]   != cev.ceVentureId ) { failures += "\n   Venture id error: " + (equityVals["VentureId"] ?? "") + " vs " + cev.ceVentureId; }
       if( equityVals["VentureWebsite"] == "" ) { failures += "\n   Venture website is blank."; }
       if( equityVals["OutstandingShares"] == "" ) { failures += "\n   Outstanding shares is blank."; }
       if( equityVals["ExecutiveName"] != approver.legalName ) { failures += "\n   Executive name error: " + (equityVals["ExecutiveName"] ?? "") + " vs " + approver.legalName; }
-      if( equityVals["ExecutiveSignature"] != approver.legalName ) { failures += "\n   Executive signature."; }
+      if( equityVals["ExecutiveSignature"]!.toLowerCase() != approver.legalName.toLowerCase() ) { failures += "\n   Executive signature."; }
       if( equityVals["ExecutiveEmail"] == ""  ) { failures += "\n   Executive email is blank."; }
       if( equityVals["ExecutivePhone"] == "" ) { failures += "\n   Executive phone is blank."; }
       if( equityVals["PartnerName"] != applicant.legalName ) { failures += "\n   Partner name error: " + (equityVals["PartnerName"] ?? "") + " vs " + applicant.legalName; }
-      if( equityVals["PartnerSignature"] != applicant.legalName ) { failures += "\n   Partner signature."; }
+      if( equityVals["PartnerSignature"]!.toLowerCase() != applicant.legalName.toLowerCase() ) { failures += "\n   Partner signature."; }
       if( equityVals["PartnerEmail"] == ""  ) { failures += "\n   Partner email is blank."; }
       if( equityVals["PartnerPhone"] == "" ) { failures += "\n   Partner phone is blank."; }
 
@@ -231,10 +233,12 @@ class AcceptedDoc {
    
    // Stored edits
    bool validExecSig() {
-      return (equityVals["ExecutiveSignature"] == equityVals["ExecutiveName"]) && equityVals["ExecutiveSignature"] != "";
+      assert( equityVals["ExecutiveSignature"] != null && equityVals["ExecutiveName"] != null );
+      return (equityVals["ExecutiveSignature"]!.toLowerCase() == equityVals["ExecutiveName"]!.toLowerCase()) && equityVals["ExecutiveSignature"] != "";
    }
    bool validPartnerSig() {
-      return (equityVals["PartnerSignature"] == equityVals["PartnerName"]) && equityVals["PartnerSignature"] != "" ;
+      assert( equityVals["PartnerSignature"] != null && equityVals["PartnerName"] != null );
+      return (equityVals["PartnerSignature"]!.toLowerCase() == equityVals["PartnerName"]!.toLowerCase()) && equityVals["PartnerSignature"] != "" ;
    }
    
    // Current edits possibly to be stored
@@ -245,12 +249,12 @@ class AcceptedDoc {
       if( isApplicant ) {
          // These are current edits, not stored values
          assert( edits["ExecutiveSignature"] == null );
-         if( edits["PartnerSignature"] != null && edits["PartnerSignature"] != sigHint && edits["PartnerSignature"] != cePeep.legalName ) { valid = false; }
+         if( edits["PartnerSignature"] != null && edits["PartnerSignature"] != sigHint && edits["PartnerSignature"]!.toLowerCase() != cePeep.legalName.toLowerCase() ) { valid = false; }
       }
       else {
          // approver gets doc after partner signature.  Should be no edits here.
          assert( edits["PartnerSignature"] == null );
-         if( edits["ExecutiveSignature"] != sigHint && edits["ExecutiveSignature"] != cePeep.legalName ) { valid = false; }
+         if( edits["ExecutiveSignature"] != null && edits["ExecutiveSignature"] != sigHint && edits["ExecutiveSignature"]!.toLowerCase() != cePeep.legalName.toLowerCase() ) { valid = false; }
       }
       
       return valid;
@@ -258,13 +262,14 @@ class AcceptedDoc {
 
    // If required blanks have been filled in, add id to CEV applicants.
    void submitIfReady( CEVenture cev, Person cePeep ) {
-      // PartnerB
-      if( equityVals["EffectiveDate"]    != ""               &&   // XXX better date checking pls
-          equityVals["PartnerSignature"] == cePeep.legalName &&
-          equityVals["PartnerPhone"]     != "" ) {                // XXX better phone checking pls
-         
+      assert( equityVals["PartnerSignature"] != null );
+      if( equityVals["EffectiveDate"]    == ""                                            && // XXX better date checking pls
+          equityVals["PartnerSignature"]!.toLowerCase() == cePeep.legalName.toLowerCase() &&
+          equityVals["PartnerPhone"]     != "" ) {                                           // XXX better phone checking pls
+
+         cev.addApplicant( cePeep );
+
       }
-      cev.addApplicant( cePeep );
    }
    
    dynamic toJson() {
@@ -276,8 +281,8 @@ class AcceptedDoc {
       return { 'docType': enumToStr( docType ), 'docId': docId, 'acceptedDate': acceptedDate, 'equityVals': equityVals };
    }
    
-   factory AcceptedDoc.empty() {
-      return AcceptedDoc( 
+   factory UserDoc.empty() {
+      return UserDoc( 
          docType:      DocType.end,
          docId:        "", 
          acceptedDate: "",
@@ -285,7 +290,7 @@ class AcceptedDoc {
          );
    }
    
-   factory AcceptedDoc.fromJson(Map<String, dynamic> json) {
+   factory UserDoc.fromJson(Map<String, dynamic> json) {
       var dynamicVals = json['equityVals'];  
 
       Map<String, String> vals = {};
@@ -295,7 +300,7 @@ class AcceptedDoc {
             });
       }
       
-      return AcceptedDoc(
+      return UserDoc(
          docType:      enumFromStr<DocType>( json['docType'] ?? "end", DocType.values ),
          docId:        json['docId'] ?? "",
          acceptedDate: json['acceptedDate'] ?? "",
@@ -303,9 +308,9 @@ class AcceptedDoc {
          );
    }
 
-   factory AcceptedDoc.from(p) {
+   factory UserDoc.from(p) {
 
-      return AcceptedDoc(
+      return UserDoc(
          docType:      p.docType,
          docId:        p.docId,
          acceptedDate: p.acceptedDate,

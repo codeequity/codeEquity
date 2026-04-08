@@ -318,15 +318,14 @@ String ceUIDFromHost( appState, String hostUID ) {
 
 
 
+void editProfile( context, container, Person cePeep, {void Function()? updateCallback} ) async {
 
-void editProfile( context, container, Person cePeep, double width, {void Function()? updateCallback} ) async {
-   
    void _cancelEdit( context ) {
       print( "Cancel update profile" );
       Navigator.of( context ).pop();
    }
    
-   void _saveProfile( context, container, Person cePeep, List<TextEditingController> controller, updateCallback) {
+   void _saveProfile( List<TextEditingController> controller ) {
       final appState  = container.state;      
       // Note: userName assigned during signup, can not change.
       // Note: email assigned during signup, this can change.
@@ -358,20 +357,31 @@ void editProfile( context, container, Person cePeep, double width, {void Functio
    List<bool>   required                  = cePeep.getRequired();
    List<String> curVal                    = cePeep.getCurVal();
    List<String> toolTip                   = cePeep.getToolTip();
-   List<TextEditingController> controller = [];
 
    assert( header.length == required.length );
    assert( header.length == curVal.length );
    assert( header.length == toolTip.length );
-   header.forEach( (h) => controller.add( new TextEditingController() ) );
-
-   final appState = container.state;
-   String popupTitle = "Edit " + cePeep.userName + "'s Profile";      
-   await editForm( context, appState, popupTitle, header, controller, curVal, required, toolTip,
-                   () => _saveProfile( context, container, cePeep, controller, updateCallback), () => _cancelEdit( context ) );
-}
    
+   final appState = container.state;
+   String popupTitle = "Edit " + cePeep.userName + "'s Profile";
 
+   // This construction allows editForm to return a widget that we apply here.
+   await showDialog(
+      context: context,
+      builder: (BuildContext context) => EditForm( appState: appState, scrollHeader: popupTitle, header: header, curVal: curVal,
+                                                   required: required, toolTip: toolTip, saveFunc: _saveProfile, cancelFunc: _cancelEdit ));
+}
+
+Future<String> editList2( context, appState, scrollHeader, itemHeaders, values, saveFunc, cancelFunc, deleteFunc,
+                { saveName: "Save", saveArgs: const [], headerWidth: -1, subHeader = "" } ) async {
+   // This construction allows editForm to return a widget that we apply here.
+   var retVal = await showDialog(
+      context: context,
+      builder: (BuildContext context) => EditList( appState: appState, scrollHeader: scrollHeader, itemHeaders: itemHeaders, values: values,
+                                                   saveFunc: saveFunc, cancelFunc: cancelFunc, deleteFunc: deleteFunc,
+                                                   saveName: saveName, saveArgs: saveArgs, headerWidth: headerWidth, subHeader: subHeader ));
+   return (retVal ?? "");
+}
 
 
 // Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.

@@ -587,7 +587,7 @@ class _CEProfileState extends State<CEProfilePage> {
      final loggedInUserId   = appState.ceUserId;
      
      Widget _makeSetRole( CEVenture cev, String ceUserId, String loggedInUserId, MemberRole role ) {
-        assert( cev.roles[ceUserId] != null );
+        // assert( cev.roles[ceUserId] != null );
 
         // Does logged in user does have permission to set role?
         bool canSet = false;
@@ -614,6 +614,8 @@ class _CEProfileState extends State<CEProfilePage> {
            }
         }
 
+        String kCheck   = ceUserId + enumToStr( role ) + "Check";
+        String kNoCheck = ceUserId + enumToStr( role ) + "NoCheck";
         return GestureDetector (
            onTap: () async
            {
@@ -625,8 +627,8 @@ class _CEProfileState extends State<CEProfilePage> {
               else         { showToast( failMsg ); }
            },
            child: cev.roles[ceUserId] == role ?
-           Container( width: 0.7 * width, child: Wrap( spacing: 0, children: [ lspace, Icon( Icons.check_circle_outline, color: Colors.green ), rspace ] )) : 
-           Container( width: 0.7 * width, child: Wrap( spacing: 0, children: [ lspace, Icon( Icons.circle_outlined, color: Colors.black ), rspace ] ))
+           Container( width: 0.7 * width, child: Wrap( spacing: 0, children: [ lspace, Icon( Icons.check_circle_outline, key: Key( kCheck ), color: Colors.green ), rspace ] )) : 
+           Container( width: 0.7 * width, child: Wrap( spacing: 0, children: [ lspace, Icon( Icons.circle_outlined, key: Key( kNoCheck), color: Colors.black ), rspace ] ))
            );
      }
      
@@ -1062,7 +1064,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
                  itsMe ? 
                  Wrap( children: [ Container( width: appState.GAP_PAD ),
-                                   makeActionButtonFixed( appState, 'Edit profile', lhsFrameMaxWidth / 3.0, () => editProfile( context, container, cePeep, rhsFrameMaxWidth )),
+                                   makeActionButtonFixed( appState, 'Edit profile', lhsFrameMaxWidth / 3.0, () => editProfile( context, container, cePeep )),
                                    makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 3.0, () async {
                                          MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
                                          confirmedNav( context, container, newPage );

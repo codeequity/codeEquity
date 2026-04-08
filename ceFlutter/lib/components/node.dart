@@ -282,9 +282,12 @@ class Node extends StatelessWidget implements Tree {
      return Container(
         width: width,
         height: height,
+        // color: Colors.transparent,
         child: ListTileTheme(
            dense: true,
-           child: ExpansionTile(
+           child: Material(
+         type: MaterialType.transparency,
+         child:  ExpansionTile(
               // children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
               trailing: Icon( _tileExpanded ? Icons.arrow_drop_down_circle : Icons.arrow_drop_down ),
               title: makeTableText( appState!, "$title", width, height, false, 1, mux: currentDepth * .5 ),
@@ -297,7 +300,7 @@ class Node extends StatelessWidget implements Tree {
                           expansion( expanded, path );
                        });
                  })
-              )));
+            ))));
 
   }
   

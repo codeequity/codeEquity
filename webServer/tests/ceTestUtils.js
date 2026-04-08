@@ -8,7 +8,7 @@ import * as awsUtils from '../utils/awsUtils.js';
 import circBuff from '../components/circBuff.js';
 
 const MIN_DELAY       = 1800;     
-const CE_DELAY_MAX    = 8;
+const CE_DELAY_MAX    = 9;
 var CETestDelayCounts = {};
 var CE_Notes          = new circBuff( config.NOTICE_BUFFER_SIZE );
 

@@ -122,12 +122,14 @@ class Leaf extends StatelessWidget implements Tree {
      return Container(
         width: width,
         height: height,
-        //child: details
-        child: ListTile(
-           title: details,
-           // trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
-           dense: true
-           )
+        // color: Colors.transparent,
+        child: Material(
+           type: MaterialType.transparency,
+           child: ListTile(
+              title: details,
+              // trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
+              dense: true
+              ))
         );
   }
 

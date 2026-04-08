@@ -75,7 +75,7 @@ class _CESearchState extends State<CESearch> {
       return options;
    }
 
-   ListTile _makeLT( context, appState, controller, options, index ) {
+   Material _makeLT( context, appState, controller, options, index ) {
       final textWidth = appState.screenWidth * .4;
       final obj       = options[index];
 
@@ -109,51 +109,53 @@ class _CESearchState extends State<CESearch> {
       final Widget item = makeTitleText( appState, objName, textWidth, false, 1 );
       final Widget sub  = makeTableText( appState, objDetail, textWidth, appState.CELL_HEIGHT, false, 1, fontSize: 12 ); 
       
-      return ListTile(
-         dense: true,
-         minVerticalPadding: appState.TINY_PAD / 3.0,
-         title: item,
-         subtitle: sub,
-         onTap: ()
-         {
-            MaterialPageRoute? newPage = null;
-            Map<String,String> screenArgs        = {};
-            Map<String,dynamic> screenArgsDetail = {};
-
-            // without this, when click into search object, then minimize browser, bad things happen upon re-open browser
-            setState(() { controller.closeView(objName); });
-            
-            if( obj is PEQ ) {
-               List<String> holders = (obj as PEQ).hostHolderId;
-               appState.selectedHostUID = ( holders.length > 0 ) ? holders[0] : appState.UNASSIGN_USER;
-               List<String> cat = new List<String>.from( (obj as PEQ).hostProjectSub );
-               cat.add( appState.selectedHostUID );
-               screenArgsDetail["cat"] = cat;
-               screenArgsDetail["id"]  = (obj as PEQ).ceProjectId;
-               appState.userPActUpdate = true;
-               newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: screenArgsDetail ));
-            }
-            else if( obj is Person )   {
-               screenArgs["id"] = (obj as Person).id;
-               screenArgs["profType"] = "Person" ;
-               newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-            }
-            else if( obj is CEVenture) {
-               screenArgs["id"] = (obj as CEVenture).ceVentureId;
-               screenArgs["profType"] = "CEVenture";
-               newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-            }
-            else if( obj is CEProject) {
-               screenArgs["id"] = (obj as CEProject).ceProjectId;
-               screenArgs["profType"] = "CEProject";
-               newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-            }
-            else {
-               print( "Error.  Search object is not recognized. " );
-               assert( false );
-            }
-            confirmedNav( context, container, newPage! );
-         });
+      return Material(
+         type: MaterialType.transparency,
+         child:  ListTile(
+            dense: true,
+            minVerticalPadding: appState.TINY_PAD / 3.0,
+            title: item,
+            subtitle: sub,
+            onTap: ()
+            {
+               MaterialPageRoute? newPage = null;
+               Map<String,String> screenArgs        = {};
+               Map<String,dynamic> screenArgsDetail = {};
+               
+               // without this, when click into search object, then minimize browser, bad things happen upon re-open browser
+               setState(() { controller.closeView(objName); });
+               
+               if( obj is PEQ ) {
+                  List<String> holders = (obj as PEQ).hostHolderId;
+                  appState.selectedHostUID = ( holders.length > 0 ) ? holders[0] : appState.UNASSIGN_USER;
+                  List<String> cat = new List<String>.from( (obj as PEQ).hostProjectSub );
+                  cat.add( appState.selectedHostUID );
+                  screenArgsDetail["cat"] = cat;
+                  screenArgsDetail["id"]  = (obj as PEQ).ceProjectId;
+                  appState.userPActUpdate = true;
+                  newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: screenArgsDetail ));
+               }
+               else if( obj is Person )   {
+                  screenArgs["id"] = (obj as Person).id;
+                  screenArgs["profType"] = "Person" ;
+                  newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+               }
+               else if( obj is CEVenture) {
+                  screenArgs["id"] = (obj as CEVenture).ceVentureId;
+                  screenArgs["profType"] = "CEVenture";
+                  newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+               }
+               else if( obj is CEProject) {
+                  screenArgs["id"] = (obj as CEProject).ceProjectId;
+                  screenArgs["profType"] = "CEProject";
+                  newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+               }
+               else {
+                  print( "Error.  Search object is not recognized. " );
+                  assert( false );
+               }
+               confirmedNav( context, container, newPage! );
+            }));
    }
 
    @override
@@ -202,7 +204,7 @@ class _CESearchState extends State<CESearch> {
 
                if (options == null) { return _lastOptions; }
 
-               _lastOptions = List<ListTile>.generate(options.length, (int index) { return _makeLT( context, appState, controller, options, index );  });
+               _lastOptions = List<Material>.generate(options.length, (int index) { return _makeLT( context, appState, controller, options, index );  });
 
                return _lastOptions;
             });

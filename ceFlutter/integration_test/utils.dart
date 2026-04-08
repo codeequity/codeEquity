@@ -18,6 +18,7 @@ import 'package:ceFlutter/app_state_container.dart';
 const CESERVER_ENDPOINT = "http://127.0.0.1:3000/ceServer/ceMD";
    
 const TESTER_NAME   = "ariTester";
+const TESTER_ID     = "eaeIqcqqdp";
 const TESTER2_NAME  = "connieTester";     // READ ONLY account for these tests
 const TESTER_PASSWD = "passWD123";
 
@@ -158,6 +159,36 @@ Future<bool> checkVisNode( WidgetTester tester, String keyName, bool visVal ) as
 
    return true;
 }
+
+Future<bool> goHome(  WidgetTester tester ) async {
+
+   final Finder home = find.byIcon( customIcons.home_here );
+   try { expect( home, findsOneWidget ); }
+   catch (e) {
+      final Finder goHome = find.byIcon( customIcons.home );
+      expect( goHome, findsOneWidget );
+      await tester.tap( goHome );
+      await pumpSettle( tester, 2, verbose: true );
+      await pumpSettle( tester, 2, verbose: true );    
+   }
+   return true;
+}
+
+// go home first, might be in proj profile
+Future<bool> goAri(  WidgetTester tester ) async {
+   await goHome( tester );
+
+   expect( find.byIcon( customIcons.profile ),  findsOneWidget );
+   await tester.tap( find.byIcon( customIcons.profile ));
+   await pumpSettle( tester, 2, verbose: true );    
+   await pumpSettle( tester, 2, verbose: true );
+   await pumpSettle( tester, 2, verbose: true );
+   
+   Finder txt = find.text( 'Ari Star (Ari)' );
+   expect( txt, findsOneWidget );
+   return true;
+}
+
 
 Future<bool> verifyOnLaunchPage( WidgetTester tester ) async {
    expect( find.byKey( const Key( 'Login' )),                 findsOneWidget );
@@ -587,9 +618,7 @@ void report( descr, {group = false} ) {
 
 Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
 
-   print( "IN LOGIN" );
    await pumpSettle(tester, 2);
-   print( "AFTER PUMP" );
    expect( await verifyOnLaunchPage( tester ), true );
 
    final Finder loginButton = find.byKey(const Key( 'Login' ));
@@ -622,11 +651,8 @@ Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
    
    // Login, jump to homepage
    await tester.tap( login2Button );
-   print( "first pump" );
    await tester.pumpAndSettle(); // for auth
-   print( "second pump" );
    await tester.pumpAndSettle(); // for .. toast?
-   print( "third pump" );
    await pumpSettle(tester, 5); // for aws
    await pumpSettle(tester, 2);
    await pumpSettle(tester, 1); // Ugggg debug cognito is soooooo slow
@@ -682,7 +708,11 @@ Future<bool> logout( WidgetTester tester ) async {
    }
    
    await tester.tap( logoutButton );
+   // Cognito can take a little while to catch up
    await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 2 );
+
    
    // Verify signin page
    expect( await verifyOnLaunchPage( tester ), true );

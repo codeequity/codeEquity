@@ -193,7 +193,8 @@ String getFromNode( Widget elt ) {
    String retVal = "";
    if( elt is Container && elt.child is ListTileTheme ) {
       var listTile  = elt.child as ListTileTheme;
-      var expansion = listTile.child as ExpansionTile;
+      var material  = listTile.child as Material;
+      var expansion = material.child as ExpansionTile;
 
       retVal        = getFromMakeTableText( expansion.title );
    }
@@ -203,8 +204,9 @@ String getFromNode( Widget elt ) {
 // from Node, then _pactDetail
 String getFromLeaf( Widget elt ) {
    String retVal = "";
-   if( elt is Container && elt.child is ListTile ) {
-      var listTile  = elt.child as ListTile;
+   if( elt is Container && elt.child is Material ) {
+      var material  = elt.child as Material;
+      var listTile  = material.child as ListTile;
       var gd        = listTile.title as GestureDetector;
 
       retVal        = getFromMakeTableText( gd.child ?? gd );
@@ -215,8 +217,9 @@ String getFromLeaf( Widget elt ) {
 // from Node, then _pactDetail
 Finder getGDFromLeaf( Widget elt ) {
    Finder retVal = find.byKey( Key( "ThisWillNeverBeFoundDuuuuude" ));
-   if( elt is Container && elt.child is ListTile ) {
-      var listTile       = elt.child as ListTile;
+   if( elt is Container && elt.child is Material ) {
+      var material       = elt.child as Material;
+      var listTile       = material.child as ListTile;
       GestureDetector gd = listTile.title as GestureDetector;
       retVal             = find.byWidget( gd );
    }
@@ -229,7 +232,8 @@ Finder findArrow( Widget elt ) {
    // If elt.child is listTile instead, currently looking at a leaf
    if( elt is Container && elt.child is ListTileTheme ) {
       var listTile  = elt.child as ListTileTheme;
-      var expansion = listTile.child as ExpansionTile;
+      var material  = listTile.child as Material;      
+      var expansion = material.child as ExpansionTile;
       var arrow     = expansion.trailing as Icon;
       retVal        = find.byWidget( arrow );
    }

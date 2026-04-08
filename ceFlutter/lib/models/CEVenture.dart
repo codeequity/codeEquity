@@ -75,9 +75,15 @@ class CEVenture {
    }
 
    // Peep is withdrawing.  remove roles, applications.
-   void drop( Person cePeep ) {
-      applicants.remove( cePeep.id );
-      roles.remove( cePeep.id );
+   bool drop( Person cePeep ) {
+      bool ret = false;
+      ret = applicants.remove( cePeep.id );
+
+      final v = roles.remove( cePeep.id );
+      ret = v == null ? ret : true;
+         
+      if( ret ) { print( "Dropping " + cePeep.id ); }
+      return ret;
    }
    
    bool hasApplicant( String pid ) { return applicants.contains( pid ); }

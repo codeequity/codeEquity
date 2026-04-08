@@ -19,7 +19,7 @@ import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/Person.dart';
-import 'package:ceFlutter/models/AcceptedDoc.dart';
+import 'package:ceFlutter/models/UserDoc.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 
 import 'package:ceFlutter/screens/add_host_page.dart';
@@ -58,7 +58,7 @@ class _CEHomeState extends State<CEHomePage> {
    late bool updateView;
 
    final ScrollController _scrollController = ScrollController();
-   late AcceptedDoc scrollDoc;
+   late UserDoc scrollDoc;
    late Person      applicant;
    late Person      approver;
    late CEVenture   targCEV;
@@ -479,30 +479,72 @@ class _CEHomeState extends State<CEHomePage> {
       showToast( "Applicant removed from " + targCEV.name);
    }
 
-   void _withdraw( Person cePeep ) async {
-      String msg = "This action will end your participation in CodeEquity and any CodeEquity Ventures.\n All Provisional Equity that hasn't vested already will be terminated.\n";
-      msg       += "Press \'Continue\' to withdraw.";
-      String ret = await confirm( context, "Withdraw from CodeEquity?", msg, _noop, _cancel );
+   void _withdrawChoice( Person cePeep ) async {
 
-      if( ret == "noop" ) {
+      List<String> choices = [ "A specific CodeEquity Venture", "All of CodeEquity" ]; // XXX formalize
+      await radioDialog( context, "Withdraw from which?", choices, choices[0], _withdraw, _cancel, execArgs: [ cePeep ] );
+   }
 
-         List<CEVenture> cevs = cePeep.getCEVs( appState.ceVenture );
-         cePeep.withdraw();
-         logout( context, appState );
-
-         for( CEVenture cev in cevs ) {
-            cev.drop( cePeep );
-
-            // Don't wait
-            String cevs = json.encode( cev );
+   // XXX simplify
+   void _withdraw( Person cePeep, String choice ) async {
+      if( choice == "All of CodeEquity" ) {
+         String msg = "This action will end your participation in CodeEquity and any CodeEquity Ventures.\n All Provisional Equity that hasn't vested already will be terminated.\n";
+         msg       += "Press \'Continue\' to withdraw.";
+         String ret = await confirm( context, "Withdraw from CodeEquity?", msg, _noop, _cancel );
+         
+         print( "WITHDRAW CE" );
+         if( ret == "noop" ) {
+            
+            // This is insufficient.  In error conditions, a CEV can hold a cePeep while the cePeep does not see the CEV.  Then subsequent onboarding fails.
+            // List<CEVenture> cevs = cePeep.getCEVs( appState.ceVenture );
+            cePeep.withdraw();
+            logout( context, appState );
+            
+            appState.ceVenture.values.forEach( (cev) {
+                  bool found = cev.drop( cePeep );
+                  
+                  // Don't wait
+                  if( found ) {
+                     print( "WITHDRAW from " + cev.name + " " +cePeep.id );
+                     String cevs = json.encode( cev );
+                     String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+                     updateDynamo( context, container, ppostData, "UpdateCEV" );
+                  }
+               });
+            
+            // don't await
+            String user = json.encode( cePeep );
+            String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
+            updateDynamo( context, container, ppostData, "PutPerson" );
+         }
+      }
+      else {
+         String cevId = await _selectVenture( "Select the CodeEquity Venture to withdraw from" );
+         if( cevId == "Cancel" ) {
+            _cancel();
+            return;
+         }
+         String msg = "This action will end your participation in this Venture.\n All Provisional Equity in this Venture that hasn't vested already will be terminated.\n";
+         msg       += "Press \'Continue\' to withdraw.";
+         String ret = await confirm( context, "Withdraw from Venture?", msg, _noop, _cancel );
+         if( ret == "Cancel" ) {
+            return;
+         }
+         
+         print( "WITHDRAW Vent " + cevId );
+         if( ret == "noop" ) {
+            
+            CEVenture? cev = appState.ceVenture[ cevId ];
+            assert( cev != null );
+            cev!.drop( cePeep );
+            
+            // don't await
+            String cevs = json.encode( cev! );
             String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
             updateDynamo( context, container, ppostData, "UpdateCEV" );
          }
-            
-         // don't await
-         String user = json.encode( cePeep );
-         String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
-         updateDynamo( context, container, ppostData, "PutPerson" );
+         // select screen
+         Navigator.of( context ).pop();         
       }
    }
    
@@ -512,7 +554,7 @@ class _CEHomeState extends State<CEHomePage> {
       print( "Accept for " + cePeep.legalName );
       if( docType != DocType.equity ) {
          assert( docId != "" );
-         scrollDoc = new AcceptedDoc( docType: docType, docId: docId, acceptedDate: getToday(), equityVals: {} );
+         scrollDoc = new UserDoc( docType: docType, docId: docId, acceptedDate: getToday(), equityVals: {} );
          targCEV   = CEVenture.empty();
       }
       cePeep.accept( docType, scrollDoc, docId, targCEV, isApplicant );
@@ -633,9 +675,32 @@ class _CEHomeState extends State<CEHomePage> {
       return subTasks;
    }
 
+   // XXX combine these two
+   Future<String> _selectVenture( String msg ) async {
+      String _select( List<TextEditingController> cont ) {
+         assert( cont.length == 1 );
+         String cev = cont[0].text;
+         final cevEntry = appState.ceVenture.entries.where( ( entry ) => entry.value.name == cev ).toList();
+         assert( cevEntry.length <= 1 );
+         if( cevEntry.length < 1 ) {
+            showToast( "Venture not found.  Please re-enter the name of the Venture." );
+            return "";
+         }
+         String cevId = cevEntry[0].key;
+         Navigator.of( context ).pop( cevId );
+         return cevId;
+      }
+
+      String item = "Venture name";
+      String hint = "Search is available if you need a hint";
+      var retVal  = await editList2( context, appState, msg, [item], [hint], _select, _cancel, null, saveName: "Select" );
+      return retVal;
+   }
+   
    void _registerVenture( Person cePeep, DocType docType ) async {
-      void _select( TextEditingController cont ) {
-         String cev = cont.text;
+      void _select( List<TextEditingController> cont ) {
+         assert( cont.length == 1 );
+         String cev = cont[0].text;
          final cevEntry = appState.ceVenture.entries.where( ( entry ) => entry.value.name == cev ).toList();
          assert( cevEntry.length <= 1 );
          if( cevEntry.length < 1 ) {
@@ -649,9 +714,8 @@ class _CEHomeState extends State<CEHomePage> {
 
       String choose = "Choose the CodeEquity Venture you wish to register with";
       String item   = "Venture name";
-      TextEditingController cont = new TextEditingController();
       String hint   = "Search is available if you need a hint";
-      editList( context, appState, choose, [item], [cont], [hint], () => _select( cont ), _cancel, null, saveName: "Select" );
+      editList2( context, appState, choose, [item], [hint], _select, _cancel, null, saveName: "Select" );
    }
 
    // So far, venture equity agreement is the only editable doc
@@ -688,7 +752,14 @@ class _CEHomeState extends State<CEHomePage> {
 
    void _updateDocFixed( String item, String choice ) {
       Map<String,String> edits = { item: choice };
-      _updateDoc( edits );
+
+      // Has anything changed?  if not, back out to avoid infinite confirm
+      if( scrollDoc.equityVals[ item ] != null && scrollDoc.equityVals[ item ]! == choice ) {
+         _cancel();
+      }
+      else {
+         _updateDoc( edits );
+      }
    }
 
    // Hints are created from existing editVals.  If user doesn't edit a field directly when having previously
@@ -698,6 +769,9 @@ class _CEHomeState extends State<CEHomePage> {
       Map<String,String> edits = {};
       for( var i = 0; i < cont.length; i++ ) {
          edits[item[i]] = cont[i].text != "" ? cont[i].text : hint[i];
+
+         // controller no longer used.
+         // cont[i].dispose();
       }
       _updateDoc( edits );
    }
@@ -709,16 +783,18 @@ class _CEHomeState extends State<CEHomePage> {
 
       if( box.type == "blanks" ) {
          List<String>                item = [];
-         List<TextEditingController> cont = [];
+         // List<TextEditingController> cont = [];
          List<String>                hint = [];
          for( final entry in box.values.entries ) {
             item.add( entry.key );
             hint.add( entry.value );
-            cont.add( new TextEditingController() );
+            // cont.add( new TextEditingController() );
          }
          
-         editList( context, appState, box.blankTitle, item, cont, hint,
-                   () => _updateDocFree( item, hint, cont ), _cancel, null, subHeader: box.blankSub, headerWidth: overlayMaxWidth * 0.3 );
+         // editList( context, appState, box.blankTitle, item, cont, hint,
+         // () => _updateDocFree( item, hint, cont ), _cancel, null, subHeader: box.blankSub, headerWidth: overlayMaxWidth * 0.3 );
+         editList2( context, appState, box.blankTitle, item, hint,
+                    _updateDocFree, _cancel, null, saveArgs: [item, hint], subHeader: box.blankSub, headerWidth: overlayMaxWidth * 0.3 );
       }
       else if( box.type == "radio" ) { 
          radioDialog( context, box.radioTitle!, box.rchoices!.sublist(1), box.rInitChoice, _updateDocFixed, _cancel, execArgs: ["PartnerTitle"] );
@@ -749,7 +825,7 @@ class _CEHomeState extends State<CEHomePage> {
       if( docType == DocType.privacy ) {
          List<Widget> buttons = [];
          buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt.type, docId: agmt.id ) ));
-         buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Dismiss"), onPressed: _cancel ));
+         buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: _cancel ));
          await showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -784,7 +860,7 @@ class _CEHomeState extends State<CEHomePage> {
                   return;
                }
                else {
-                  scrollDoc = new AcceptedDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday(), equityVals: {} );
+                  scrollDoc = new UserDoc( docType: agmt.type, docId: agmt.id, acceptedDate: getToday(), equityVals: {} );
                }
             }
          }
@@ -853,11 +929,11 @@ class _CEHomeState extends State<CEHomePage> {
       List<Widget> subTasks = [];
       
       if( !cePeep!.signedPrivacy() )   { subTasks.add( _makeLink( "Privacy Notice", overlayMaxWidth * 0.2, () => _showDoc( cePeep!, DocType.privacy ))); }
+
       if( !cePeep!.completeProfile() ) {
          subTasks.add( _makeLink( "Complete profile", overlayMaxWidth * 0.2,
-                                  () => editProfile( context, container, cePeep!, overlayMaxWidth, updateCallback: () => updateCallback() ), last: true ));
+                                  () => editProfile( context, container, cePeep!, updateCallback: () => updateCallback() ), last: true ));
       }
-
       return subTasks;      
    }
    
@@ -894,7 +970,8 @@ class _CEHomeState extends State<CEHomePage> {
          subTasks.add( _makeLink( "Register with a Venture", overlayMaxWidth * 0.2, () => _registerVenture( cePeep!, DocType.equity )));
          subTasks.addAll( makeVenture() );
          subTasks.addAll( makeProject() );
-         subTasks.add( _makeLink( "Withdraw", overlayMaxWidth * 0.2, () => _withdraw( cePeep! ) ));
+         // subTasks.add( _makeLink( "Withdraw", overlayMaxWidth * 0.2, () => _withdraw( cePeep! ) ));
+         subTasks.add( _makeLink( "Withdraw", overlayMaxWidth * 0.2, () => _withdrawChoice( cePeep! ) ));
       }
       return subTasks;
    }
