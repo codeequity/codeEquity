@@ -372,17 +372,6 @@ void editProfile( context, container, Person cePeep, {void Function()? updateCal
                                                    required: required, toolTip: toolTip, saveFunc: _saveProfile, cancelFunc: _cancelEdit ));
 }
 
-Future<String> editList2( context, appState, scrollHeader, itemHeaders, values, saveFunc, cancelFunc, deleteFunc,
-                { saveName: "Save", saveArgs: const [], headerWidth: -1, subHeader = "" } ) async {
-   // This construction allows editForm to return a widget that we apply here.
-   var retVal = await showDialog(
-      context: context,
-      builder: (BuildContext context) => EditList( appState: appState, scrollHeader: scrollHeader, itemHeaders: itemHeaders, values: values,
-                                                   saveFunc: saveFunc, cancelFunc: cancelFunc, deleteFunc: deleteFunc,
-                                                   saveName: saveName, saveArgs: saveArgs, headerWidth: headerWidth, subHeader: subHeader ));
-   return (retVal ?? "");
-}
-
 
 // Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
 //        Could reduce calls by further limiting update to dirty, where dirty is set when empty or after updatePeq.

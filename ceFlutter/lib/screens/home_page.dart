@@ -64,7 +64,8 @@ class _CEHomeState extends State<CEHomePage> {
    late CEVenture   targCEV;
    
    late List<Widget> tasks;
-   
+
+   List<TextEditingController> controllerPool = [];
    
    @override
    void initState() {
@@ -86,6 +87,7 @@ class _CEHomeState extends State<CEHomePage> {
    void dispose() {
       _scrollController.removeListener( _onScroll );
       _scrollController.dispose();
+      controllerPool.forEach( (c) => c.dispose() );
       super.dispose();
       if( appState.verbose >= 2 ) { print( "HP dispose" ); }
    }
@@ -519,7 +521,7 @@ class _CEHomeState extends State<CEHomePage> {
          }
       }
       else {
-         String cevId = await _selectVenture( "Select the CodeEquity Venture to withdraw from" );
+         String cevId = await _chooseVenture( "Select the CodeEquity Venture to withdraw from" );
          if( cevId == "Cancel" ) {
             _cancel();
             return;
@@ -596,7 +598,7 @@ class _CEHomeState extends State<CEHomePage> {
 
    // Make sure the (or an) exec has filled in their profile, and accepted the privacy doc
    // Make sure the equity plan exists
-   void _checkThenShow( Person cePeep, DocType docType, cevId, isApplicant ) async {
+    _checkThenShow( Person cePeep, DocType docType, cevId, isApplicant ) async {
       assert( docType == DocType.equity );
 
       CEVenture? tcev = appState.ceVenture[cevId];
@@ -675,8 +677,15 @@ class _CEHomeState extends State<CEHomePage> {
       return subTasks;
    }
 
-   // XXX combine these two
-   Future<String> _selectVenture( String msg ) async {
+   void _addControllerPool( int ith ) {
+      assert( controllerPool.length >= ith );
+      if( controllerPool.length > ith ) { return; }
+      else {
+         controllerPool.add( new TextEditingController() );
+      }
+   }
+
+   Future<String> _chooseVenture( String msg, { Person? cePeep = null, DocType docType = DocType.end }) async {
       String _select( List<TextEditingController> cont ) {
          assert( cont.length == 1 );
          String cev = cont[0].text;
@@ -688,36 +697,24 @@ class _CEHomeState extends State<CEHomePage> {
          }
          String cevId = cevEntry[0].key;
          Navigator.of( context ).pop( cevId );
-         return cevId;
+         if( docType == DocType.end )         { return cevId; }              // select venture
+         else if( docType == DocType.equity ) {                              // register venture
+            assert( cePeep != null );
+            _checkThenShow( cePeep!, docType, cevId, true );
+            return "";
+         }  
+         else { assert( false ); }
+         return "";
       }
-
+      
       String item = "Venture name";
       String hint = "Search is available if you need a hint";
-      var retVal  = await editList2( context, appState, msg, [item], [hint], _select, _cancel, null, saveName: "Select" );
+      _addControllerPool( 0 );      
+      var retVal = await editList( context, appState, msg, [item], controllerPool.sublist(0, 1), [hint], () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
       return retVal;
    }
+
    
-   void _registerVenture( Person cePeep, DocType docType ) async {
-      void _select( List<TextEditingController> cont ) {
-         assert( cont.length == 1 );
-         String cev = cont[0].text;
-         final cevEntry = appState.ceVenture.entries.where( ( entry ) => entry.value.name == cev ).toList();
-         assert( cevEntry.length <= 1 );
-         if( cevEntry.length < 1 ) {
-            showToast( "Venture not found.  Please re-enter the name of the Venture." );
-            return;
-         }
-         String cevId = cevEntry[0].key;
-         Navigator.of( context ).pop();
-         _checkThenShow( cePeep!, DocType.equity, cevId, true );
-      }
-
-      String choose = "Choose the CodeEquity Venture you wish to register with";
-      String item   = "Venture name";
-      String hint   = "Search is available if you need a hint";
-      editList2( context, appState, choose, [item], [hint], _select, _cancel, null, saveName: "Select" );
-   }
-
    // So far, venture equity agreement is the only editable doc
    void _updateDoc( Map<String, String> edits ) async {
       Navigator.of( context ).pop();  // radio
@@ -783,18 +780,17 @@ class _CEHomeState extends State<CEHomePage> {
 
       if( box.type == "blanks" ) {
          List<String>                item = [];
-         // List<TextEditingController> cont = [];
          List<String>                hint = [];
+         int ith = 0;
          for( final entry in box.values.entries ) {
             item.add( entry.key );
             hint.add( entry.value );
-            // cont.add( new TextEditingController() );
+            _addControllerPool( ith );
+            ith++;
          }
          
-         // editList( context, appState, box.blankTitle, item, cont, hint,
-         // () => _updateDocFree( item, hint, cont ), _cancel, null, subHeader: box.blankSub, headerWidth: overlayMaxWidth * 0.3 );
-         editList2( context, appState, box.blankTitle, item, hint,
-                    _updateDocFree, _cancel, null, saveArgs: [item, hint], subHeader: box.blankSub, headerWidth: overlayMaxWidth * 0.3 );
+         editList( context, appState, box.blankTitle, item, controllerPool.sublist(0, ith), hint,
+                   () => _updateDocFree( item, hint, controllerPool.sublist(0, ith) ), _cancel, null, subHeader: box.blankSub, headerWidth: overlayMaxWidth * 0.3 );
       }
       else if( box.type == "radio" ) { 
          radioDialog( context, box.radioTitle!, box.rchoices!.sublist(1), box.rInitChoice, _updateDocFixed, _cancel, execArgs: ["PartnerTitle"] );
@@ -967,7 +963,8 @@ class _CEHomeState extends State<CEHomePage> {
       subTasks.add( Wrap( spacing: 0, children: [ pending, toggleRegister ? expand : shrink ] ));
 
       if( !toggleRegister ) {
-         subTasks.add( _makeLink( "Register with a Venture", overlayMaxWidth * 0.2, () => _registerVenture( cePeep!, DocType.equity )));
+         String msg = "Choose the CodeEquity Venture you wish to register with";
+         subTasks.add( _makeLink( "Register with a Venture", overlayMaxWidth * 0.2, () => _chooseVenture( msg, docType: DocType.equity, cePeep: cePeep! )));
          subTasks.addAll( makeVenture() );
          subTasks.addAll( makeProject() );
          // subTasks.add( _makeLink( "Withdraw", overlayMaxWidth * 0.2, () => _withdraw( cePeep! ) ));
