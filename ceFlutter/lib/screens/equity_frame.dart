@@ -10,6 +10,7 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
+import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 
@@ -177,7 +178,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    void _saveAdd( EquityTree tot ) {
       final width = frameMinWidth - 2*appState.FAT_PAD;
 
-      // print( "SAVE ADD " + title.text + " " + addTitle.value.toString() );
+      print( "SAVE ADD " + addTitle!.value.toString() );
 
       assert( addTitle != null );
       String tval = addTitle!.text == "" ? "NOT YET NAMED" : addTitle!.text;
@@ -417,18 +418,19 @@ class _CEEquityState extends State<CEEquityFrame> {
          catList.add( [ hdiv, empty, empty, empty, empty ] );
 
          // Body
-         if( appState.myEquityPlan != null )
-         {
-            assert( appState.equityTree != null );
-            bool changed = appState.myEquityPlan!.updateEquity( appState.equityTree );
-            if( appState.myEquityPlan!.categories.length > 0 ) { 
-               if( appState.verbose >= 4 ) { print( "_getCategoryWidgets Update equity" ); }
-               catList.addAll( _getTiles( context, width ) );
-            }
-            if( changed ) {
-               if( getUserAuth( container ).index <= MemberRole.Executive.index ) { writeEqPlan( appState, context, container ); }
-               else { showToast( "Can not save equity plan modifications, insufficient permissions." ); }
-            }
+         if( appState.myEquityPlan == null ) {
+            appState.myEquityPlan = new EquityPlan.empty( appState.selectedCEVenture );
+         }
+         assert( appState.myEquityPlan != null );
+         assert( appState.equityTree != null );
+         bool changed = appState.myEquityPlan!.updateEquity( appState.equityTree );
+         if( appState.myEquityPlan!.categories.length > 0 ) { 
+            if( appState.verbose >= 4 ) { print( "_getCategoryWidgets Update equity" ); }
+            catList.addAll( _getTiles( context, width ) );
+         }
+         if( changed ) {
+            if( getUserAuth( container ).index <= MemberRole.Executive.index ) { writeEqPlan( appState, context, container ); }
+            else { showToast( "Can not save equity plan modifications, insufficient permissions." ); }
          }
 
          // Add
