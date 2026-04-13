@@ -135,7 +135,7 @@ class EquityPlan {
       bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt ) || !listEq( hostNames, oldHN ) || ( oldTA != totalAllocation ) ;
 
       if( changed ) { 
-         print( "updateEquity done.. changed? " + changed.toString() );
+         // print( "updateEquity done.. changed? " + changed.toString() );
          print( "   Host names " + hostNames.toString() );
          print( "   Cats " + categories.toString() );
       }
