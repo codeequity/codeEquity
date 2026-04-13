@@ -226,6 +226,7 @@ Future<bool> validateScroll( WidgetTester tester ) async {
    await tester.drag( sb, Offset(0.0, -1500.0) );
    await tester.drag( sb, Offset(0.0, -1000.0) );
    await tester.drag( sb, Offset(0.0, -1000.0) );
+   await tester.drag( sb, Offset(0.0, -500.0) );
    print( "Done drag down" );
       
    await pumpSettle( tester, 2, verbose: true );

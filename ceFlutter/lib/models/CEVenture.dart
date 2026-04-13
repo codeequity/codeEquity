@@ -1,5 +1,6 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
 
+import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/Person.dart';
 
 enum MemberRole  { Executive, Grantor, Member, end }
@@ -50,16 +51,22 @@ class CEVenture {
          );
    }
 
-   List<Person> getExecutives( appState ) {
+   
+   List<Person> getWithRole( appState, MemberRole role ) {
       List<Person> res = [];
       roles.entries.forEach( (e) {
-            if( e.value == MemberRole.Executive ) {
+            if( e.value == role ) {
                Person? p = appState.cePeople[ e.key ];
                assert( p != null );
                res.add( p! );
             }} );
       return res;
    }
+
+   // Don't include ancestors.  i.e. a Grantor is actually a Member as well, but don't include in getMember
+   List<Person> getExecutives( appState ) { return getWithRole( appState, MemberRole.Executive ); }
+   List<Person> getGrantors( appState )   { return getWithRole( appState, MemberRole.Grantor ); }
+   List<Person> getMembers( appState )    { return getWithRole( appState, MemberRole.Member ); }
 
    void addApplicant( Person cePeep ) {
       if( !applicants.contains( cePeep.id ) ) {
@@ -68,22 +75,44 @@ class CEVenture {
    }
 
    void addNewCollaborator( Person applicant, String title ) {
-      print( "applicants before " + applicants.toString() );
       applicants.remove( applicant.id );
-      print( "applicants after " + applicants.toString() );
       roles[applicant.id] = title == "Founder" ? MemberRole.Executive : MemberRole.Member;
    }
 
    // Peep is withdrawing.  remove roles, applications.
-   bool drop( Person cePeep ) {
+   // Protect loss of sole executive
+   List<dynamic> drop( AppState appState, Person cePeep ) {
       bool ret = false;
+      List<Person> promoted = [];
+      
       ret = applicants.remove( cePeep.id );
 
       final v = roles.remove( cePeep.id );
       ret = v == null ? ret : true;
          
       if( ret ) { print( "Dropping " + cePeep.id ); }
-      return ret;
+
+      if( v != null ) {  // dropped cepeep
+         List<Person> execs = getExecutives( appState );
+         if( execs.length == 0 ) {
+            // Dropped sole exec.  If there are other collabs, promote all in highest group to exec
+            if( roles.entries.length >= 1 ) {
+               List<Person> grantors = getGrantors( appState );
+               grantors.forEach( (p) {
+                     roles[p.id] = MemberRole.Executive;
+                     promoted.add( p );
+                  });
+               if( promoted.length == 0 ) {
+                  List<Person> members = getMembers( appState );
+                  members.forEach( (p) {
+                        roles[p.id] = MemberRole.Executive;
+                        promoted.add( p );
+                     });
+               }
+            }
+         }
+      }
+      return [ret, promoted];
    }
    
    bool hasApplicant( String pid ) { return applicants.contains( pid ); }

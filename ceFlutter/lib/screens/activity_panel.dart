@@ -132,7 +132,9 @@ class _CEActivityState extends State<CEActivityPanel> {
             logout( context, appState );
             
             appState.ceVenture.values.forEach( (cev) {
-                  bool found = cev.drop( cePeep );
+                  List<dynamic> res = cev.drop( appState, cePeep );
+                  bool found            = res[0];
+                  List<Person> promoted = res[1];
                   
                   // Don't wait
                   if( found ) {
@@ -140,6 +142,12 @@ class _CEActivityState extends State<CEActivityPanel> {
                      String cevs = json.encode( cev );
                      String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
                      updateDynamo( context, container, ppostData, "UpdateCEV" );
+
+                     promoted.forEach( (p) {
+                           String user = json.encode( p );
+                           String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
+                           updateDynamo( context, container, ppostData, "PutPerson" );
+                        });
                   }
                });
             
@@ -167,12 +175,24 @@ class _CEActivityState extends State<CEActivityPanel> {
             
             CEVenture? cev = appState.ceVenture[ cevId ];
             assert( cev != null );
-            cev!.drop( cePeep );
-            
+            List<dynamic> res = cev!.drop( appState, cePeep );
+            bool found            = res[0];
+            List<Person> promoted = res[1];
+
             // don't await
             String cevs = json.encode( cev! );
             String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
             updateDynamo( context, container, ppostData, "UpdateCEV" );
+
+            // Don't wait
+            if( found ) {
+               promoted.forEach( (p) {
+                     String user = json.encode( p );
+                     String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
+                     updateDynamo( context, container, ppostData, "PutPerson" );
+                  });
+            }
+            
          }
          // select screen
          Navigator.of( context ).pop();         
