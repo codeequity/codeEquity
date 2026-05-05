@@ -1078,8 +1078,8 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 		console.log( "  ",  c.cardId, c.repoId, c.title, c.issueId, c.issueNum, c.columnId );
 	    }
 	}
+	if( cardsUnc.length > 0 ) { console.log( "Available unclaimed cards with repo and issueNum: " ); }
 	for( const c of cardsUnc ) {
-	    console.log( "Available unclaimed cards: " );
 	    if( typeof card.repoId !== 'undefined' && typeof card.issueNum !== 'undefined' ) {
 		console.log( "  ",  c.cardId, c.repoId, c.title, c.issueId, c.issueNum, c.columnId );
 	    }

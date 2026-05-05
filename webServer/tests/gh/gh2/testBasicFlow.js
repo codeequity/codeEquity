@@ -303,6 +303,7 @@ async function testStepByStep( authData, testLinks, td ) {
     tu.testReport( testStatus, "F" );
 
     // 7. move to accr
+    // NOTE if failing here, check to make sure integration test for onboarding didn't fail leaving ari with no permissions.
     await gh2tu.moveCard( authData, testLinks, td.ceProjectId, meltCard.cardId, td.dsAccrId );
     await utils.sleep( 1000 );
     testStatus = await checkMove( authData, testLinks, td, meltData, td.dataSecPID, td.dsAccrId, meltCard, testStatus );

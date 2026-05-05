@@ -763,8 +763,8 @@ void main() {
 
    // reject privacy attempt to register
    print( "Reject privacy" );
-   testWidgets('Reject privacy', skip:true, (WidgetTester tester) async {
-   // testWidgets('Reject privacy', skip:skip, (WidgetTester tester) async {
+   // testWidgets('Reject privacy', skip:true, (WidgetTester tester) async {
+   testWidgets('Reject privacy', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -793,8 +793,8 @@ void main() {
    // Profile can't have empty name or email.  There is no error checking on either, so
    // the only useful test right now is to empty the phone.
    print( "Bad profile" );
-   testWidgets('Bad profile', skip:true, (WidgetTester tester) async {
-         //testWidgets('Bad profile', skip:skip, (WidgetTester tester) async {
+   //testWidgets('Bad profile', skip:true, (WidgetTester tester) async {
+   testWidgets('Bad profile', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -824,8 +824,8 @@ void main() {
 
    // chain of edits, mistakes
    print( "partner sig mistake, Submit, reopen, edit, register, exec mistake sig, accept" );
-   testWidgets('Mistakes accept', skip:true, (WidgetTester tester) async {
-         //testWidgets('Mistakes accept', skip:skip, (WidgetTester tester) async {
+   // testWidgets('Mistakes accept', skip:true, (WidgetTester tester) async {
+   testWidgets('Mistakes accept', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
@@ -855,8 +855,8 @@ void main() {
 
    // chain of edits, mistakes
    print( "partner sig mistake, Submit, reopen, edit, register, exec mistake sig, reject" );
-   testWidgets('Mistakes reject', skip:true, (WidgetTester tester) async {
-         //testWidgets('Mistakes reject', skip:skip, (WidgetTester tester) async {
+   // testWidgets('Mistakes reject', skip:true, (WidgetTester tester) async {
+   testWidgets('Mistakes reject', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
@@ -916,6 +916,7 @@ void main() {
          expect( await( toggleVnP( tester )), true );
          expect( await verifyAriRegistered( tester, vent: CEAL_VENT_NAME ), true );
 
+         print( "COMPLETE OB" );
          await logout( tester );
          report( 'Onboard recover' );
       });

@@ -160,7 +160,7 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
         # This works for EQ for by-hand runs
         # cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # This used to work for EQ for crons, until title added.. ug.
-        cmd = "fvm flutter drive -d chrome --browser-dimension=1200,1075 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        cmd = "fvm flutter drive --browser-dimension=1200,1075 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # 9 1/8th on screen, crons now work with title.  1075 works by hand.. 1065?
         # cmd = "flutter drive -d chrome --browser-dimension=1200,1065 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
@@ -178,8 +178,13 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     # XXX Ubuntu 24.04 6.14.0.{34,35} kernels with nvidia 580.95 driver is breaking flutter integration testing.  HW?
     # cmd = cmd + " --enable-software-rendering"
     # cmd = cmd + " --verbose"
+    # cmd = cmd + " --reporter=json"
     # cmd = cmd + " --no-headless"
-    cmd = cmd + " --enable-impeller" 
+    # cmd = cmd + " --enable-impeller" 
+    # cmd = cmd + " --web-renderer html" 
+    # cmd = cmd + " -d web-server" 
+    # cmd = cmd + " --debug"
+    cmd = cmd + " -d chrome" 
         
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 

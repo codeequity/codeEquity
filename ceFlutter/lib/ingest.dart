@@ -13,6 +13,7 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
+import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
@@ -215,6 +216,7 @@ void _swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 // Case 4: "relo"  _relo handles allocation removal.  ignore delete and let relo manage local kp
 // Case 5: Creating a card during blast can begin with card in 'No Status' column.  Rarely, relo to No Status pact arrives after
 //         relo to actual location.
+// Case 6: "rem assignee" arrives before "add assignee".  this is very rare, usually associated with delayed label notification.
 // 
 // Need to have seen a 'confirm' 'add' before another action, in order for the allocation to be in a good state.
 // This will either occur in current ingest batch, or is already present in mySummary from a previous update.
@@ -309,6 +311,56 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
                }
             }
          }
+      }
+      else if( pact.verb == PActVerb.confirm && pact.action == PActAction.change && pact.note == PActNotes["remAssignee"] ) {
+         // Case 6
+         // In this case, look at not-yet-processed pacts for the add.
+         // Find candidate, then need go through previous for this peqid and collect assignees to avoid interleaving add/rem
+         assert( pact.subject.length == 2 );
+         print( "Case 6 check " + pact.note + " " + pact.subject[1] );
+         for( int j = i+1; j < todos.length; j++ ) {
+            PEQAction pactLater = todos[j].item1;
+
+            print( "Checking " + j.toString() + ": " + pactLater.toString() );
+            // Stop if add is 1s back (only failure known as of 4/2026 was 300ms off)
+            if( pactLater.timeStamp - pact.timeStamp > 1000 ) { print( "Looks like a valid rem assignee" );  break; }
+            if( pactLater.verb == PActVerb.confirm && pactLater.action == PActAction.change && pactLater.note == PActNotes["addAssignee"] &&
+                pactLater.subject[0] == pact.subject[0] && pactLater.subject[1] == pact.subject[1] ) {
+               print( "  .. may have winner.  Check " + i.toString() + " " + j.toString() + " " + (pact.timeStamp - pactLater.timeStamp).toString() + "ms" );
+               print( pactLater );
+               print( pact );
+
+               // Have a candidate.  Now check to make sure there is not an earlier todo with a valid add.
+
+               // First, baseline.  what is in existing summary?  Have ceUserName and peqId, check allocs.
+               bool added = false;
+               // XXX slow.  this whole case is slow.  but rare.
+               for( Person p in appState.cePeople.values ) {
+                  if( p.userName == pact.subject[1] ) { 
+                     if( appState.myPEQSummary != null ) {
+                        List<Allocation> allocs = appState.myPEQSummary.getByPeqId( pact.subject[0] );
+                        allocs.forEach( (a) {
+                              if( a.ceUID == p.id ) { added = true; }
+                           });
+                     }}}
+                  
+               for( int k = 0; j < i; k++ ) {
+                  PEQAction pactEarlier = todos[i].item1;
+                  if( pactEarlier.verb == PActVerb.confirm && pactEarlier.action == PActAction.change &&
+                      pactEarlier.subject[0] == pact.subject[0] && pactEarlier.subject[1] == pact.subject[1] ) {
+                     // Previous pacts are orderly.
+                     if( !added && pactEarlier.note == PActNotes["addAssignee"] ) { added = true; }
+                     if( added  && pactEarlier.note == PActNotes["remAssignee"] ) { added = false; }
+                  }
+               }
+               if( !added ) {
+                  print( "... Confirmed.  Have a remove before an add. ");
+                  _swap( todos, i, j );
+               }
+               break;
+            }
+
+         }         
       }
 
       // print( "    KP: " + kp.toString() );
