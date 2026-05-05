@@ -3,6 +3,7 @@
 import 'package:flutter/services.dart';  // sysnav pop
 import 'dart:convert';  // json encode/decode
 import 'dart:async';    // timer
+//import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // key
@@ -747,11 +748,14 @@ void main() {
    testWidgets('Equity Mvmt Page', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
+
+         //developer.log( 'XXXXXXXX log me', name: 'my.app.category' );
+         
          await login( tester, true );
 
          // This controls driver window size.  Driven window size is set on command line to flutter driver
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
-
+         
          expect( await verifyAriHome( tester ), true );
          
          final Finder ariLink = find.byKey( Key( CEMD_PROJ_NAME ));
@@ -801,6 +805,7 @@ void main() {
          // End fresh
          expect( await rebuildEquityTable( tester ), true );
          
+         print( "COMPLETE EQ" );
          await logout( tester );         
 
          report( 'Equity Mvmt Page' );

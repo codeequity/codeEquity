@@ -248,6 +248,7 @@ void main() {
          print( "Check cardSwap" );
          await validateCardSwap( tester );
          
+         print( "COMPLETE PR" );
          await logout( tester );         
 
          report( 'Profile' );

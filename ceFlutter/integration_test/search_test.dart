@@ -229,6 +229,9 @@ Future<bool> validateScroll( WidgetTester tester ) async {
    await tester.drag( sb, Offset(0.0, -500.0) );
    print( "Done drag down" );
       
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 1, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
 
    expect( find.text('LabelTest Dubs'), findsOneWidget );
@@ -490,6 +493,7 @@ void main() {
          await validateCEP( tester );
          await validatePEQ( tester );
 
+         print( "COMPLETE SE" );         
          await logout( tester );         
 
          report( 'Search bar' );

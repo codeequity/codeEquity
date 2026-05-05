@@ -1159,7 +1159,8 @@ void main() {
          expect( await statusModDelete( tester ), true );
          
          // test statusUnavailable
-         
+
+         print( "COMPLETE RE" );         
          await logout( tester );         
 
          report( 'Repair' );

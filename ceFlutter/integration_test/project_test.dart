@@ -1274,7 +1274,8 @@ void main() {
          await statusTabNoServer( tester );
          await peqSummaryTabFraming( tester, ignoreAccrued: true, fromBlank: true );
          await _checkHelper( tester );         
-         
+
+         print( "COMPLETE ND" );
          await logout( tester );         
 
          print( "Project test ND completed" );
@@ -1310,6 +1311,7 @@ void main() {
          expect( await validateUnAssign40( tester ), true );
          print( "Validated unassign40" );
          
+         print( "COMPLETE WD" );
          await logout( tester );         
 
          report( 'Project Detail Page' );
