@@ -578,6 +578,44 @@ async function remProject( authData, pid ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
+// call from testMain
+async function setCEVTestRoles( authData, cevId ) {
+    // get CEV
+    let cev = await awsUtils.getCEV( authData, cevId );
+
+    // update roles for ari.. note this is a pure aws record
+    if( typeof cev.Roles === 'undefined' ) {
+	console.log( "Fail.  Roles not found" );
+	assert( false );
+    }
+    
+    console.log( "Current roles:" );
+    Object.entries( cev.Roles ).forEach( ([k,v]) => console.log( "   ", k, v ) );
+    let mod      = false;
+    let foundAri = false;
+    Object.entries( cev.Roles ).forEach( ([k,v]) => {
+	if( k == "eaeIqcqqdp" ) { // XXX
+	    foundAri = true;
+	    if( v != "Executive" ) {
+		v = "Executive";   // XXX
+		mod = true;
+	    }
+	}
+    });
+
+    if( !foundAri ) {
+	cev.Roles["eaeIqcqqdp"] = "Executive";
+	mod = true;
+    }
+
+    // put cev
+    if( mod ) {
+	console.log( "New roles:" );
+	Object.entries( cev.Roles ).forEach( ([k,v]) => console.log( "   ", k, v ) );
+	await awsUtils.updateCEVenture( authData, cev ); 
+    }
+}
+
 
 // do NOT move to ghV2 - this is used during testing only.  handlers are oblivious to this view-centric action.
 async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
@@ -2090,6 +2128,8 @@ export {getQuad};
 export {createProjectWorkaround};
 export {createDefaultProject};
 export {remProject};
+
+export {setCEVTestRoles};
 
 export {cloneFromTemplate};   // XXX speculative.  useful?
 export {createCustomField};   // XXX speculative.  useful?

@@ -512,6 +512,15 @@ async function updateCEEquityPlan( authData, ceEquityPlan ) {
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
+async function updateCEVenture( authData, ceVenture ) {
+    console.log( authData.who, "Updating CE Venture" );
+
+    let shortName = "UpdateCEV"; 
+
+    let pd = { Endpoint: shortName, ceVenture: ceVenture }; 
+    return await wrappedPostAWS( authData, shortName, pd );
+}
+
 async function getRaw( authData, pactId ) {
     // console.log( authData.who, "Get raw PAction", pactId );
 
@@ -629,6 +638,18 @@ async function getStoredLocs( authData, ceProjId ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+// UNIT TESTING ONLY!!
+// Get CEVenture from aws, currently to set roles properly before testing.  This usage could be expanded outside testing, if needed.
+async function getCEV( authData, ceVentureId ) {
+    console.log( authData.who, "get CEVenture TESTING ONLY", ceVentureId )
+
+    let shortName = "GetEntry";
+    let query     = { "CEVentureId": ceVentureId };
+    let postData  = { "Endpoint": shortName, "tableName": "CEVentures", "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
 
 
 export {getAPIPath};
@@ -660,6 +681,7 @@ export {refreshLinkageSummary};
 export {updateLinkageSummary};
 export {updateCEPHostParts};
 export {updateCEEquityPlan};
+export {updateCEVenture};
 
 export {getRaw};
 export {getPRaws};
@@ -675,4 +697,4 @@ export {cleanDynamo};
 export {clearIngested};
 
 export {getStoredLocs};  // TESTING ONLY
-
+export {getCEV};         // TESTING ONLY
