@@ -64,6 +64,12 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     // gh2tu.remProject( authData, wakeyPID );
     gh2tu.unlinkProject( authData, td.ceProjectId, wakeyPID, td.ghRepoId );
 
+    // Set roles properly for Ari.. Ari can get bashed during flutter integration tests
+    await gh2tu.setCEVTestRoles( authData, td.cepDetails.ceVentureId );
+    await gh2tu.setCEVTestRoles( authData, tdX.cepDetails.ceVentureId );
+    await gh2tu.setCEVTestRoles( authData, tdM.cepDetails.ceVentureId );
+    await gh2tu.setCEVTestRoles( authData, tdF.cepDetails.ceVentureId );
+    
     // TESTS
 
     let subTest = "";
