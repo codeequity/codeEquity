@@ -213,6 +213,11 @@ def runTests( test = "focus" ):
     resultsSum = ""
     tSum = ""
 
+    # Every test can start with ariTester having the exec role.  Several fail without it.
+    cmd = "npm run enableAri --prefix ../webServer"
+    npmRun = runCmd( cmd, [] )
+    logging.info( npmRun )
+    
     if( test == "projectMain" ):
 
         # XXX Ouch!! Cmon flutter.. integration tests need to be able to terminate
