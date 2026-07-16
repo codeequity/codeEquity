@@ -9,6 +9,7 @@
         "testFlutter": "node ./tests/gh/testMain.js ceFlutter",
         "checkPeqs": "node ./tests/gh/checkPeqs.js",
         "sanityCheck": "node ./tests/sanityCheck.js",
+	"enableAri": "node -e 'import(\"./tests/enableAri.js\").then( m => m.runTests())'",
         "cleanFlutter": "node ./tests/gh/cleanLoad.js",
         "testSetup": "node ./tests/gh/testSetup.js",
         "testDelete": "node ./tests/gh/gh2/testDelete.js",

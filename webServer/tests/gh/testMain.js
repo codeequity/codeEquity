@@ -20,6 +20,7 @@ import ceProjData     from '../../routes/ceProjects.js';
 import testData       from './testData.js';
 
 import testSaveDynamo from '../testSaveDynamo.js';
+import * as ari       from '../enableAri.js';
 
 // GH Classic
 import * as ghctu        from './ghc/ghcTestUtils.js';
@@ -65,11 +66,11 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     gh2tu.unlinkProject( authData, td.ceProjectId, wakeyPID, td.ghRepoId );
 
     // Set roles properly for Ari.. Ari can get bashed during flutter integration tests
-    await gh2tu.setCEVTestRoles( authData, td.cepDetails.ceVentureId );
-    await gh2tu.setCEVTestRoles( authData, tdX.cepDetails.ceVentureId );
-    await gh2tu.setCEVTestRoles( authData, tdM.cepDetails.ceVentureId );
-    await gh2tu.setCEVTestRoles( authData, tdF.cepDetails.ceVentureId );
-    
+    await ari.setCEVTestRoles( authData, td.cepDetails.ceVentureId );
+    await ari.setCEVTestRoles( authData, tdX.cepDetails.ceVentureId );
+    await ari.setCEVTestRoles( authData, tdM.cepDetails.ceVentureId );
+    await ari.setCEVTestRoles( authData, tdF.cepDetails.ceVentureId );
+
     // TESTS
 
     let subTest = "";
