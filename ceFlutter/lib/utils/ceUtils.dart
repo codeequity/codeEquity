@@ -261,33 +261,6 @@ Future<void> initMDState( context, container ) async {
       
    }
 
-      /*      
-      for( CEVenture cev in cevs ) {
-         
-         List<String> cepIds  = [];     
-         for( String cepKey in appState.ceProject.keys ) {
-            CEProject cep = appState.ceProject[ cepKey ]!;
-            if( cep.ceVentureId == cev.ceVentureId ) {
-               cepIds.add( cep.ceProjectId );
-            }
-         }
-
-         for( String ceuid in appState.ceHostAccounts.keys ) {
-            assert( appState.ceHostAccounts[ceuid] != null );
-            List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
-            for( String cepId in cepIds ) {
-               for( HostAccount ha in has ) {
-                  if( ha.hostPlatform == appState.ceProject[cepId]!.hostPlatform && ha.ceProjectIds.contains( cepId ) ) {
-                     if( cev.roles[ceuid] == null ) { cev.roles[ceuid] = MemberRole.Executive; }
-                  }
-               }
-            }
-         }
-         // print( cev.roles.toString() );
-      }
-      */
-
-   
    // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform.
    // XXX Scales poorly.  This could move to reloadCEProject, since idMapHost usage is by cep.
    //     Would be work to get cep, then hostRepo, which is stored in hostUser table, no real gains for a long time here.

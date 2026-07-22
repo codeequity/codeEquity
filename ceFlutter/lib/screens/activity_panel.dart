@@ -156,14 +156,10 @@ class _CEActivityState extends State<CEActivityPanel> {
             List<String> huids = [];
             appState.myHostAccounts.forEach( (host) {
                   print( "Clearing all CEPs, CEVs from host UID: " + host.hostUserId );
-                  Map<String,dynamic> hu = {};
-                  hu["hostUserId"]   = host.hostUserId;
-                  hu["hostUserName"] = host.hostUserName;
-                  hu["ceUserId"]     = host.ceUserId;
-                  hu["ceProjectIds"] = [];
-                  hu["futureCEProjects"] = [];
-                  String newHostA = json.encode( hu );
-                  String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true", "pat": "" }';
+                  host.hostUser.ceProjectIds = [];
+                  host.hostUser.futureCEProjects = [];
+                  String newHostA = json.encode( host.hostUser );
+                  String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
                   // Don't wait
                   updateDynamo( context, container, postData, "PutHostA" );
                });
@@ -215,14 +211,8 @@ class _CEActivityState extends State<CEActivityPanel> {
                      });
                   if( mod ) {
                      print( "HostUser mods made" );
-                     Map<String,dynamic> hu = {};
-                     hu["hostUserId"]   = host.hostUserId;
-                     hu["hostUserName"] = host.hostUserName;
-                     hu["ceUserId"]     = host.ceUserId;
-                     hu["ceProjectIds"] = host.ceProjectIds;
-                     hu["futureCEProjects"] = host.futureCEProjects;
-                     String newHostA = json.encode( hu );
-                     String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true", "pat": "" }';
+                     String newHostA = json.encode( host.hostUser );
+                     String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
                      // Don't wait
                      updateDynamo( context, container, postData, "PutHostA" );
                   }

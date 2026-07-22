@@ -16,6 +16,7 @@ import 'package:ceFlutter/utils/awsUtils.dart';    // fetchPAT
 import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/models/HostAccount.dart';
+import 'package:ceFlutter/models/HostUser.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
@@ -455,8 +456,9 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    String huid = await _getOwnerId( PAT, hostLogin );
    print( "HOI! " + appState.ceUserId + " " + huid );
    assert( huid != "-1" );
-   HostAccount myHostAcct = new HostAccount( hostPlatform: "GitHub", hostUserName: hostLogin, ceUserId: appState.ceUserId, hostUserId: huid, 
-                                             ceProjectIds: ceProjs, futureCEProjects: futProjs, ceProjRepos: ceProjRepos );
+   HostUser hostUser      = new HostUser( hostPlatform: "GitHub", hostUserName: hostLogin, ceUserId: appState.ceUserId, hostUserId: huid, 
+                                          ceProjectIds: ceProjs, futureCEProjects: futProjs );
+   HostAccount myHostAcct = new HostAccount( hostUser: hostUser, ceProjRepos: ceProjRepos );
    
    String newHostA = json.encode( myHostAcct );
    print( newHostA );

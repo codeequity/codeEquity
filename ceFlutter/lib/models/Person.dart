@@ -143,27 +143,27 @@ class Person {
 
       // Find host data.  For applicant to register, must have already linked CE to the host account in question
       List<String> huids = appState.idMapHost.keys.where( (k) => appState.idMapHost[k]["ceUID"] == this.id ).toList();
+      print( "addCEV hostuids: " + huids.toString() );
       huids.forEach( (huid) {
-            HostAccount? host = appState.ceHostAccounts[this.id].where( (h) => h.hostUserId == huid );
-            assert( host != null );
+            List<String> platforms = [];  // only way this is >1 is if huid is same on 2+ host platforms.
             ceps.forEach( (cep) {
-                  if( cep.hostPlatform == host!.hostPlatform ) {
-                     if( !host!.ceProjectIds.contains( cep.ceProjectId ) ) {
-                        host!.ceProjectIds.add( cep.ceProjectId );
-                     }
+
+                  List<HostAccount> hosts = appState.ceHostAccounts[this.id].where( (h) => h.hostUserId == huid && h.hostPlatform == cep.hostPlatform ).toList();
+                  assert( hosts.length == 1 );
+                  if( !hosts[0].ceProjectIds.contains( cep.ceProjectId ) ) {
+                     hosts[0].ceProjectIds.add( cep.ceProjectId );
+                     if( !platforms.contains( cep.hostPlatform ) ) { platforms.add( cep.hostPlatform ); }
+                     print( "Updating " + hosts[0].hostUserName + " " + hosts[0].ceProjectIds.toString() );
                   }
                });
-            print( "Updating " + host!.hostUserName + " " + host!.ceProjectIds.toString() );
-            Map<String,dynamic> hu = {};
-            hu["hostUserId"]   = host!.hostUserId;
-            hu["hostUserName"] = host!.hostUserName;
-            hu["ceUserId"]     = host!.ceUserId;
-            hu["ceProjectIds"] = new List<String>.from( host!.ceProjectIds );
-            hu["futureCEProjects"] = new List<String>.from( host!.futureCEProjects );
-            String newHostA = json.encode( hu );
-            String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true", "pat": "" }';
-            // Don't wait
-            updateDynamo( context, container, postData, "PutHostA" );
+            platforms.forEach( (p) {
+                  List<HostAccount> hosts = appState.ceHostAccounts[this.id].where( (h) => h.hostUserId == huid && h.hostPlatform == p ).toList();
+                  assert( hosts.length == 1 );
+                  String newHostA = json.encode( hosts[0].hostUser );
+                  String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
+                  // Don't wait
+                  updateDynamo( context, container, postData, "PutHostA" );
+               });
             
          });
       return true;
