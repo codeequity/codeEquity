@@ -15,6 +15,7 @@ import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/CEProject.dart';
+import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/UserDoc.dart';
 import 'package:ceFlutter/models/Agreement.dart';
@@ -120,7 +121,7 @@ class _CEActivityState extends State<CEActivityPanel> {
    void _withdraw( Person cePeep, String choice ) async {
       if( choice == "All of CodeEquity" ) {
          String msg = "This action will end your participation in CodeEquity and any CodeEquity Ventures.\n All Provisional Equity that hasn't vested already will be terminated.\n";
-         msg       += "Press \'Continue\' to withdraw.";
+         msg       += "Your login will survive.  Press \'Continue\' to withdraw.";
          String ret = await confirm( context, "Withdraw from CodeEquity?", msg, _noop, _cancel );
          
          print( "WITHDRAW CE" );
@@ -150,7 +151,23 @@ class _CEActivityState extends State<CEActivityPanel> {
                         });
                   }
                });
-            
+
+            // delete CEHostUser entry - cePeep may have multiple hostAccounts (i.e. have hostUIDs on multiple platforms)
+            List<String> huids = [];
+            appState.myHostAccounts.forEach( (host) {
+                  print( "Clearing all CEPs, CEVs from host UID: " + host.hostUserId );
+                  Map<String,dynamic> hu = {};
+                  hu["hostUserId"]   = host.hostUserId;
+                  hu["hostUserName"] = host.hostUserName;
+                  hu["ceUserId"]     = host.ceUserId;
+                  hu["ceProjectIds"] = [];
+                  hu["futureCEProjects"] = [];
+                  String newHostA = json.encode( hu );
+                  String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true", "pat": "" }';
+                  // Don't wait
+                  updateDynamo( context, container, postData, "PutHostA" );
+               });
+
             // don't await
             String user = json.encode( cePeep );
             String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
@@ -183,6 +200,34 @@ class _CEActivityState extends State<CEActivityPanel> {
             String cevs = json.encode( cev! );
             String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
             updateDynamo( context, container, ppostData, "UpdateCEV" );
+
+            // remove 1 CEV from CEHostUser
+            List<CEProject>   ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev!.ceVentureId ).toList();
+            List<HostAccount>? ha   = appState.ceHostAccounts[ cePeep.id ];
+            assert( ha != null );
+            ha!.forEach( (host) {
+                  bool mod = false;
+                  ceps.forEach( (p) {
+                        if( host.ceProjectIds.contains( p.ceProjectId ) ) {
+                           mod = true;
+                           host.ceProjectIds.remove( p.ceProjectId ); 
+                        }
+                     });
+                  if( mod ) {
+                     print( "HostUser mods made" );
+                     Map<String,dynamic> hu = {};
+                     hu["hostUserId"]   = host.hostUserId;
+                     hu["hostUserName"] = host.hostUserName;
+                     hu["ceUserId"]     = host.ceUserId;
+                     hu["ceProjectIds"] = host.ceProjectIds;
+                     hu["futureCEProjects"] = host.futureCEProjects;
+                     String newHostA = json.encode( hu );
+                     String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true", "pat": "" }';
+                     // Don't wait
+                     updateDynamo( context, container, postData, "PutHostA" );
+                  }
+               });
+            
 
             // Don't wait
             if( found ) {
@@ -219,7 +264,10 @@ class _CEActivityState extends State<CEActivityPanel> {
             scrollDoc.setExecutionDate();
 
             // stores new countersigned acceptedDoc for applicant.  The previous accept did any work needed for the approver.
-            applicant.accept( docType, scrollDoc, docId, targCEV, true );   
+            applicant.accept( docType, scrollDoc, docId, targCEV, true );
+
+            // Update CEHostUser for applicant
+            applicant.addCEV( context, container, appState, targCEV );
          }
          else {
             showToast( "Document needs the following items to be fully executed: " + missing );

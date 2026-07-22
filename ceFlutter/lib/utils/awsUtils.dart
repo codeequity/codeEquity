@@ -412,7 +412,6 @@ Future<Person?> fetchAPerson( context, container, ceUserId ) async {
    return null;
 }
 
-
 // Populates idHostMap
 Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, Map<String, Person> cePeople ) async {
    String shortName = "fetchHostMap";

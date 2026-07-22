@@ -249,21 +249,19 @@ Future<void> initMDState( context, container ) async {
    for( CEVenture cev in cevs ) { appState.ceVenture[ cev.ceVentureId ] = cev; }
    for( Person p in peeps )     { appState.cePeople[ p.id ] = p; }
 
-   // XXX hostAccount only set for current user.
-   // XXX Onboarding should mean this goes away.
-   {
-      // XXX bad.  currently no other association from ceproj to it's people.
-      for( Person p in peeps ) {
-         uid  = p.id; 
-         pdHA = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );
-         await Future.wait([
-                              (appState.ceHostAccounts[uid] == null ? 
-                               fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
-                               new Future<bool>.value(true) ),
-                              ]);
-         
-      }
+   // so far hostAccount was only set for current user.
+   for( Person p in peeps ) {
+      uid  = p.id; 
+      pdHA = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );
+      await Future.wait([
+                           (appState.ceHostAccounts[uid] == null ? 
+                            fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
+                            new Future<bool>.value(true) ),
+                           ]);
       
+   }
+
+      /*      
       for( CEVenture cev in cevs ) {
          
          List<String> cepIds  = [];     
@@ -273,7 +271,7 @@ Future<void> initMDState( context, container ) async {
                cepIds.add( cep.ceProjectId );
             }
          }
-         /*
+
          for( String ceuid in appState.ceHostAccounts.keys ) {
             assert( appState.ceHostAccounts[ceuid] != null );
             List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
@@ -285,10 +283,9 @@ Future<void> initMDState( context, container ) async {
                }
             }
          }
-         */
          // print( cev.roles.toString() );
       }
-   }
+      */
 
    
    // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform.

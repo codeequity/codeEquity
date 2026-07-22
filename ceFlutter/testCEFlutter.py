@@ -78,7 +78,7 @@ def verifyEmulator():
             time.sleep(5)
             if( call( "ln -s */*/*/chromedriver", shell=True) != 0 ) : print( "Error." )
           
-        call( "chromedriver --port=4444&", shell=True )
+        call( "chromedriver --port=4444 &", shell=True )
         
         # XXX Can we detect when this is ready?
         # XXX Can auto-wipe user data?
@@ -120,10 +120,6 @@ def runCmd( cmd, filterExp ):
     #process = Popen(shlex.split(cmd), stderr=STDOUT, stdout=PIPE, text=True)
     #process = Popen(shlex.split("ls -l"), stderr=STDOUT, stdout=PIPE, text=True)
 
-    
-    #stdout, stderr = process.communicate()
-    #return stdout
-
     resultsSum = ""
     while True:
         output = process.stdout.readline()
@@ -153,7 +149,7 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     # browser dim controls the window being driven by tester.  The height does not match physical screen height, but is stable.
     # cmd = "flutter drive -d web-server --browser-name chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
-    cmd = "fvm flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    cmd = "fvm flutter drive --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
     # XXXX painful
     if( testName == "equity_test.dart" ) : 
         #cmd = "flutter drive -d chrome --browser-dimension=1200,1000 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
@@ -165,7 +161,7 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
         # cmd = "flutter drive -d chrome --browser-dimension=1200,1065 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if( testName == "project_test.dart" ) :
-        cmd = "fvm flutter drive -d chrome --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        cmd = "fvm flutter drive --browser-dimension=1200,1050 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         #cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         
     if optimized :
@@ -184,8 +180,17 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     # cmd = cmd + " --web-renderer html" 
     # cmd = cmd + " -d web-server" 
     # cmd = cmd + " --debug"
-    cmd = cmd + " -d chrome" 
-        
+    # cmd = cmd + " -d chrome" 
+    cmd = cmd + " -d chrome"
+    # cmd = cmd + " --release"
+    # cmd = cmd + " --web-renderer=html"
+    # cmd = cmd + " --dart-define=COOP_COEP_OVERSIGHT=false"
+    # cmd = cmd + " --browser-name=chrome"
+    # cmd = cmd + " --dart-define=BROWSER_SUPPORTS_WEBKIT=false"
+    # cmd = cmd + " --web-browser-flag=--headless=new"
+    # cmd = cmd + " --web-browser-flag=--remote-debugging-port=9222" 
+    # cmd = cmd + " --web-browser-flag=--disable-extensions"
+    
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
     logging.info( "TestCEFlutter CMD " );

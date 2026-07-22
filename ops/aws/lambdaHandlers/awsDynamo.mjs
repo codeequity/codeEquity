@@ -444,6 +444,9 @@ async function removeEntries( tableName, ids ) {
     case "CEProjects": 
 	pkey1 = "CEProjectId";
 	break;
+    case "CEHostUser": 
+	pkey1 = "HostUserId";
+	break;
     case "CEPEQSummary": 
 	pkey1 = "PEQSummaryId";
 	break;

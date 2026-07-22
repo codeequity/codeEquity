@@ -1,6 +1,12 @@
+import 'dart:convert';                   // json encode/decode, b64 coding
+
+import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
 
+import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
+import 'package:ceFlutter/models/CEProject.dart';
+import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/UserDoc.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 
@@ -86,7 +92,7 @@ class Person {
             }
             
             if( userDocs[ docType ] == null ) { userDocs[ docType ] = [ ad ];   }
-            else                                  { userDocs[ docType ]!.add( ad ); }
+            else                              { userDocs[ docType ]!.add( ad ); }
 
             // Become an applicant if this is not a counter-signature
             if( ad.equityVals["EffectiveDate"] == "" ) { ad.submitIfReady( cev, this ); }
@@ -129,6 +135,38 @@ class Person {
          cevs.add( cev! );
       }
       return cevs;
+   }
+
+   bool addCEV( context, container, appState, CEVenture cev ) {
+      print( "HostUser mods made" );
+      List<CEProject> ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev.ceVentureId ).toList();
+
+      // Find host data.  For applicant to register, must have already linked CE to the host account in question
+      List<String> huids = appState.idMapHost.keys.where( (k) => appState.idMapHost[k]["ceUID"] == this.id ).toList();
+      huids.forEach( (huid) {
+            HostAccount? host = appState.ceHostAccounts[this.id].where( (h) => h.hostUserId == huid );
+            assert( host != null );
+            ceps.forEach( (cep) {
+                  if( cep.hostPlatform == host!.hostPlatform ) {
+                     if( !host!.ceProjectIds.contains( cep.ceProjectId ) ) {
+                        host!.ceProjectIds.add( cep.ceProjectId );
+                     }
+                  }
+               });
+            print( "Updating " + host!.hostUserName + " " + host!.ceProjectIds.toString() );
+            Map<String,dynamic> hu = {};
+            hu["hostUserId"]   = host!.hostUserId;
+            hu["hostUserName"] = host!.hostUserName;
+            hu["ceUserId"]     = host!.ceUserId;
+            hu["ceProjectIds"] = new List<String>.from( host!.ceProjectIds );
+            hu["futureCEProjects"] = new List<String>.from( host!.futureCEProjects );
+            String newHostA = json.encode( hu );
+            String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true", "pat": "" }';
+            // Don't wait
+            updateDynamo( context, container, postData, "PutHostA" );
+            
+         });
+      return true;
    }
    
    bool registeredWithCEV( CEVenture cev ) {

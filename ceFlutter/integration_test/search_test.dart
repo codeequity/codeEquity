@@ -233,10 +233,12 @@ Future<bool> validateScroll( WidgetTester tester ) async {
    await tester.pumpAndSettle();
    await pumpSettle( tester, 1, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
+   await pumpSettle( tester, 2, verbose: true );
 
-   expect( find.text('LabelTest Dubs'), findsOneWidget );
    expect( find.text('LM Pending'), findsOneWidget );
    expect( find.text('Snow melt'), findsOneWidget );
+   // XXX Random failures on label dubs, move to last, settle longer.
+   expect( find.text('LabelTest Dubs'), findsOneWidget );
 
    // Not sure why, but needs two here.
    await dismiss( tester );
