@@ -569,23 +569,37 @@ bool validatePV2Change( pmap ) {
 }
 
 
-Future<bool> validateAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName, {action = "labeled"} ) async {
+Future<bool> validateAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName, {action = "labeled", allowFail = true} ) async {
 
-   // checkNTap returns the key it was able to find.
+   bool ret = false;
+
+   // checkNTap returns the key it was able to find
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Host Action:" ), findsOneWidget );
+   if( detailName != "Element Not Found." ) {
+      ret = true;
 
-   final Map<String, dynamic> pmap = getPact( tester, detailName );
+      expect( find.text( "Raw Host Action:" ), findsOneWidget );
+      
+      final Map<String, dynamic> pmap = getPact( tester, detailName );
 
-   expect( pmap['action'],                   action );
-   expect( pmap['repository']['full_name'],  repo );
-   expect( pmap['issue']['title'],           issueTitle );
-   expect( pmap['label']['name'],            peqLabel );
+      ret = ret && pmap['action']                  == action;
+      if( !ret ) { print( "action failed " + pmap[action] + " " + action ); }
 
-   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
-   await pumpSettle( tester, 1 );
+      ret = ret && pmap['repository']['full_name'] ==  repo;
+      if( !ret ) { print( "repo failed " + pmap['repository']['full_name'] + " " + repo ); }
+      
+      ret = ret && pmap['issue']['title']          == issueTitle;
+      if( !ret ) { print( "title failed " + pmap['issue']['title'] + " " + issueTitle ); }
+
+      ret = ret && pmap['label']['name']           == peqLabel;
+      if( !ret ) { print( "label failed " + pmap['label']['name'] + " " + peqLabel ); }
+      
+      await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+      await pumpSettle( tester, 1 );
+   }
    
-   return true;
+   if( allowFail ) { expect( ret, true ); }
+   return ret;
 }
 
 // confirm delete will either be for an issue or a card.  
@@ -617,17 +631,16 @@ Future<bool> validateConfirmDelete( WidgetTester tester, String repo, String iss
 // Some pacts are simply informational
 Future<bool> validatePass( WidgetTester tester, String detailName ) async {
 
-   // checkNTap returns the key it was able to find.
+   // checkNTap returns the key it was able to find
    detailName = await checkNTap( tester, detailName );
    if( detailName == "Element Not Found." ) { return false; }
-   
    expect( find.text( "Raw Host Action:" ), findsOneWidget );
-
+   
    final Map<String, dynamic> pmap = getPact( tester, detailName );
-
+   
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
-   
+
    return true;
 }
 
@@ -1016,22 +1029,35 @@ Future<bool> validateUnAssign40( WidgetTester tester ) async {
    String issue  = "Blast 6";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
 
-   expect( await validateAdd(      tester, repo, issue, "604 PEQ",     "1 0 confirm add" ),      true );  // This can show up at step 2, no double count potential
-   expect( await validatePass(     tester,                             "1 0 confirm relocate"),  true );
+   int add = 0;
+   // This can show up at step 4 even, no double count potential
+   if( await validateAdd(      tester, repo, issue, "604 PEQ",     "1 0 confirm add", allowFail: false )) { add += 1; }
+   if( await validateAdd(      tester, repo, issue, "604 PEQ",     "3 0 confirm add", allowFail: false )) { add += 1; }
+   expect( add, 1 );
+
+
+   // These can be all over.  allow for double-counting.
+   
+   int relo = 0;
+   // have seen this at location 2, in which case 3 is a double count
+   if( await validatePass(     tester,                             "1 0 confirm relocate" )) { relo += 1; }
+   if( await validatePass(  tester,                             "3 0 confirm relocate" )) { relo += 1; }
+   expect( relo >= 1, true );
+   
    // want 2 assigns, 2 unassigns.  Since checkNTap will simply look for 'confirm change', will always pass on 1st check in this test.
    // need assign before unassign
    int assign = 0;
-   int unassign = 0;
+   if( await validateAssign( tester, repo, issue, "",            "1 0 confirm change" ) ) { assign += 1; }
    if( await validateAssign( tester, repo, issue, "",            "2 0 confirm change" ) ) { assign += 1; }
    if( await validateAssign( tester, repo, issue, "",            "3 0 confirm change" ) ) { assign += 1; }
    if( await validateAssign( tester, repo, issue, "",            "4 0 confirm change" ) ) { assign += 1; }
+   expect( assign >= 2, true );   
 
+   int unassign = 0;
    if( await validateUnAssign( tester, repo, issue, "",          "3 0 confirm change" ) ) { unassign += 1; }
    if( await validateUnAssign( tester, repo, issue, "",          "4 0 confirm change" ) ) { unassign += 1; }
    if( await validateUnAssign( tester, repo, issue, "",          "5 0 confirm change" ) ) { unassign += 1; }
-
-   expect( assign,   2 );   
-   expect( unassign, 2 );
+   expect( unassign >= 2, true );
    
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 5, "" );

@@ -21,6 +21,7 @@ import 'package:ceFlutter/models/PEQRaw.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
+import 'package:ceFlutter/models/HostUser.dart';
 import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
@@ -412,7 +413,6 @@ Future<Person?> fetchAPerson( context, container, ceUserId ) async {
    return null;
 }
 
-
 // Populates idHostMap
 Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, Map<String, Person> cePeople ) async {
    String shortName = "fetchHostMap";
@@ -636,6 +636,24 @@ Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchHostAcct( context, container, postData ); }
       else{ return []; }
+   }
+}
+
+Future<HostUser?> fetchHostUser( context, container, postData ) async {
+   String shortName = "GetHostA";
+   final response = await awsPost( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      final hu = json.decode( utf8.decode( response.bodyBytes ));
+      HostUser hostUser = HostUser.fromJson( hu );
+      return hostUser;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no associated users found" );
+      return null;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchHostUser( context, container, postData ); }
+      else{ return null; }
    }
 }
 

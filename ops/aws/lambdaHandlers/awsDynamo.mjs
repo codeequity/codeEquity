@@ -100,7 +100,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "SetTestLock")    { resultPromise = setTestLock( rb.ceProjId, rb.val ); }
     else if( endPoint == "PutEqPlan")      { resultPromise = putEqPlan( rb.NewPlan ); }
     else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
-    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId, rb.HostPlatform ); }
+    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId, rb.HostPlatform, rb.UserOnly ); }
     else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update, rb.pat ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
@@ -443,6 +443,9 @@ async function removeEntries( tableName, ids ) {
 	break;
     case "CEProjects": 
 	pkey1 = "CEProjectId";
+	break;
+    case "CEHostUser": 
+	pkey1 = "HostUserId";
 	break;
     case "CEPEQSummary": 
 	pkey1 = "PEQSummaryId";
@@ -1438,7 +1441,7 @@ async function updatePEQActions( peqa, ceUID ) {
 }
 
 
-
+// working with hostUser only.  If update is true, do not look to update peq user ids
 // Note: newHostAcct.id is NOT the same as the Host ownerId
 async function putHostA( newHostAcct, update, pat ) {
     if( update == "true" ) {
@@ -1449,7 +1452,7 @@ async function putHostA( newHostAcct, update, pat ) {
 	    ExpressionAttributeValues: { ':ceoid': newHostAcct.ceUserId, ':hostun': newHostAcct.hostUserName, ':pid': newHostAcct.ceProjectIds, ':fid': newHostAcct.futureCEProjects }
 	};
 	
-	console.log( "HostAcct update repos", params);
+	console.log( "Update hostUser", params);
 	const updateCmd = new UpdateCommand( params );	
 	await bsdb.send( updateCmd ); 
     }
@@ -1467,7 +1470,7 @@ async function putHostA( newHostAcct, update, pat ) {
 	    }
 	};
 	
-	console.log( "HostAcct put repos", params);
+	console.log( "Put new hostUser", params);
 	const putCmd = new PutCommand( params );
 	
 	await bsdb.send( putCmd ); 
@@ -1488,16 +1491,15 @@ async function putHostA( newHostAcct, update, pat ) {
     return success( updated );
 }
 
-// NOTE.  Repos is an array of current ceProjIds, together with full name repos that are not yet CEProjects
-async function getProjectStatus( repos ) {
-    console.log( "Which HostAs are CEPs?", repos );
+async function getProjectStatus( cepIds ) {
+    console.log( "Which HostAs are CEPs?", cepIds );
 
     let promises = [];
-    repos.forEach(function (projName) {
+    cepIds.forEach(function (cepId) {
 	const params = {
 	    TableName: 'CEProjects',
 	    FilterExpression: 'CEProjectId = :pid',
-	    ExpressionAttributeValues: { ":pid": projName }};
+	    ExpressionAttributeValues: { ":pid": cepId }};
 	
 	promises.push( paginatedScan( params ) );
     });
@@ -1522,7 +1524,9 @@ async function getProjectStatus( repos ) {
 	});
 }
 
-async function getHostA( uid, plat ) {
+// This gets CEHostUser only if userOnly is true.  Otherwise gets full HostAccount (i.e. populates ceProjects)
+async function getHostA( uid, plat, userOnly ) {
+    var getRepos = ( typeof userOnly === 'undefined' || !userOnly );
     var paramsP = typeof uid !== 'undefined' ? 
     {
         TableName: 'CEHostUser',
@@ -1538,22 +1542,25 @@ async function getHostA( uid, plat ) {
     };
     
     
-    console.log( "Host Account repos", uid, plat);
+    console.log( "Get Host Account for ", uid, plat, userOnly, getRepos );
     let hostAccPromise = paginatedScan( paramsP );
 
     let hostAccs = await hostAccPromise;
     if( ! Array.isArray(hostAccs) || !hostAccs.length ) { return NO_CONTENT; }
 
-    for( const hostAcc of hostAccs ) {
-	console.log( "Found Host account ", hostAcc );
+    if( getRepos ) {
+       for( const hostAcc of hostAccs ) {
+   	   console.log( "Found Host account ", hostAcc );
 
-	// FutureCEProjects are repos, currently, no need to check
-	// let ceps = await getProjectStatus( hostAcc.CEProjectIds.concat( hostAcc.FutureCEProjects ) );
-	// hostAcc.ceProjs = ceps.map( cep => cep == -1 ? "false" : "true" );
+	   // FutureCEProjects are repos, currently, no need to check
+	   // let ceps = await getProjectStatus( hostAcc.CEProjectIds.concat( hostAcc.FutureCEProjects ) );
+	   // hostAcc.ceProjs = ceps.map( cep => cep == -1 ? "false" : "true" );
 
-	hostAcc.ceProjects = await getProjectStatus( hostAcc.CEProjectIds );
-	console.log( "...working with ", hostAcc.ceProjects );
+	   hostAcc.ceProjects = await getProjectStatus( hostAcc.CEProjectIds );
+	   console.log( "...working with ", hostAcc.ceProjects );
+        }
     }
+    console.log( "Returning ", hostAccs );
     return success( hostAccs );
 }
 
