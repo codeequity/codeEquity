@@ -81,8 +81,6 @@ class AppState {
    late List<HostAccount> myHostAccounts;        // all host accounts for current ceUser.
    late String            myGHPAT;               // GH personal access token for builder, keep for session only.
    
-   late bool hostUpdated;
-
    late String funny;                 // placeholder in activity zone.
    Node?       allocTree;
    EquityNode? equityTree;
@@ -139,8 +137,6 @@ class AppState {
       idMapHost           = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, ceUserName:, hostUserName:}} i.e. idMapHost["sysdkag"]["ceUID"]
       funny               = "";
       hostPlatformsLoaded = [];
-
-      hostUpdated    = false;
 
       allocTree        = null;
       updateAllocTree  = false;

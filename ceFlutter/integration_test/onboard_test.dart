@@ -663,6 +663,7 @@ Future<bool> verifyRole( tester, String role, {vname = CEMD_VENT_NAME} ) async {
    return true;
 }
 
+// XXX unused
 Future<bool> partnerCleanSubmission( tester ) async {
    await login( tester, true );
 
@@ -694,7 +695,7 @@ Future<bool> partnerRegisterAll( tester ) async {
    await login( tester, true );
 
    // make sure start from scratch
-   expect( await verifyAriHome( tester ), true );
+   expect( await verifyAriHome( tester, subset: [] ), true );
    expect( await verifyActivityStart( tester ), true );
    expect( await validateAriFillProfile( tester ), true );
    expect( await validateAriAcceptPrivacy( tester ), true );
@@ -708,15 +709,15 @@ Future<bool> partnerRegisterAll( tester ) async {
 
 }
 
-Future<bool> partnerDirtySubmission( tester ) async {
+Future<bool> partnerDirtySubmission( tester, List<String> subset ) async {
    print( "Partner dirty submission" );
    await login( tester, true );
 
-   // make sure start from scratch
-   expect( await verifyAriHome( tester ), true );
+   // check start
+   expect( await verifyAriHome( tester, subset: subset ), true );
    expect( await validateAriWithdraw( tester ), true );  // start from scratch
    await login( tester, true );
-   expect( await verifyAriHome( tester ), true );
+   expect( await verifyAriHome( tester, subset: [] ), true );
    
    // Accept privacy, profile
    print( "Accept basics" );
@@ -770,11 +771,10 @@ void main() {
          await login( tester, true );
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
-         // make sure start from scratch
          expect( await verifyAriHome( tester ), true );
          expect( await validateAriWithdraw( tester ), true );  // start from scratch
          await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
+         expect( await verifyAriHome( tester, subset: [] ), true );
          
          expect( await verifyActivityStart( tester ), true );
          expect( await validateAriFillProfile( tester ), true );
@@ -793,18 +793,18 @@ void main() {
    // Profile can't have empty name or email.  There is no error checking on either, so
    // the only useful test right now is to empty the phone.
    print( "Bad profile" );
-   //testWidgets('Bad profile', skip:true, (WidgetTester tester) async {
+   // testWidgets('Bad profile', skip:true, (WidgetTester tester) async {
    testWidgets('Bad profile', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
-         // make sure start from scratch
-         expect( await verifyAriHome( tester ), true );
+         // make sure start nuttin
+         expect( await verifyAriHome( tester, subset: [] ), true );
          expect( await validateAriWithdraw( tester ), true );  // start from scratch
          await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
+         expect( await verifyAriHome( tester, subset: [] ), true );
 
          // Accept privacy
          expect( await verifyActivityStart( tester ), true );
@@ -824,13 +824,13 @@ void main() {
 
    // chain of edits, mistakes
    print( "partner sig mistake, Submit, reopen, edit, register, exec mistake sig, accept" );
-   // testWidgets('Mistakes accept', skip:true, (WidgetTester tester) async {
+   //testWidgets('Mistakes accept', skip:true, (WidgetTester tester) async {
    testWidgets('Mistakes accept', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
-         expect( await partnerDirtySubmission( tester ), true );
+         expect( await partnerDirtySubmission( tester, [] ), true );
 
          await login( tester, true, tester2: true );
 
@@ -844,7 +844,7 @@ void main() {
          // Verify Ari is good
          await logout( tester );
          await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
+         expect( await verifyAriHome( tester, subset: ["CEMD"] ), true );
          expect( await verifyRole( tester, "Contributor" ), true );         
          expect( await verifyAriRegistered( tester ), true );
          await logout( tester );
@@ -855,13 +855,13 @@ void main() {
 
    // chain of edits, mistakes
    print( "partner sig mistake, Submit, reopen, edit, register, exec mistake sig, reject" );
-   // testWidgets('Mistakes reject', skip:true, (WidgetTester tester) async {
+   //testWidgets('Mistakes reject', skip:true, (WidgetTester tester) async {
    testWidgets('Mistakes reject', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
-         expect( await partnerDirtySubmission( tester ), true );
+         expect( await partnerDirtySubmission( tester, ["CEMD"] ), true );
 
          // Connie
          await login( tester, true, tester2: true );
@@ -872,7 +872,7 @@ void main() {
          // Verify Ari registration is gone
          await logout( tester );
          await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
+         expect( await verifyAriHome( tester, subset: [] ), true );
          expect( await docAvailable( tester ), true );
          await logout( tester );
 
@@ -885,7 +885,7 @@ void main() {
    // XXX  Connie Counter not yet complete - gap in onboarding prevents this (no equity plan yet)
    // 
    print( "Recover" );
-   // testWidgets('Onboard recover', skip:true, (WidgetTester tester) async {
+   //testWidgets('Onboard recover', skip:true, (WidgetTester tester) async {
    testWidgets('Onboard recover', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
@@ -894,7 +894,7 @@ void main() {
 
          // expect( await partnerCleanSubmission( tester ), true );
          await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
+         expect( await verifyAriHome( tester, subset: [] ), true );
          expect( await validateAriWithdraw( tester ), true );  // start from scratch
          
          expect( await partnerRegisterAll( tester ), true );

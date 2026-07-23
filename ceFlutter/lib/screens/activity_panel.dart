@@ -25,7 +25,8 @@ class CEActivityPanel extends StatefulWidget {
    final rhsFrameMinWidth;
    final rhsFrameMaxWidth;
    final overlayMaxWidth;
-   CEActivityPanel({ Key? key, this.rhsFrameMinWidth, this.rhsFrameMaxWidth, this.overlayMaxWidth }) : super( key: key );
+   final updateHomeView; 
+   CEActivityPanel({ Key? key, this.updateHomeView, this.rhsFrameMinWidth, this.rhsFrameMaxWidth, this.overlayMaxWidth }) : super( key: key );
       
   @override
   _CEActivityState createState() => _CEActivityState();
@@ -125,49 +126,51 @@ class _CEActivityState extends State<CEActivityPanel> {
          String ret = await confirm( context, "Withdraw from CodeEquity?", msg, _noop, _cancel );
          
          print( "WITHDRAW CE" );
+         // Note: do not need to await updateDynamo for withdrawAll - user will reload only after logging in, which takes a while.
          if( ret == "noop" ) {
             
             // This is insufficient.  In error conditions, a CEV can hold a cePeep while the cePeep does not see the CEV.  Then subsequent onboarding fails.
             // List<CEVenture> cevs = cePeep.getCEVs( appState.ceVenture );
             cePeep.withdraw();
-            logout( context, appState );
             
-            appState.ceVenture.values.forEach( (cev) {
+            for( var cev in appState.ceVenture.values ) {
                   List<dynamic> res = cev.drop( appState, cePeep );
                   bool found            = res[0];
                   List<Person> promoted = res[1];
                   
-                  // Don't wait
+                 
                   if( found ) {
                      print( "WITHDRAW from " + cev.name + " " +cePeep.id );
                      String cevs = json.encode( cev );
                      String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
                      updateDynamo( context, container, ppostData, "UpdateCEV" );
 
-                     promoted.forEach( (p) {
+                     for( var p in promoted ) {
                            String user = json.encode( p );
                            String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
                            updateDynamo( context, container, ppostData, "PutPerson" );
-                        });
+                     }
                   }
-               });
+            }
 
             // delete CEHostUser entry - cePeep may have multiple hostAccounts (i.e. have hostUIDs on multiple platforms)
             List<String> huids = [];
-            appState.myHostAccounts.forEach( (host) {
+            for( var host in appState.myHostAccounts ) {
                   print( "Clearing all CEPs, CEVs from host UID: " + host.hostUserId );
                   host.hostUser.ceProjectIds = [];
                   host.hostUser.futureCEProjects = [];
                   String newHostA = json.encode( host.hostUser );
                   String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
-                  // Don't wait
                   updateDynamo( context, container, postData, "PutHostA" );
-               });
+            }
 
-            // don't await
             String user = json.encode( cePeep );
             String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
             updateDynamo( context, container, ppostData, "PutPerson" );
+
+            // Clear host accounts so initMDState reloads it upon login
+            appState.ceHostAccounts.clear();
+            logout( context, appState );
          }
       }
       else {
@@ -182,6 +185,9 @@ class _CEActivityState extends State<CEActivityPanel> {
          if( ret == "Cancel" ) {
             return;
          }
+
+         // select screen .. pop early to avoid awaits
+         Navigator.of( context ).pop();         
          
          print( "WITHDRAW Vent " + cevId );
          if( ret == "noop" ) {
@@ -192,16 +198,15 @@ class _CEActivityState extends State<CEActivityPanel> {
             bool found            = res[0];
             List<Person> promoted = res[1];
 
-            // don't await
             String cevs = json.encode( cev! );
             String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
-            updateDynamo( context, container, ppostData, "UpdateCEV" );
+            await updateDynamo( context, container, ppostData, "UpdateCEV" );
 
             // remove 1 CEV from CEHostUser
             List<CEProject>   ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev!.ceVentureId ).toList();
             List<HostAccount>? ha   = appState.ceHostAccounts[ cePeep.id ];
             assert( ha != null );
-            ha!.forEach( (host) {
+            for( var host in ha! ) {
                   bool mod = false;
                   ceps.forEach( (p) {
                         if( host.ceProjectIds.contains( p.ceProjectId ) ) {
@@ -213,24 +218,23 @@ class _CEActivityState extends State<CEActivityPanel> {
                      print( "HostUser mods made" );
                      String newHostA = json.encode( host.hostUser );
                      String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
-                     // Don't wait
-                     updateDynamo( context, container, postData, "PutHostA" );
+                     await updateDynamo( context, container, postData, "PutHostA" );
                   }
-               });
-            
+            }
 
-            // Don't wait
             if( found ) {
-               promoted.forEach( (p) {
+               for( var p in promoted ) {
                      String user = json.encode( p );
                      String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
-                     updateDynamo( context, container, ppostData, "PutPerson" );
-                  });
+                     await updateDynamo( context, container, ppostData, "PutPerson" );
+               }
             }
-            
+
+            // Clear host accounts, reload, then update homepage.
+            appState.ceHostAccounts.clear();
+            await initMDState( context, container );
+            widget.updateHomeView(); 
          }
-         // select screen
-         Navigator.of( context ).pop();         
       }
    }
    
