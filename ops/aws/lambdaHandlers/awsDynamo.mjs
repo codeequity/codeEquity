@@ -310,7 +310,7 @@ async function getEntry( tableName, query ) {
 	props = ["CEUserId", "CEUserName", "Email", "First", "Last"];
 	break;
     case "CEHostUser":
-	props = ["HostUserName", "HostPlatform"];
+	props = ["HostUserName", "HostPlatform", "CEUserId"];
 	break;
     case "CEProfileImage":
 	props = ["CEProfileId"];

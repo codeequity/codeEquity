@@ -359,14 +359,14 @@ Future<bool> registerVenture( tester, String cevName, {editing = false} ) async 
 }
 
 Future<bool> verifyEquityInit( tester, {vent = CEMD_VENT_NAME} ) async {
-   // Agreement should now be showing.  No connie, most ari
+   // Agreement should now be showing.  No connie, most ari, nothing underneath if ari just withdrew
    print( "Verify equity init" );
    final Finder doc = find.byKey( const Key( "Equity Agreement" ));
    expect( doc, findsOneWidget );
    expect( find.textContaining( getToday() ),                       findsNothing );
    expect( find.textContaining( "rmusick+connieTester@gmail.com" ), findsNothing );
    expect( find.textContaining( "Connie Star" ),                    findsNothing );
-   expect( find.textContaining( vent ),                             findsNWidgets(2) );
+   expect( find.textContaining( vent ),                             findsNWidgets(1) );
    expect( find.textContaining( "http://www.codeequity.org" ),      findsNWidgets(1) );
    expect( find.textContaining( "Ari Star" ),                       findsNWidgets(2) );  // 2 locations
    expect( find.textContaining( "rmusick+ariTester@gmail.com" ),    findsNWidgets(2) );
@@ -466,7 +466,7 @@ Future<bool> validateAriRegister( tester, { all = false } ) async {
       expect( await verifyPartnerSigEdit( tester ), true );
       expect( await partnerSig( tester, "Ari Star" ), true );
       expect( await toggleVnP( tester ), true );
-      
+
       // Keep Ari out of actual codeequity, unless there is a good reason to let testing back in..
       // expect( await registerVenture( tester, CE_VENT_NAME ), true );      
       
@@ -663,6 +663,7 @@ Future<bool> verifyRole( tester, String role, {vname = CEMD_VENT_NAME} ) async {
    return true;
 }
 
+// XXX unused
 Future<bool> partnerCleanSubmission( tester ) async {
    await login( tester, true );
 
@@ -694,7 +695,7 @@ Future<bool> partnerRegisterAll( tester ) async {
    await login( tester, true );
 
    // make sure start from scratch
-   expect( await verifyAriHome( tester ), true );
+   expect( await verifyAriHome( tester, subset: [] ), true );
    expect( await verifyActivityStart( tester ), true );
    expect( await validateAriFillProfile( tester ), true );
    expect( await validateAriAcceptPrivacy( tester ), true );
@@ -708,15 +709,15 @@ Future<bool> partnerRegisterAll( tester ) async {
 
 }
 
-Future<bool> partnerDirtySubmission( tester ) async {
+Future<bool> partnerDirtySubmission( tester, List<String> subset ) async {
    print( "Partner dirty submission" );
    await login( tester, true );
 
-   // make sure start from scratch
-   expect( await verifyAriHome( tester ), true );
+   // check start
+   expect( await verifyAriHome( tester, subset: subset ), true );
    expect( await validateAriWithdraw( tester ), true );  // start from scratch
    await login( tester, true );
-   expect( await verifyAriHome( tester ), true );
+   expect( await verifyAriHome( tester, subset: [] ), true );
    
    // Accept privacy, profile
    print( "Accept basics" );
@@ -770,11 +771,10 @@ void main() {
          await login( tester, true );
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
-         // make sure start from scratch
          expect( await verifyAriHome( tester ), true );
          expect( await validateAriWithdraw( tester ), true );  // start from scratch
          await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
+         expect( await verifyAriHome( tester, subset: [] ), true );
          
          expect( await verifyActivityStart( tester ), true );
          expect( await validateAriFillProfile( tester ), true );
@@ -800,11 +800,11 @@ void main() {
          await login( tester, true );
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
-         // make sure start from scratch
-         expect( await verifyAriHome( tester ), true );
+         // make sure start nuttin
+         expect( await verifyAriHome( tester, subset: [] ), true );
          expect( await validateAriWithdraw( tester ), true );  // start from scratch
          await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
+         expect( await verifyAriHome( tester, subset: [] ), true );
 
          // Accept privacy
          expect( await verifyActivityStart( tester ), true );
@@ -830,7 +830,7 @@ void main() {
          await restart( tester );
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
-         expect( await partnerDirtySubmission( tester ), true );
+         expect( await partnerDirtySubmission( tester, [] ), true );
 
          await login( tester, true, tester2: true );
 
@@ -844,7 +844,7 @@ void main() {
          // Verify Ari is good
          await logout( tester );
          await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
+         expect( await verifyAriHome( tester, subset: ["CEMD"] ), true );
          expect( await verifyRole( tester, "Contributor" ), true );         
          expect( await verifyAriRegistered( tester ), true );
          await logout( tester );
@@ -861,7 +861,7 @@ void main() {
          await restart( tester );
          tester.binding.window.physicalSizeTestValue = const Size(1200, 1065);
 
-         expect( await partnerDirtySubmission( tester ), true );
+         expect( await partnerDirtySubmission( tester, ["CEMD"] ), true );
 
          // Connie
          await login( tester, true, tester2: true );
@@ -872,7 +872,7 @@ void main() {
          // Verify Ari registration is gone
          await logout( tester );
          await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
+         expect( await verifyAriHome( tester, subset: [] ), true );
          expect( await docAvailable( tester ), true );
          await logout( tester );
 
@@ -885,7 +885,7 @@ void main() {
    // XXX  Connie Counter not yet complete - gap in onboarding prevents this (no equity plan yet)
    // 
    print( "Recover" );
-   // testWidgets('Onboard recover', skip:true, (WidgetTester tester) async {
+   //testWidgets('Onboard recover', skip:true, (WidgetTester tester) async {
    testWidgets('Onboard recover', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
@@ -894,7 +894,7 @@ void main() {
 
          // expect( await partnerCleanSubmission( tester ), true );
          await login( tester, true );
-         expect( await verifyAriHome( tester ), true );
+         expect( await verifyAriHome( tester, subset: [] ), true );
          expect( await validateAriWithdraw( tester ), true );  // start from scratch
          
          expect( await partnerRegisterAll( tester ), true );
@@ -903,6 +903,9 @@ void main() {
          expect( await validateConCounter( tester, vent: CEMD_VENT_NAME ), true );
          expect( await validateConCounter( tester, vent: CESE_VENT_NAME ), true );
          expect( await validateConCounter( tester, vent: CEAL_VENT_NAME ), true );
+
+         // Keep testing out of CE
+         // expect( await validateConCounter( tester, vent: CE_VENT_NAME ), true );
 
          await logout( tester );
          await login( tester, true );

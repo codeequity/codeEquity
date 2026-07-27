@@ -42,10 +42,13 @@ class _CEHomeState extends State<CEHomePage> {
    late double  rhsFrameMaxWidth;
    late double  overlayMaxWidth;
 
+   late bool updateView;
+
    @override
    void initState() {
       super.initState();
       ceProjectLoading = false;
+      updateView  = true;      
    }
 
    @override
@@ -195,7 +198,7 @@ class _CEHomeState extends State<CEHomePage> {
          () async
          {
             await updateGHRepos( context, container );
-            setState(() => appState.hostUpdated = true );            
+            _updateHost();
          }); 
       
       Widget buttonRow = Row(
@@ -251,6 +254,10 @@ class _CEHomeState extends State<CEHomePage> {
       return chunks;
    }
 
+   void _updateHost() {
+      setState(() => updateView = true );
+   }
+   
    // Keep LHS panel between 250 and 300px, no matter what.
    Widget _showHostAccts() {
       List<Widget> acctList = [];
@@ -259,8 +266,7 @@ class _CEHomeState extends State<CEHomePage> {
       acctList.add( Container( height: appState.BASE_TXT_HEIGHT ) );
       runningLHSHeight += appState.BASE_TXT_HEIGHT;
       
-      // print( "SHOW " + appState.hostUpdated.toString() );
-      if( appState.myHostAccounts != null || appState.hostUpdated ) {
+      if( appState.myHostAccounts != null || updateView ) {
 
          if( appState.myHostAccounts.length <= 0 ) {
             acctList.addAll( _makeRepos( -1 ) );
@@ -276,7 +282,7 @@ class _CEHomeState extends State<CEHomePage> {
       }
 
 
-      appState.hostUpdated = false;
+      updateView = false;
       final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsFrameMinWidth), lhsFrameMaxWidth );  // i.e. vary between min and max.
       final wrapPoint = lhsMaxWidth + vBarWidth + rhsFrameMinWidth;
       
@@ -299,8 +305,6 @@ class _CEHomeState extends State<CEHomePage> {
             ));
    }
 
-
-   
    Widget _getActivityPanel() {
       final w1 = rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
       
@@ -315,7 +319,7 @@ class _CEHomeState extends State<CEHomePage> {
             Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) 
             ])
          : 
-         CEActivityPanel( overlayMaxWidth: overlayMaxWidth, rhsFrameMinWidth: rhsFrameMinWidth, rhsFrameMaxWidth: rhsFrameMaxWidth );
+         CEActivityPanel( updateHomeView: _updateHost, overlayMaxWidth: overlayMaxWidth, rhsFrameMinWidth: rhsFrameMinWidth, rhsFrameMaxWidth: rhsFrameMaxWidth );
    }
    
    Widget _makeBody( ) {

@@ -521,6 +521,15 @@ async function updateCEVenture( authData, ceVenture ) {
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
+async function updateHostUser( authData, hostUser ) {
+    console.log( authData.who, "Updating CE Host User" );
+
+    let shortName = "PutHostA"; 
+
+    let pd = { Endpoint: shortName, NewHostA: hostUser, update: "true", pat: "" }; 
+    return await wrappedPostAWS( authData, shortName, pd );
+}
+
 async function getRaw( authData, pactId ) {
     // console.log( authData.who, "Get raw PAction", pactId );
 
@@ -650,6 +659,16 @@ async function getCEV( authData, ceVentureId ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+// UNIT TESTING ONLY!!
+// Get hostUID for host platform from aws.  This usage could be expanded outside testing, if needed.
+async function getHostUser( authData, ceuid, platform ) {
+    let shortName = "GetEntry";
+    let query     = { "CEUserId": ceuid, "HostPlatform": platform };
+    let postData  = { "Endpoint": shortName, "tableName": "CEHostUser", "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
 
 
 export {getAPIPath};
@@ -682,6 +701,7 @@ export {updateLinkageSummary};
 export {updateCEPHostParts};
 export {updateCEEquityPlan};
 export {updateCEVenture};
+export {updateHostUser};
 
 export {getRaw};
 export {getPRaws};
@@ -698,3 +718,4 @@ export {clearIngested};
 
 export {getStoredLocs};  // TESTING ONLY
 export {getCEV};         // TESTING ONLY
+export {getHostUser};    // TESTING ONLY

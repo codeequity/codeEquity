@@ -259,19 +259,20 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    return true;
 }
 
-Future<bool> verifyAriHome( WidgetTester tester ) async {
+// Keep Ari out of CE, no reason for testing to touch that
+Future<bool> verifyAriHome( WidgetTester tester, {List<String>? subset} ) async {
    expect( await verifyOnHomePage( tester ), true );   
 
+   List<String> check = subset ?? ["CEMD", "CEAL", "CESE"];
+      
    //  Four CE Ventures, CE Projects
-   expect( find.byKey( const Key(CEMD_VENT_NAME )), findsOneWidget );
-   expect( find.byKey( const Key(CEAL_VENT_NAME )), findsOneWidget );
-   expect( find.byKey( const Key(CESE_VENT_NAME )), findsOneWidget );
-   expect( find.byKey( const Key(CE_VENT_NAME )),   findsNWidgets(2) );   
+   if( check.contains( "CEMD" ) ) { expect( find.byKey( const Key(CEMD_VENT_NAME )), findsOneWidget ); }
+   if( check.contains( "CEAL" ) ) { expect( find.byKey( const Key(CEAL_VENT_NAME )), findsOneWidget ); }
+   if( check.contains( "CESE" ) ) { expect( find.byKey( const Key(CESE_VENT_NAME )), findsOneWidget ); }
 
-   expect( find.byKey( const Key(CEMD_PROJ_NAME )), findsOneWidget );
-   expect( find.byKey( const Key(CEAL_PROJ_NAME )), findsOneWidget );
-   expect( find.byKey( const Key(CESE_PROJ_NAME )), findsOneWidget );
-   expect( find.byKey( const Key(CE_PROJ_NAME )),   findsNWidgets(2));   // one vent, one proj
+   if( check.contains( "CEMD" ) ) { expect( find.byKey( const Key(CEMD_PROJ_NAME )), findsOneWidget ); }
+   if( check.contains( "CEAL" ) ) { expect( find.byKey( const Key(CEAL_PROJ_NAME )), findsOneWidget ); }
+   if( check.contains( "CESE" ) ) { expect( find.byKey( const Key(CESE_PROJ_NAME )), findsOneWidget ); }
 
    /*
    // No repositories - host-specific
@@ -282,7 +283,6 @@ Future<bool> verifyAriHome( WidgetTester tester ) async {
    expect( find.byKey( const Key('codeequity/ceTesterAriAlt' )),   findsOneWidget );   
    expect( find.byKey( const Key('codeequity/codeEquity' )),       findsOneWidget );   
    */
-
    
    return true;
 }
