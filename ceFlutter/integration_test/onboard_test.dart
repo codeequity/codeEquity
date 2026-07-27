@@ -359,14 +359,14 @@ Future<bool> registerVenture( tester, String cevName, {editing = false} ) async 
 }
 
 Future<bool> verifyEquityInit( tester, {vent = CEMD_VENT_NAME} ) async {
-   // Agreement should now be showing.  No connie, most ari
+   // Agreement should now be showing.  No connie, most ari, nothing underneath if ari just withdrew
    print( "Verify equity init" );
    final Finder doc = find.byKey( const Key( "Equity Agreement" ));
    expect( doc, findsOneWidget );
    expect( find.textContaining( getToday() ),                       findsNothing );
    expect( find.textContaining( "rmusick+connieTester@gmail.com" ), findsNothing );
    expect( find.textContaining( "Connie Star" ),                    findsNothing );
-   expect( find.textContaining( vent ),                             findsNWidgets(2) );
+   expect( find.textContaining( vent ),                             findsNWidgets(1) );
    expect( find.textContaining( "http://www.codeequity.org" ),      findsNWidgets(1) );
    expect( find.textContaining( "Ari Star" ),                       findsNWidgets(2) );  // 2 locations
    expect( find.textContaining( "rmusick+ariTester@gmail.com" ),    findsNWidgets(2) );
@@ -466,7 +466,7 @@ Future<bool> validateAriRegister( tester, { all = false } ) async {
       expect( await verifyPartnerSigEdit( tester ), true );
       expect( await partnerSig( tester, "Ari Star" ), true );
       expect( await toggleVnP( tester ), true );
-      
+
       // Keep Ari out of actual codeequity, unless there is a good reason to let testing back in..
       // expect( await registerVenture( tester, CE_VENT_NAME ), true );      
       
@@ -793,7 +793,7 @@ void main() {
    // Profile can't have empty name or email.  There is no error checking on either, so
    // the only useful test right now is to empty the phone.
    print( "Bad profile" );
-   // testWidgets('Bad profile', skip:true, (WidgetTester tester) async {
+   //testWidgets('Bad profile', skip:true, (WidgetTester tester) async {
    testWidgets('Bad profile', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
@@ -824,7 +824,7 @@ void main() {
 
    // chain of edits, mistakes
    print( "partner sig mistake, Submit, reopen, edit, register, exec mistake sig, accept" );
-   //testWidgets('Mistakes accept', skip:true, (WidgetTester tester) async {
+   // testWidgets('Mistakes accept', skip:true, (WidgetTester tester) async {
    testWidgets('Mistakes accept', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
@@ -855,7 +855,7 @@ void main() {
 
    // chain of edits, mistakes
    print( "partner sig mistake, Submit, reopen, edit, register, exec mistake sig, reject" );
-   //testWidgets('Mistakes reject', skip:true, (WidgetTester tester) async {
+   // testWidgets('Mistakes reject', skip:true, (WidgetTester tester) async {
    testWidgets('Mistakes reject', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
@@ -903,6 +903,9 @@ void main() {
          expect( await validateConCounter( tester, vent: CEMD_VENT_NAME ), true );
          expect( await validateConCounter( tester, vent: CESE_VENT_NAME ), true );
          expect( await validateConCounter( tester, vent: CEAL_VENT_NAME ), true );
+
+         // Keep testing out of CE
+         // expect( await validateConCounter( tester, vent: CE_VENT_NAME ), true );
 
          await logout( tester );
          await login( tester, true );

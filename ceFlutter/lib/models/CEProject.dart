@@ -49,7 +49,7 @@ class CEProject {
          repoIds.add( r['repoId'] ); 
       }
 
-      print( "Working on " + json.toString() );
+      // print( "Working on " + json.toString() );
       
       // DynamoDB is not camelCase
       return CEProject(

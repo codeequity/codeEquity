@@ -93,8 +93,8 @@ class _CESearchState extends State<CESearch> {
       }
       else if( obj is CEVenture ) {
          CEVenture v = obj as CEVenture;
-         objName     = v.ceVentureId;
-         objDetail   = "The CodeEquity Venture " + v.name + " found at: " + (v.web ?? "www.google.com");
+         objName     = v.name;
+         objDetail   = "The CodeEquity Venture " + v.ceVentureId + " found at: " + (v.web ?? "www.google.com");
       }
       else if( obj is CEProject ) {
          CEProject p = obj as CEProject;
@@ -307,6 +307,7 @@ class _getPossibilities {
       List<Person>?    filteredCEPeeps = appState.cePeople.values.where( (Person p) => ( p.userName.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
       List<CEProject>? filteredCEProjs = appState.ceProject.values.where( (CEProject p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
       List<CEVenture>? filteredCEVents = appState.ceVenture.values.where( (CEVenture v) => ( v.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
+      List<CEVenture>? namedCEVents    = appState.ceVenture.values.where( (CEVenture v) => ( "venture names".contains( query.toLowerCase() ))).toList();
       
       List<PEQ> filteredPeqs = [];
       for( final ceUID in appState.cePeople.keys ) {
@@ -320,6 +321,7 @@ class _getPossibilities {
 
       // There are many many better ways to do this.  For now, prioritize people, then projects.
       // Alphabetical to support testing until a better preference metric is available.
+      res.addAll( sortFilter( namedCEVents ?? [] ));
       res.addAll( sortFilter( filteredCEPeeps ?? [] ) );
       res.addAll( sortFilter( filteredCEVents ?? []) );
       res.addAll( sortFilter( filteredCEProjs ?? []) );

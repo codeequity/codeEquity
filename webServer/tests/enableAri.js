@@ -71,6 +71,7 @@ async function addCEHostProject( authData, actor, cepId ) {
 }
 
 // NOTE: for flutter testing, only.
+// NOTE: do NOT add CodeEquity - testing should not touch that.
 async function runTests() {
     console.log( "Make sure ariTester has exec role and CEPs for testing" );
 
@@ -83,6 +84,7 @@ async function runTests() {
     await setCEVTestRoles( authData, config.FLUTTER_MULTI_TEST_CEVID );
     await setCEVTestRoles( authData, config.FLUTTER_CROSS_TEST_CEVID );
     await setCEVTestRoles( authData, config.FAIL_CROSS_TEST_CEVID );
+    await setCEVTestRoles( authData, config.TEST_CEVID );
 
     // Testing
     await addCEHostProject( authData, config.TEST_ACTOR, config.FLUTTER_TEST_CEPID );
@@ -91,7 +93,6 @@ async function runTests() {
     await addCEHostProject( authData, config.TEST_ACTOR, config.FAIL_CROSS_TEST_CEPID );
 
     // others
-    await addCEHostProject( authData, config.TEST_ACTOR, "CodeEquity_ycje7dk23f" );   // XXX
     await addCEHostProject( authData, config.TEST_ACTOR, config.TEST_CEPID );
     await addCEHostProject( authData, config.TEST_ACTOR, config.CROSS_TEST_CEPID );
     await addCEHostProject( authData, config.TEST_ACTOR, config.FLUTTER_CROSS_TEST_CEPID );

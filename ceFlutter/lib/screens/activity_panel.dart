@@ -118,60 +118,91 @@ class _CEActivityState extends State<CEActivityPanel> {
       await radioDialog( context, "Withdraw from which?", choices, choices[0], _withdraw, _cancel, execArgs: [ cePeep ] );
    }
 
-   // XXX simplify
+   // Note: do not need to await updateDynamo for withdrawAll - user will reload only after logging in, which takes a while.
+   void _withdrawCEV( Person cePeep ) async {
+      print( "WITHDRAW CE" );
+         
+      cePeep.withdraw();
+      
+      // This is insufficient.  In error conditions, a CEV can hold a cePeep while the cePeep does not see the CEV.  Then subsequent onboarding fails.
+      // List<CEVenture> cevs = cePeep.getCEVs( appState.ceVenture );
+      for( var cev in appState.ceVenture.values ) {
+         List<dynamic> res = cev.drop( appState, cePeep );
+         bool found            = res[0];
+         
+         if( found ) {
+            print( "WITHDRAW from " + cev.name + " " +cePeep.id );
+            String cevs = json.encode( cev );
+            String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+            updateDynamo( context, container, ppostData, "UpdateCEV" );
+         }
+      }
+      
+      // delete CEHostUser entry - cePeep may have multiple hostAccounts (i.e. have hostUIDs on multiple platforms)
+      List<String> huids = [];
+      for( var host in appState.myHostAccounts ) {
+         print( "Clearing all CEPs, CEVs from host UID: " + host.hostUserId );
+         host.hostUser.ceProjectIds = [];
+         host.hostUser.futureCEProjects = [];
+         String newHostA = json.encode( host.hostUser );
+         String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
+         updateDynamo( context, container, postData, "PutHostA" );
+      }
+      
+      String user = json.encode( cePeep );
+      String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
+      updateDynamo( context, container, ppostData, "PutPerson" );
+      
+      // Clear host accounts so initMDState reloads it upon login
+      appState.ceHostAccounts.clear();
+      logout( context, appState );
+   }
+   
+   void _withdrawCEP( Person cePeep, String cevId ) async {
+      print( "WITHDRAW Vent " + cevId );
+
+      CEVenture? cev = appState.ceVenture[ cevId ];
+      assert( cev != null );
+      List<dynamic> res = cev!.drop( appState, cePeep );
+      bool found        = res[0];
+      
+      String cevs = json.encode( cev! );
+      String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+      await updateDynamo( context, container, ppostData, "UpdateCEV" );
+      
+      // remove 1 CEV from CEHostUser
+      List<CEProject>   ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev!.ceVentureId ).toList();
+      List<HostAccount>? ha  = appState.ceHostAccounts[ cePeep.id ];
+      assert( ha != null );
+      for( var host in ha! ) {
+         bool mod = false;
+         ceps.forEach( (p) {
+               if( host.ceProjectIds.contains( p.ceProjectId ) ) {
+                  mod = true;
+                  host.ceProjectIds.remove( p.ceProjectId ); 
+               }
+            });
+         if( mod ) {
+            print( "HostUser mods made" );
+            String newHostA = json.encode( host.hostUser );
+            String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
+            await updateDynamo( context, container, postData, "PutHostA" );
+         }
+      }
+      
+      // Clear host accounts, reload, then update homepage.
+      appState.ceHostAccounts.clear();
+      await initMDState( context, container );
+      widget.updateHomeView(); 
+   }
+   
    void _withdraw( Person cePeep, String choice ) async {
       if( choice == "All of CodeEquity" ) {
          String msg = "This action will end your participation in CodeEquity and any CodeEquity Ventures.\n All Provisional Equity that hasn't vested already will be terminated.\n";
          msg       += "Your login will survive.  Press \'Continue\' to withdraw.";
          String ret = await confirm( context, "Withdraw from CodeEquity?", msg, _noop, _cancel );
-         
-         print( "WITHDRAW CE" );
-         // Note: do not need to await updateDynamo for withdrawAll - user will reload only after logging in, which takes a while.
-         if( ret == "noop" ) {
-            
-            // This is insufficient.  In error conditions, a CEV can hold a cePeep while the cePeep does not see the CEV.  Then subsequent onboarding fails.
-            // List<CEVenture> cevs = cePeep.getCEVs( appState.ceVenture );
-            cePeep.withdraw();
-            
-            for( var cev in appState.ceVenture.values ) {
-                  List<dynamic> res = cev.drop( appState, cePeep );
-                  bool found            = res[0];
-                  List<Person> promoted = res[1];
-                  
-                 
-                  if( found ) {
-                     print( "WITHDRAW from " + cev.name + " " +cePeep.id );
-                     String cevs = json.encode( cev );
-                     String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
-                     updateDynamo( context, container, ppostData, "UpdateCEV" );
 
-                     for( var p in promoted ) {
-                           String user = json.encode( p );
-                           String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
-                           updateDynamo( context, container, ppostData, "PutPerson" );
-                     }
-                  }
-            }
-
-            // delete CEHostUser entry - cePeep may have multiple hostAccounts (i.e. have hostUIDs on multiple platforms)
-            List<String> huids = [];
-            for( var host in appState.myHostAccounts ) {
-                  print( "Clearing all CEPs, CEVs from host UID: " + host.hostUserId );
-                  host.hostUser.ceProjectIds = [];
-                  host.hostUser.futureCEProjects = [];
-                  String newHostA = json.encode( host.hostUser );
-                  String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
-                  updateDynamo( context, container, postData, "PutHostA" );
-            }
-
-            String user = json.encode( cePeep );
-            String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
-            updateDynamo( context, container, ppostData, "PutPerson" );
-
-            // Clear host accounts so initMDState reloads it upon login
-            appState.ceHostAccounts.clear();
-            logout( context, appState );
-         }
+         if( ret == "noop" ) { _withdrawCEV( cePeep ); }
       }
       else {
          String cevId = await _chooseVenture( "Select the CodeEquity Venture to withdraw from" );
@@ -179,64 +210,66 @@ class _CEActivityState extends State<CEActivityPanel> {
             _cancel();
             return;
          }
+         
          String msg = "This action will end your participation in this Venture.\n All Provisional Equity in this Venture that hasn't vested already will be terminated.\n";
          msg       += "Press \'Continue\' to withdraw.";
          String ret = await confirm( context, "Withdraw from Venture?", msg, _noop, _cancel );
-         if( ret == "Cancel" ) {
-            return;
-         }
+
+         if( ret == "Cancel" )    { return; }
 
          // select screen .. pop early to avoid awaits
          Navigator.of( context ).pop();         
          
-         print( "WITHDRAW Vent " + cevId );
-         if( ret == "noop" ) {
-            
-            CEVenture? cev = appState.ceVenture[ cevId ];
-            assert( cev != null );
-            List<dynamic> res = cev!.drop( appState, cePeep );
-            bool found            = res[0];
-            List<Person> promoted = res[1];
-
-            String cevs = json.encode( cev! );
-            String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
-            await updateDynamo( context, container, ppostData, "UpdateCEV" );
-
-            // remove 1 CEV from CEHostUser
-            List<CEProject>   ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev!.ceVentureId ).toList();
-            List<HostAccount>? ha   = appState.ceHostAccounts[ cePeep.id ];
-            assert( ha != null );
-            for( var host in ha! ) {
-                  bool mod = false;
-                  ceps.forEach( (p) {
-                        if( host.ceProjectIds.contains( p.ceProjectId ) ) {
-                           mod = true;
-                           host.ceProjectIds.remove( p.ceProjectId ); 
-                        }
-                     });
-                  if( mod ) {
-                     print( "HostUser mods made" );
-                     String newHostA = json.encode( host.hostUser );
-                     String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
-                     await updateDynamo( context, container, postData, "PutHostA" );
-                  }
-            }
-
-            if( found ) {
-               for( var p in promoted ) {
-                     String user = json.encode( p );
-                     String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
-                     await updateDynamo( context, container, ppostData, "PutPerson" );
-               }
-            }
-
-            // Clear host accounts, reload, then update homepage.
-            appState.ceHostAccounts.clear();
-            await initMDState( context, container );
-            widget.updateHomeView(); 
-         }
+         if( ret == "noop" ) { _withdrawCEP( cePeep, cevId ); }
       }
    }
+
+   bool _addCEV( Person cePeep, CEVenture cev ) {
+      print( "HostUser mods made" );
+      List<CEProject> ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev.ceVentureId ).toList();
+
+      // What are my different host ids, 1 per host platform?
+      List<String> huids = appState.idMapHost.keys.where( (k) => appState.idMapHost[k] != null && appState.idMapHost[k]!["ceUID"] == cePeep.id ).toList();
+      print( "addCEV hostuids: " + huids.toString() );
+      huids.forEach( (huid) {
+            // for the CEPs in the CEV cePeep's registering for, find any valid host account that belongs to me and matches the CEP host platform
+            List<String> platforms = [];  // only way this is >1 is if huid is same on 2+ host platforms.
+            ceps.forEach( (cep) {
+
+                  if( appState.ceHostAccounts[cePeep.id] == null ) {
+                     showToast( cePeep.goesBy + " has not registered any host platform " + cep.hostPlatform + " with CodeEquity yet.  Please address this on the home page. ");
+                  }
+                  else {
+                     List<HostAccount> hosts = appState.ceHostAccounts[cePeep.id]!.where( (h) => h.hostUserId == huid && h.hostPlatform == cep.hostPlatform ).toList();
+                     // If cePeep doesn't have hostUID for the platform related to this CEP, warn and skip
+                     if( hosts.length == 0 ) {
+                        showToast( cePeep.goesBy + " has not registered the host platform " + cep.hostPlatform + " with CodeEquity yet.  Please address this on the home page. ");
+                     }
+                     else {
+                        assert( hosts.length == 1 );
+                        // if this host account doesn't already have the CEP, add it and the platform
+                        if( !hosts[0].ceProjectIds.contains( cep.ceProjectId ) ) {
+                           hosts[0].ceProjectIds.add( cep.ceProjectId );
+                           if( !platforms.contains( cep.hostPlatform ) ) { platforms.add( cep.hostPlatform ); }
+                           print( "Updating " + hosts[0].hostUserName + " " + hosts[0].ceProjectIds.toString() );
+                        }
+                     }
+                  }
+               });
+            // Update CEHostUser for each platform where CEPs were added
+            platforms.forEach( (p) {
+                  List<HostAccount> hosts = appState.ceHostAccounts[cePeep.id]!.where( (h) => h.hostUserId == huid && h.hostPlatform == p ).toList();
+                  assert( hosts.length == 1 );
+                  String newHostA = json.encode( hosts[0].hostUser );
+                  String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
+                  // Don't wait
+                  updateDynamo( context, container, postData, "PutHostA" );
+               });
+            
+         });
+      return true;
+   }
+   
    
    // Accept edits.  Perhaps Accept agreement.  cePeep may either be approver or applicant.  
    Future<void> _accept( Person cePeep, DocType docType, {docId = "", isApplicant = true, controlView = true} ) async {
@@ -261,7 +294,7 @@ class _CEActivityState extends State<CEActivityPanel> {
             applicant.accept( docType, scrollDoc, docId, targCEV, true );
 
             // Update CEHostUser for applicant
-            applicant.addCEV( context, container, appState, targCEV );
+            _addCEV( applicant, targCEV );
          }
          else {
             showToast( "Document needs the following items to be fully executed: " + missing );
@@ -399,7 +432,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       }
       
       String item = "Venture name";
-      String hint = "Search is available if you need a hint";
+      String hint = "Type \'Venture name\' in the search bar if you need a hint";
       _addControllerPool( 0 );      
       var retVal = await editList( context, appState, msg, [item], controllerPool.sublist(0, 1), [hint], () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
       return retVal;
