@@ -285,7 +285,7 @@ Future<List<Person>> fetchCEPeople( context, container ) async {
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEPeople", "query": { "empty": "" }}';
    final response = await awsPost( shortName, postData, container );
    
-   print( "fetch CEPeople" );
+   // print( "fetch CEPeople" );
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
       List<Person> cePeeps = l.map( (sketch)=> sketch == -1 ? Person.empty() : Person.fromJson(sketch) ).toList();

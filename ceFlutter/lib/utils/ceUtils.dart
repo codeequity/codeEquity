@@ -229,12 +229,12 @@ Future<void> initMDState( context, container ) async {
    List<CEVenture> cevs  = [];
    List<Person>    peeps = [];
 
+
+   // NOTE a founder approving an application must trigger a host account update
    // NOTE Could push fetchCEPeople to reloadCEProject.  But, dynamo table does not carry that info, and constructing a
    //      a list of cep-specific names then fetching that is likely to provide minimal gains, if any.  Leave it here.
    await Future.wait([
-                        (appState.ceHostAccounts[uid] == null ? 
-                         fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
-                         new Future<bool>.value(true) ),
+                        fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ),
                         
                         fetchCEPeople( context, container ).then(       (p) => peeps = p ),
                         

@@ -90,10 +90,10 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    expect( find.text('ceServer'), findsOneWidget );
    expect( find.text('connieTester'), findsOneWidget );
    expect( find.text('rmusick2000'), findsOneWidget );
-   expect( find.text(BS_VENT_ID), findsOneWidget );
-   expect( find.text(CEAL_VENT_ID), findsNWidgets(1) );
-   expect( find.text(CEMD_VENT_ID), findsNWidgets(1) );
-   expect( find.text(CESE_VENT_ID), findsNWidgets(1) );
+   expect( find.text(BS_VENT_NAME), findsOneWidget );
+   expect( find.text(CEAL_VENT_NAME), findsNWidgets(2) );
+   expect( find.text(CEMD_VENT_NAME), findsNWidgets(2) );
+   expect( find.text(CESE_VENT_NAME), findsNWidgets(2) );
    // Don't get here with detail
    // expect( find.text(GB_PROJ_ID), findsOneWidget );
    // expect( find.text(CE_PROJ_ID), findsNWidgets(1) );
@@ -133,8 +133,8 @@ Future<bool> validateCO( WidgetTester tester, Finder search ) async {
    expect( find.text(CEAL_PROJ_ID), findsNWidgets(1) );
    expect( find.text(CEMD_PROJ_ID), findsNWidgets(1) );
    expect( find.text(CESE_PROJ_ID), findsNWidgets(1) );
-   expect( find.text(CE_VENT_ID), findsAtLeast(1) );
-   expect( find.text(GB_VENT_ID), findsAtLeast(1) );
+   expect( find.text(CE_VENT_NAME), findsAtLeast(1) );
+   expect( find.text(GB_VENT_NAME), findsAtLeast(1) );
    // expect( find.text('CT Blast X'), findsAtLeast(1) );
 
    await dismiss( tester );
@@ -172,7 +172,7 @@ Future<bool> validateCONT( WidgetTester tester, Finder search ) async {
    expect( find.text(CESE_PROJ_NAME), findsOneWidget );
    expect( find.text(CEAL_PROJ_NAME), findsOneWidget );
    expect( find.text(GB_PROJ_ID), findsNothing );
-   expect( find.text(CE_PROJ_NAME), findsNWidgets(3) );
+   expect( find.text(CE_PROJ_NAME), findsNWidgets(1) ); // depending on what is 'seen', 1 or 3
    expect( find.text(CEMD_PROJ_NAME), findsOneWidget );
    expect( find.text(BS_PROJ_ID), findsNothing );
    expect( find.text('AssignTest'), findsNothing );

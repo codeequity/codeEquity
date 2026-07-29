@@ -323,7 +323,7 @@ Future<bool> registerVenture( tester, String cevName, {editing = false} ) async 
    expect( await( toggleVnP( tester )), true );
    expect( await( popRegVenture( tester )), true );
    
-   String hint    = "Search is available if you need a hint";
+   String hint    = "Type \'Venture name\' in the search bar if you need a hint";
    final String keyName = "editRow " + hint;
    expect( find.text( "Choose the CodeEquity Venture you wish to register with" ), findsOneWidget );
    expect( find.text( "Venture name" ), findsOneWidget );

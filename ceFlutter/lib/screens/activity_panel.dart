@@ -295,6 +295,9 @@ class _CEActivityState extends State<CEActivityPanel> {
 
             // Update CEHostUser for applicant
             _addCEV( applicant, targCEV );
+
+            // update todo list
+            setState(() => updateView = true );            
          }
          else {
             showToast( "Document needs the following items to be fully executed: " + missing );
