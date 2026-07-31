@@ -163,6 +163,10 @@ class _CEActivityState extends State<CEActivityPanel> {
 
       CEVenture? cev = appState.ceVenture[ cevId ];
       assert( cev != null );
+      
+      // notify aws so next ingest can clean non-ACCR peqs.  don't wait.
+      writeWithdrawPAct( appState, context, container, cePeep, cev );
+      
       List<dynamic> res = cev!.drop( appState, cePeep );
       bool found        = res[0];
       

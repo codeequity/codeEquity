@@ -1274,6 +1274,43 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
    }
 }
 
+// find the peqs that dropout is on, create a new todoPact for each and update each of the three function parameters
+Future<bool> processWithdrawal( PEQAction pact, int index, context, container, List<PEQAction> todoPActions, List<String> pactIds, List<String> peqIds ) async {
+   if( pact.note != PActNotes['withdraw'] ) { return false; }
+   print( "Withdraw pact detected" );
+
+   assert( pact.subject.length == 2 );  // XXX resend pact
+   assert( index < todoPActions.length );  // index of pact in todoPActions
+
+   /*
+   final appState  = container.state;
+   String cep      = pact.ceProjectId;
+   String huid     = pact.hostUserId;
+   String huname   = pact.subject[1];
+   
+   // get current state minus accrued.  don't attach to appState since that expects to see all accrued.
+   List<PEQ> peqs = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserId": "$huid", "CEProjectId": "$cep" }' );
+   print( "Host user " + huid + " has " + peqs.length.toString() + " non-accrued peqs" );
+
+   todoPActions.removeAt( index );
+   
+   peqs.forEach( (p) {
+         // Make a new PAct for unassign, then add it
+         PEQAction unassign = new PEQAction( id: randAlpha(10), ceuid: pact.ceUID, hostUserName: "", hostUserId: huid,
+                                             ceProjectId: cep, verb: PActVerb.confirm, action: PActAction.change, subject: [p.id, huname],
+                                             note: PActNotes['remAssignee'], entryDate: pact.entryDate,
+                                             ingested: false, locked: true, timeStamp: pact.timeStamp );
+         todoPActions.insert( index, unassign );
+         pactIds.add( unassign.id );
+         peqIds.add( p.id );
+      });
+   return true; 
+   */
+   
+   return false;
+}
+
+
 
 // Note.  locking is sticky.
 // Record all PEQ actions:add, delete, accrue, relocate, change, notice
@@ -1309,13 +1346,19 @@ Future<void> updatePEQAllocations( context, container ) async {
 
    _vPrint( appState, 4, "Building peqPActs" );
    // Build pact peq pairs for active 'todo' PActions.  First, need to get ids where available
-   for( var pact in todoPActions ) {
+   for( int i = 0; i < todoPActions.length; i++ ) {
+      PEQAction pact = todoPActions[i];
       print( pact.toString() );
       assert( !pact.ingested );
-      pactIds.add( pact.id );
-      // Note: not all in peqIds are valid peqIds, even with non-zero subject
-      // peqIds -1's do not get removed, they are processed as NO-OPS for now.  Later, might trigger notifications to collaborators.
-      pact.subject.length > 0 ? peqIds.add( pact.subject[0] ) : peqIds.add( "-1" );  
+
+      bool gotWithdrawal = await processWithdrawal( pact, i, context, container, todoPActions, pactIds, peqIds );
+
+      if( !gotWithdrawal ) {
+         pactIds.add( pact.id );
+         // Note: not all in peqIds are valid peqIds, even with non-zero subject
+         // peqIds -1's do not get removed, they are processed as NO-OPS for now.  Later, might trigger notifications to collaborators.
+         pact.subject.length > 0 ? peqIds.add( pact.subject[0] ) : peqIds.add( "-1" );
+      }
    }
    print( "TIME PeqPactPair " + DateTime.now().difference(startUPA).inSeconds.toString() );
 

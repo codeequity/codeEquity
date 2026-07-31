@@ -235,10 +235,24 @@ Future<bool> validateScroll( WidgetTester tester ) async {
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
 
-   expect( find.text('LM Pending'), findsOneWidget );
-   expect( find.text('Snow melt'), findsOneWidget );
-   // XXX Random failures on label dubs, move to last, settle longer.
-   expect( find.text('LabelTest Dubs'), findsOneWidget );
+   // These seem sensitive.  try a few times
+   try {
+      expect( find.text('LM Pending'), findsOneWidget );
+      expect( find.text('Snow melt'), findsOneWidget );
+      expect( find.text('LabelTest Dubs'), findsOneWidget );
+   }
+   catch( e ) {
+      print( "Trying more dragging");
+      await tester.drag( sb, Offset(0.0, -200.0) );
+      await tester.pumpAndSettle();
+      await tester.drag( sb, Offset(0.0, -200.0) );
+      await tester.pumpAndSettle();
+      await tester.drag( sb, Offset(0.0, -100.0) );
+      await pumpSettle( tester, 1, verbose: true );             
+      expect( find.text('LM Pending'), findsOneWidget );
+      expect( find.text('Snow melt'), findsOneWidget );
+      expect( find.text('LabelTest Dubs'), findsOneWidget );
+   }
 
    // Not sure why, but needs two here.
    await dismiss( tester );
