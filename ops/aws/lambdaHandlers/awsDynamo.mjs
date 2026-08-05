@@ -847,8 +847,8 @@ async function getPeq( uid, hostUser, ceProjId, isAlloc, allAccr ) {
 
     // NOTE: allAccr only works for peqs that have been ingested.  Otherwise peq type won't be updated yet.
     //       allAccr gets all normal peqs, plus any accr
+    let ptGrant = "grant"; // XXX formalize
     if( allAccr ) {
-	let ptGrant = "grant"; // XXX formalize
 	if( uid != "" ) {
             params.FilterExpression = 'contains( CEHolderId, :ceid) AND CEProjectId = :pid AND (PeqType = :grant OR Active = :true)';
             params.ExpressionAttributeValues = { ":ceid": uid, ":pid": ceProjId, ":true": "true", ":grant": ptGrant };
@@ -874,8 +874,8 @@ async function getPeq( uid, hostUser, ceProjId, isAlloc, allAccr ) {
             params.ExpressionAttributeValues = { ":empty": 1, ":alloc": "allocation", ":pid": ceProjId, ":true": "true" };
 	}
 	else {
-            params.FilterExpression = 'contains( HostHolderId, :id) AND CEProjectId = :pid AND Active = :true';
-            params.ExpressionAttributeValues = { ":id": hostUser, ":pid": ceProjId, ":true": "true" };
+            params.FilterExpression = 'contains( HostHolderId, :id) AND CEProjectId = :pid AND Active = :true AND PeqType <> :grant';
+            params.ExpressionAttributeValues = { ":id": hostUser, ":pid": ceProjId, ":true": "true", ":grant": ptGrant };
 	}
     }
 

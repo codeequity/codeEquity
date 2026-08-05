@@ -1,3 +1,5 @@
+import 'dart:convert';  // json encode/decode
+
 import 'package:ceFlutter/utils/ceUtils.dart';   // enum 
 
 // Assignees split evenly
@@ -70,6 +72,25 @@ class PEQAction {
                            'verb': enumToStr(verb), 'action': enumToStr(action), 'subject': subject,
                            'note': note, 'entryDate': entryDate, 
                            'ingested': ingested, 'locked': locked, 'timeStamp': timeStamp };
+
+   String toDynamo() {
+      Map<String,dynamic> pact = {};
+      
+      pact["PEQActionId"] = id;
+      pact["CEUID"]       = ceUID;
+      pact["HostUserId"]  = hostUserId;
+      pact["CEProjectId"] = ceProjectId;
+      pact["Verb"]        = enumToStr(verb);
+      pact["Action"]      = enumToStr(action);
+      pact["Subject"]     = subject;
+      pact["Note"]        = note;
+      pact["Date"]        = entryDate;
+      pact["Ingested"]    = ingested;
+      pact["Locked"]      = locked;
+      pact["TimeStamp"]   = timeStamp;
+      
+      return json.encode( pact );
+   }
    
    factory PEQAction.fromJson(Map<String, dynamic> json) {
 

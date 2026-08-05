@@ -78,7 +78,7 @@ String randAlpha(length) {
    for ( var i = 0; i < length; i++ ) {
       result += characters[ rng.nextInt( charactersLength ) ];
    }
-   print( "Ralph returning " + result );
+   // print( "Ralph returning " + result );
    return result;
 }
 
