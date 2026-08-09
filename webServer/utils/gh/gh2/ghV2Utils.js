@@ -385,7 +385,7 @@ async function getHostLabels( PAT, rid, labels, cursor ) {
 async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
     let retVal = [];
     let authData = { pat: PAT, who: "ceMD" };
-    // console.log( "Get host peqs", ceProjId, Date.now() );
+    console.log( "Get host peqs", ceProjId, Date.now() );
 
     // Need relevant repos.  Pursue 2 paths to get there, either may be incomplete: 1) linkage to aws, 2) aws ceProjects tables
     // For example, ceProjects may be (should be!) in good shape, while aws linkage may be old.  
@@ -511,7 +511,10 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 			    // require issue state and col name to be consistent with peq type
 			    const pend = config.PROJ_COLS[ config.PROJ_PEND ];
 			    const accr = config.PROJ_COLS[ config.PROJ_ACCR ];
-			    // console.log( iss.title, iss.state, pend, accr, issues[ iss.id ].hostProjectSub[1] );
+			    
+			    // error states can occur where host has issues but ceServer has no linkage.  abandon.
+			    if( typeof issues[ iss.id ].hostProjectSub === 'undefined' ) { throw new Error( "abandon" ); }
+
 			    if( iss.state == config.GH_ISSUE_OPEN && issues[ iss.id ].hostProjectSub[1] != pend && issues[ iss.id ].hostProjectSub[1] != accr ) {
 				issues[ iss.id ].peqType = config.PEQTYPE_PLAN;
 			    }
@@ -528,7 +531,10 @@ async function getHostPeqs( PAT, ceProjects, ghLinks, ceProjId ) {
 		    });
 	    }
 	    // This starts all over again, not with the individual repo/page.  just return.
-	    catch( e ) { return await ghUtils.errorHandler( "getHostPeqs", e, getHostPeqs, PAT, ceProjects, ghLinks, ceProjId ); }
+	    catch( e ) {
+		if( e.message == "abandon" ) { console.log( "Host peqs exist without linkage.. error state." ); return retVal; }
+		else                         { return await ghUtils.errorHandler( "getHostPeqs", e, getHostPeqs, PAT, ceProjects, ghLinks, ceProjId ); }
+	    }
 	}
     }
 
@@ -933,7 +939,7 @@ async function remIssue( authData, issueId ) {
 	// console.log( authData );
 	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "removeIssue" );
 	if( utils.validField( ret, "errors" )) {
-	    console.log( "WARNING.  Delete issue failed.  Admin permissions may be required." );
+	    console.log( "WARNING.  Delete issue failed.  Repairing Host from ceServer?  Otherwise admin permissions may be required." );
 	    console.log( ret );
 	}
     }

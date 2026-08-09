@@ -80,22 +80,22 @@ Future<bool> validateAriProfile( WidgetTester tester ) async {
    expect( find.text( '   Agreements' ),                    findsOneWidget );
    expect( find.text( 'Ari\'s CodeEquity Projects' ),       findsOneWidget );
    expect( find.text( 'ariCETester (U_kgDOBP2eEw)' ),       findsOneWidget );
-   expect( find.text( 'Code for Equity' ),                  findsOneWidget );
    expect( find.text( 'PEQ summary per project:' ),         findsOneWidget );
+   // no more codeEquity membership
+   // expect( find.text( 'Code for Equity' ),                  findsOneWidget );  
    
    expect( find.text( CEMD_PROJ_NAME ), findsNWidgets(2) );
    expect( find.text( CEAL_PROJ_NAME ), findsNWidgets(2) );
    expect( find.text( CESE_PROJ_NAME ),  findsNWidgets(2) );
-   expect( find.text( CE_PROJ_NAME ),  findsAtLeast(2) );
+   expect( find.text( CE_PROJ_NAME ),  findsAtLeast(1) );
 
    expect( find.text( CEMD_VENT_NAME ), findsNWidgets(1) );
    expect( find.text( CEAL_VENT_NAME ), findsNWidgets(1) );
    expect( find.text( CESE_VENT_NAME ),  findsNWidgets(1) );
-   expect( find.text( CE_VENT_NAME ),  findsNWidgets(4) );
+   expect( find.text( CE_VENT_NAME ),  findsNWidgets(1) );
 
    expect( find.text( "Internal testing: Front end" ), findsOneWidget );
    expect( find.text( "Internal testing: server" ), findsNWidgets(2) );
-   expect( find.text( "Code for Equity" ), findsOneWidget );
    
    expect( find.byKey( Key( 'Logout' )),          findsOneWidget );
    expect( find.byKey( Key( 'Edit profile' )),    findsOneWidget );
@@ -124,7 +124,7 @@ Future<bool> validateFlutProfile( WidgetTester tester ) async {
    expect( find.text( 'Ari Star (Ari)' ),                  findsOneWidget );
    expect( find.text( 'Connie Star (Con)' ),               findsOneWidget );
    expect( find.text( 'connieTester (AHLjVaSIlH)' ), findsOneWidget );
-   expect( find.text( 'Member of: 4' ),              findsOneWidget );
+   expect( find.text( 'Member of: 3' ),              findsOneWidget );
    expect( find.text( 'Most active in: ' ),          findsNWidgets(2) );
    expect( find.text( CEMD_PROJ_NAME ),              findsNWidgets(3) );
 

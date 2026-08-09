@@ -1,4 +1,8 @@
+import 'dart:convert';  // json encode/decode
+
 import 'package:ceFlutter/utils/ceUtils.dart';   // enum 
+
+import 'package:ceFlutter/models/PEQRaw.dart';
 
 // Assignees split evenly
 
@@ -34,7 +38,8 @@ Map<String,String> PActNotes = Map.unmodifiable( {
       'remAssignee': "remove assignee", 
       'titRename':   "Change title", 
       'pvUpdate':    "peq val update",
-      'badXfer':     "Bad transfer attempted"
+      'badXfer':     "Bad transfer attempted",
+      'withdraw':    "withdraw"
    });
 
 class PEQAction {
@@ -69,6 +74,27 @@ class PEQAction {
                            'verb': enumToStr(verb), 'action': enumToStr(action), 'subject': subject,
                            'note': note, 'entryDate': entryDate, 
                            'ingested': ingested, 'locked': locked, 'timeStamp': timeStamp };
+
+   // awsDynamo wants to minimize net traffic, so pact and pactRaw are sent together.
+   String toDynamo( PEQRaw raw ) {
+      Map<String,dynamic> pact = {};
+      
+      pact["PEQActionId"] = id;
+      pact["CEUID"]       = ceUID;
+      pact["HostUserId"]  = hostUserId;
+      pact["CEProjectId"] = ceProjectId;
+      pact["Verb"]        = enumToStr(verb);
+      pact["Action"]      = enumToStr(action);
+      pact["Subject"]     = subject;
+      pact["Note"]        = note;
+      pact["Date"]        = entryDate;
+      pact["Ingested"]    = ingested;
+      pact["Locked"]      = locked;
+      pact["TimeStamp"]   = timeStamp;
+      pact["RawBody"]     = raw.rawReqBody;
+      
+      return json.encode( pact );
+   }
    
    factory PEQAction.fromJson(Map<String, dynamic> json) {
 

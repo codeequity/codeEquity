@@ -90,10 +90,10 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    expect( find.text('ceServer'), findsOneWidget );
    expect( find.text('connieTester'), findsOneWidget );
    expect( find.text('rmusick2000'), findsOneWidget );
-   expect( find.text(BS_VENT_ID), findsOneWidget );
-   expect( find.text(CEAL_VENT_ID), findsNWidgets(1) );
-   expect( find.text(CEMD_VENT_ID), findsNWidgets(1) );
-   expect( find.text(CESE_VENT_ID), findsNWidgets(1) );
+   expect( find.text(BS_VENT_NAME), findsOneWidget );
+   expect( find.text(CEAL_VENT_NAME), findsNWidgets(2) );
+   expect( find.text(CEMD_VENT_NAME), findsNWidgets(2) );
+   expect( find.text(CESE_VENT_NAME), findsNWidgets(2) );
    // Don't get here with detail
    // expect( find.text(GB_PROJ_ID), findsOneWidget );
    // expect( find.text(CE_PROJ_ID), findsNWidgets(1) );
@@ -133,8 +133,8 @@ Future<bool> validateCO( WidgetTester tester, Finder search ) async {
    expect( find.text(CEAL_PROJ_ID), findsNWidgets(1) );
    expect( find.text(CEMD_PROJ_ID), findsNWidgets(1) );
    expect( find.text(CESE_PROJ_ID), findsNWidgets(1) );
-   expect( find.text(CE_VENT_ID), findsAtLeast(1) );
-   expect( find.text(GB_VENT_ID), findsAtLeast(1) );
+   expect( find.text(CE_VENT_NAME), findsAtLeast(1) );
+   expect( find.text(GB_VENT_NAME), findsAtLeast(1) );
    // expect( find.text('CT Blast X'), findsAtLeast(1) );
 
    await dismiss( tester );
@@ -172,7 +172,7 @@ Future<bool> validateCONT( WidgetTester tester, Finder search ) async {
    expect( find.text(CESE_PROJ_NAME), findsOneWidget );
    expect( find.text(CEAL_PROJ_NAME), findsOneWidget );
    expect( find.text(GB_PROJ_ID), findsNothing );
-   expect( find.text(CE_PROJ_NAME), findsNWidgets(3) );
+   expect( find.text(CE_PROJ_NAME), findsNWidgets(1) ); // depending on what is 'seen', 1 or 3
    expect( find.text(CEMD_PROJ_NAME), findsOneWidget );
    expect( find.text(BS_PROJ_ID), findsNothing );
    expect( find.text('AssignTest'), findsNothing );
@@ -235,10 +235,24 @@ Future<bool> validateScroll( WidgetTester tester ) async {
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
 
-   expect( find.text('LM Pending'), findsOneWidget );
-   expect( find.text('Snow melt'), findsOneWidget );
-   // XXX Random failures on label dubs, move to last, settle longer.
-   expect( find.text('LabelTest Dubs'), findsOneWidget );
+   // These seem sensitive.  try a few times
+   try {
+      expect( find.text('LM Pending'), findsOneWidget );
+      expect( find.text('Snow melt'), findsOneWidget );
+      expect( find.text('LabelTest Dubs'), findsOneWidget );
+   }
+   catch( e ) {
+      print( "Trying more dragging");
+      await tester.drag( sb, Offset(0.0, -200.0) );
+      await tester.pumpAndSettle();
+      await tester.drag( sb, Offset(0.0, -200.0) );
+      await tester.pumpAndSettle();
+      await tester.drag( sb, Offset(0.0, -100.0) );
+      await pumpSettle( tester, 1, verbose: true );             
+      expect( find.text('LM Pending'), findsOneWidget );
+      expect( find.text('Snow melt'), findsOneWidget );
+      expect( find.text('LabelTest Dubs'), findsOneWidget );
+   }
 
    // Not sure why, but needs two here.
    await dismiss( tester );

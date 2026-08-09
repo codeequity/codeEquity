@@ -907,17 +907,22 @@ async function testLabelMods( authData, testLinks, td ) {
 	testStatus = await gh2tu.checkNewlyAccruedIssue( authData, testLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
 	tu.testReport( testStatus, "Label mods G" );
 
-	// 8. Make partial peq label.  Three will be unlabeled (can't have 2 peq labels), one will remain.  Changed labNP1 from newName to 105P
+	// 8. Make partial peq label.  Three will be unlabeled (can't have 2 peq labels), one will remain.  Change labNP1 from newName to 105P
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL; 
 
 	await utils.sleep( 1500 );
 	// NOTE updateLabel returns subtest, but we don't catch it here so settle time can go crazy and still claim success.
 	//      labHelp confirms that GH made the change, and updateLabel failure confirms that ceServer never got the notice.
-	//      XXX this is incomplete - ceServer needs to do some work here, needs the notification.
-	labNP1 = await tu.settleWithVal( "Label mods newName", getLabHelp, authData, td, "newName" );
-	await gh2tu.updateLabel( authData, labNP1, {name: pl105, description: "newDesc"} );
-	testStatus = await labHelp( authData, td, pl105, pl105, "PEQ value: 105", testStatus );
+	//      buut .. ceServer needs to do some work here, needs the notification.
+	//
+	//      GH will not send update if attempt to edit a label to a name that already exists.
+	//      if getLabHelp request arrives near the updateLabel request, there may be interference that runs into decision above.  add sleeps
+	labNP1 = await tu.settleWithVal( "Label mods newName", getLabHelp, authData, td, "newName" );    // get label to update
+	await utils.sleep( 4000 );
+	await gh2tu.updateLabel( authData, labNP1, {name: pl105, description: "newDesc"} );              // attempt to update
+	await utils.sleep( 4000 );
+	testStatus = await labHelp( authData, td, pl105, pl105, "PEQ value: 105", testStatus );          // check if updated
 	tu.testReport( testStatus, "Label mods H" );
 
 	// Clean

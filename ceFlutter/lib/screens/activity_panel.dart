@@ -157,12 +157,18 @@ class _CEActivityState extends State<CEActivityPanel> {
       appState.ceHostAccounts.clear();
       logout( context, appState );
    }
-   
+
+   // Note that withdraw follows role removal rules.  For example, if sole founder withdraws, next highest level of collabs are promoted to founder.
+   //      if founder is the sole collaborator and withdraws, the CEV will no longer be operable by anyone.  Contact CE staff.
    void _withdrawCEP( Person cePeep, String cevId ) async {
       print( "WITHDRAW Vent " + cevId );
 
       CEVenture? cev = appState.ceVenture[ cevId ];
       assert( cev != null );
+      
+      // notify aws so next ingest can clean non-ACCR peqs.  don't wait.
+      writeWithdrawPAct( appState, context, container, cePeep, cev );
+      
       List<dynamic> res = cev!.drop( appState, cePeep );
       bool found        = res[0];
       
@@ -295,6 +301,9 @@ class _CEActivityState extends State<CEActivityPanel> {
 
             // Update CEHostUser for applicant
             _addCEV( applicant, targCEV );
+
+            // update todo list
+            setState(() => updateView = true );            
          }
          else {
             showToast( "Document needs the following items to be fully executed: " + missing );

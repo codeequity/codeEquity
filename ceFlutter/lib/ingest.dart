@@ -12,6 +12,7 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
+import 'package:ceFlutter/models/PEQRaw.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/Allocation.dart';
@@ -1274,6 +1275,60 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
    }
 }
 
+// find the peqs that dropout is on, create a new todoPact for each and update each of the three function parameters
+Future<int> processWithdrawal( PEQAction pact, int index, context, container, List<PEQAction> todoPActions, List<String> pactIds, List<String> peqIds ) async {
+   if( pact.note != PActNotes['withdraw'] ) { return -1; }
+   print( "Withdraw pact detected" );
+
+   assert( pact.subject.length == 2 );  // XXX resend pact
+   assert( index < todoPActions.length );  // index of pact in todoPActions
+
+
+   final appState  = container.state;
+   String cep      = pact.ceProjectId;
+   String huid     = pact.hostUserId;
+   String huname   = pact.subject[1];
+
+   // XXX XXX currently accrued peqs are being returned
+   // get current state minus accrued.  don't attach to appState since that expects to see all accrued.
+   List<PEQ> peqs = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserId": "$huid", "CEProjectId": "$cep" }' );
+   print( "Host user " + huid + " has " + peqs.length.toString() + " non-accrued peqs" );
+
+   todoPActions.removeAt( index );
+   int inserted = 0;
+
+   List<Future> dynamo = [];         
+   
+   peqs.forEach( (p) {
+         // Make a new PAct for unassign, then add it
+         PEQAction unassign = new PEQAction( id: randAlpha(10), ceUID: pact.ceUID, hostUserName: "", hostUserId: huid,
+                                             ceProjectId: cep, verb: PActVerb.confirm, action: PActAction.change, subject: [p.id, huname],
+                                             note: PActNotes['remAssignee']!, entryDate: pact.entryDate,
+                                             ingested: false, locked: true, timeStamp: pact.timeStamp );
+         String issueId = p.hostIssueId;
+         PEQRaw uaRaw = new PEQRaw( id: unassign.id,
+                                    cepid: cep,
+                                    rawReqBody: "{\"action\":\"unassigned\", \"issue\": \"$issueId\", \"note\":\"generated from withdraw request\"}" );
+
+         // push each pact up to aws, otherwise addmods induces errors.  plus, more complete
+         // wait, otherwise may get to update before recording finishes.
+         String shortName = "RecordPEQAction";
+         String newPAct   = unassign.toDynamo( uaRaw );
+         String postData  = '{ "Endpoint": "$shortName", "newPAction": $newPAct }';
+         dynamo.add( updateDynamo( context, container, postData, shortName ) );
+
+         // keep todoPaction lined up with pact and peq, otherwise ids get out of alignment
+         todoPActions.insert( index + inserted, unassign );
+         pactIds.add( unassign.id );
+         peqIds.add( p.id );
+         inserted += 1;
+      });
+   
+   await Future.wait( dynamo );
+   return peqs.length; 
+}
+
+
 
 // Note.  locking is sticky.
 // Record all PEQ actions:add, delete, accrue, relocate, change, notice
@@ -1309,13 +1364,23 @@ Future<void> updatePEQAllocations( context, container ) async {
 
    _vPrint( appState, 4, "Building peqPActs" );
    // Build pact peq pairs for active 'todo' PActions.  First, need to get ids where available
-   for( var pact in todoPActions ) {
+   for( int i = 0; i < todoPActions.length; i++ ) {
+      PEQAction pact = todoPActions[i];
       print( pact.toString() );
       assert( !pact.ingested );
-      pactIds.add( pact.id );
-      // Note: not all in peqIds are valid peqIds, even with non-zero subject
-      // peqIds -1's do not get removed, they are processed as NO-OPS for now.  Later, might trigger notifications to collaborators.
-      pact.subject.length > 0 ? peqIds.add( pact.subject[0] ) : peqIds.add( "-1" );  
+
+      int wdCount = await processWithdrawal( pact, i, context, container, todoPActions, pactIds, peqIds );
+      // -1  if not withdraw, proceed as normal.  Otherwise, number of new remAssignee todos.
+      // however, initial 'withdraw' todoPAction was removed at this current position.
+      print( "wdCount " + wdCount.toString() );
+      if( wdCount > -1 ) { i = i + (wdCount-1); }
+      
+      if( wdCount < 0 ) {
+         pactIds.add( pact.id );
+         // Note: not all in peqIds are valid peqIds, even with non-zero subject
+         // peqIds -1's do not get removed, they are processed as NO-OPS for now.  Later, might trigger notifications to collaborators.
+         pact.subject.length > 0 ? peqIds.add( pact.subject[0] ) : peqIds.add( "-1" );
+      }
    }
    print( "TIME PeqPactPair " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
@@ -1352,6 +1417,8 @@ Future<void> updatePEQAllocations( context, container ) async {
    var foundPeqs = 0;
    for( var i = 0; i < todoPActions.length; i++ ) {
       // Can not assert the peqs are active - PAct might be a delete.
+      print( todoPActions[i] );
+      print( pactIds[i] );
       assert( pactIds[i] == todoPActions[i].id );
       if( todoPeqs[i].id != "-1" ) {
          assert( peqIds[i] == todoPeqs[i].id );

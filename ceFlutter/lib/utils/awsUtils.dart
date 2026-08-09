@@ -285,7 +285,7 @@ Future<List<Person>> fetchCEPeople( context, container ) async {
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEPeople", "query": { "empty": "" }}';
    final response = await awsPost( shortName, postData, container );
    
-   print( "fetch CEPeople" );
+   // print( "fetch CEPeople" );
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
       List<Person> cePeeps = l.map( (sketch)=> sketch == -1 ? Person.empty() : Person.fromJson(sketch) ).toList();
@@ -578,6 +578,40 @@ Future<void> writeCEPerson( appState, context, container, cePeep ) async {
       String postData = '{ "Endpoint": "PutPerson", "NewPerson": $cePeepe }';
       updateDynamo( context, container, postData, "PutPerson" );
    }
+}
+
+Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) async {
+   DateTime            now  = DateTime.now();
+   String              note = "withdraw";
+   Map<String,dynamic> pact = {};
+   
+   pact["CEUID"]       = cePeep.id;
+   pact["Verb"]        = "confirm";                // XXX formalize
+   pact["Action"]      = "notice";                 // XXX formalize
+   pact["Note"]        = note;
+   pact["Date"]        = getToday();
+   pact["Ingested"]    = "false";
+   pact["Locked"]      = "false";
+   pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
+   pact["RawBody"]     = note;
+
+   // get all ceps in cev.  for each, get the huid and send the pact.  include the huname since withdraw impacts host user data
+   List<CEProject> ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev.ceVentureId ).toList();
+   ceps.forEach( (p) {
+         List<HostAccount>? ha  = appState.ceHostAccounts[ cePeep.id ];
+         assert( ha != null );
+         for( var host in ha! ) {
+            if( host.hostUser.hostPlatform == p.hostPlatform ) {
+               pact["HostUserId"]  = host.hostUser.hostUserId;
+               pact["CEProjectId"] = p.ceProjectId;
+               pact["Subject"]     = [ cev.ceVentureId, host.hostUser.hostUserName ];
+               
+               String pacte = json.encode( pact );
+               String postData = '{ "Endpoint": "RecordPEQAction", "newPAction": $pacte}';
+               updateDynamo( context, container, postData, "RecordPEQAction" );
+            }
+         }
+      });
 }
 
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {

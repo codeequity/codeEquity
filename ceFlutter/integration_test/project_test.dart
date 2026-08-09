@@ -1030,10 +1030,10 @@ Future<bool> validateUnAssign40( WidgetTester tester ) async {
    expect( find.byKey( Key( issue ) ), findsOneWidget );
 
    int add = 0;
-   // This can show up at step 4 even, no double count potential
+   // This can show up at step 4 even.  can double-count if shows at position 2
    if( await validateAdd(      tester, repo, issue, "604 PEQ",     "1 0 confirm add", allowFail: false )) { add += 1; }
    if( await validateAdd(      tester, repo, issue, "604 PEQ",     "3 0 confirm add", allowFail: false )) { add += 1; }
-   expect( add, 1 );
+   expect( add >= 1, true );
 
 
    // These can be all over.  allow for double-counting.
