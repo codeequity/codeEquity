@@ -426,8 +426,8 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
    if( cp != null && cp!.peqType == PeqType.grant ) { setInStone = true; }
 
    if( setInStone ) {
-      showToast( "Can not modify an Accrued PEQ." );
-      print( "WARNING.  Attempting to overwrite an accrued PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id );
+      showToast( "Can not modify a Granted PEQ." );
+      print( "WARNING.  Attempting to overwrite a granted PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id );
    }
    else {
       print( "Creating new PEQ in AWS" );
@@ -506,8 +506,8 @@ Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, 
    if( p != null && p.peqType == PeqType.grant ) { setInStone = true; }
 
    if( setInStone ) {
-      showToast( "Can not modify an Accrued PEQ." );
-      print( "WARNING.  Attempting to delete an accrued PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id );
+      showToast( "Can not modify a Granted PEQ." );
+      print( "WARNING.  Attempting to delete a granted PEQ.  Rejected: " + p.hostIssueTitle + " " + p.id );
    }
    else {
       print( "Removing PEQ in AWS" );
@@ -529,7 +529,7 @@ Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, 
       }
       
       DateTime now = DateTime.now();
-      String note  = setInStone ? '{"note": "Remove accrued attempted via CEMD"}' : '{"note": "Remove peq via CEMD, no raw body present"}';
+      String note  = setInStone ? '{"note": "Remove granted attempted via CEMD"}' : '{"note": "Remove peq via CEMD, no raw body present"}';
       
       Map<String, dynamic> pact  = { };
       pact["CEUID"]       = appState.ceUserId; 

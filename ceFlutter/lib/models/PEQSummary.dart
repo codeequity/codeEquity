@@ -190,7 +190,7 @@ class PEQSummary {
    String toString() {
       String res = "\n" + ceProjectId + " last modified: " + lastMod;
       res += "\n     Summary for " + targetType + ": " + targetId;
-      res += "\n     Accrued total: " + accruedTot.toString() + ", Tasked Total: " + taskedTot.toString();
+      res += "\n     Granted total: " + accruedTot.toString() + ", Tasked Total: " + taskedTot.toString();
       allocations.forEach((key, alloc) => res += "\n     " + alloc.toString() );
       return res;
    }

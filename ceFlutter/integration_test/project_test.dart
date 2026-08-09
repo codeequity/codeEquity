@@ -28,7 +28,7 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 // Gold standard for testing ingest and summary frame for codeequity/ceFlutterTester
 const Map<String,List<String>> ALLOCS_GOLD =
 {
-   "Category 0": ["Category", "Allocation", "Planned", "Pending", "Accrued", "Surplus"],
+   "Category 0": ["Category", "Allocation", "Planned", "Pending", "Granted", "Surplus"],
       
       "A Pre-Existing Project Flut 1":  ["Category, A Pre-Existing Project Flut",                   "0", "1,500", "0", "1,500", "-3,000"],
          "Accrued 2":               ["Category, A Pre-Existing Project Flut, Accrued",              "0", "0", "0", "1,500", "---"],
@@ -105,7 +105,7 @@ Future<bool> peqSummaryTabFraming( WidgetTester tester, { ignoreAccrued = false,
 
    // if called with some summaryframes expanded, this could or would fail
    if( !ignoreAccrued ) {
-      expect( find.text('Accrued'), findsOneWidget );
+      expect( find.text('Granted'), findsOneWidget );
       expect( find.text('Planned'), findsOneWidget );
       expect( find.byKey(const Key( 'Update PEQ Summary?' )), findsOneWidget );  // fails if offscreen, i.e. things are expanded
    }
@@ -162,7 +162,7 @@ Future<bool> ariSummaryFraming( WidgetTester tester ) async {
    expect( find.text( 'Allocation' ), findsOneWidget );
    expect( find.text( 'Planned' ),    findsOneWidget );
    expect( find.text( 'Pending' ),    findsOneWidget );
-   expect( find.text( 'Accrued' ),    findsOneWidget );
+   expect( find.text( 'Granted' ),    findsOneWidget );
    expect( find.text( 'Surplus' ),    findsOneWidget );
    return true;
 }
