@@ -2,6 +2,8 @@ import 'dart:convert';  // json encode/decode
 
 import 'package:ceFlutter/utils/ceUtils.dart';   // enum 
 
+import 'package:ceFlutter/models/PEQRaw.dart';
+
 // Assignees split evenly
 
 // Patterns: 
@@ -73,7 +75,8 @@ class PEQAction {
                            'note': note, 'entryDate': entryDate, 
                            'ingested': ingested, 'locked': locked, 'timeStamp': timeStamp };
 
-   String toDynamo() {
+   // awsDynamo wants to minimize net traffic, so pact and pactRaw are sent together.
+   String toDynamo( PEQRaw raw ) {
       Map<String,dynamic> pact = {};
       
       pact["PEQActionId"] = id;
@@ -88,6 +91,7 @@ class PEQAction {
       pact["Ingested"]    = ingested;
       pact["Locked"]      = locked;
       pact["TimeStamp"]   = timeStamp;
+      pact["RawBody"]     = raw.rawReqBody;
       
       return json.encode( pact );
    }

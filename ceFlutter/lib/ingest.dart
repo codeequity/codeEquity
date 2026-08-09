@@ -12,6 +12,7 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
+import 'package:ceFlutter/models/PEQRaw.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/Allocation.dart';
@@ -1304,14 +1305,18 @@ Future<int> processWithdrawal( PEQAction pact, int index, context, container, Li
                                              ceProjectId: cep, verb: PActVerb.confirm, action: PActAction.change, subject: [p.id, huname],
                                              note: PActNotes['remAssignee']!, entryDate: pact.entryDate,
                                              ingested: false, locked: true, timeStamp: pact.timeStamp );
+         String issueId = p.hostIssueId;
+         PEQRaw uaRaw = new PEQRaw( id: unassign.id,
+                                    cepid: cep,
+                                    rawReqBody: "{\"action\":\"unassigned\", \"issue\": \"$issueId\", \"note\":\"generated from withdraw request\"}" );
 
          // push each pact up to aws, otherwise addmods induces errors.  plus, more complete
          // wait, otherwise may get to update before recording finishes.
          String shortName = "RecordPEQAction";
-         String newPAct   = unassign.toDynamo();
+         String newPAct   = unassign.toDynamo( uaRaw );
          String postData  = '{ "Endpoint": "$shortName", "newPAction": $newPAct }';
          dynamo.add( updateDynamo( context, container, postData, shortName ) );
-         
+
          // keep todoPaction lined up with pact and peq, otherwise ids get out of alignment
          todoPActions.insert( index + inserted, unassign );
          pactIds.add( unassign.id );

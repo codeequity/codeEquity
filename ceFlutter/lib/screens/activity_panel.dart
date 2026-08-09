@@ -157,7 +157,9 @@ class _CEActivityState extends State<CEActivityPanel> {
       appState.ceHostAccounts.clear();
       logout( context, appState );
    }
-   
+
+   // Note that withdraw follows role removal rules.  For example, if sole founder withdraws, next highest level of collabs are promoted to founder.
+   //      if founder is the sole collaborator and withdraws, the CEV will no longer be operable by anyone.  Contact CE staff.
    void _withdrawCEP( Person cePeep, String cevId ) async {
       print( "WITHDRAW Vent " + cevId );
 
