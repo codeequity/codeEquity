@@ -1590,8 +1590,11 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 	    console.log( authData.who, "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading pid
 	    newColName = config.PROJ_COLS[ config.PROJ_PEND ];
+
+	    let retval = await checkReserveSafe( authData, pd.issueId, config.PROJ_PEND );
+	    assert( retval.length == 2 );
+	    success = retval[0];
 	    
-	    success = await checkReserveSafe( authData, pd.issueId, config.PROJ_PEND );
 	    if( !success ) {
 		// no need to put card back - didn't move it.  Don't wait.
 		updateIssue( authData, pd.issueId, "state", config.GH_ISSUE_OPEN ); // reopen issue
@@ -2109,8 +2112,9 @@ async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, 
 // If this fails, retry a small number of times before returning false.
 async function checkReserveSafe( authData, issueId, colNameIndex ) {
     let retVal = true;
+    let assignees = [];
     if( colNameIndex > config.PROJ_PROG ) { 
-	let assignees = await getAssignees( authData, issueId );
+	assignees = await getAssignees( authData, issueId );
 	let retries = 0;
 	while( assignees.length == 0 && retries < config.GH_MAX_RETRIES ) {
 	    retries++;
@@ -2123,7 +2127,9 @@ async function checkReserveSafe( authData, issueId, colNameIndex ) {
 	    retVal = false;
 	}
     }
-    return retVal;
+
+    console.log( "XXX XXX", assignees );
+    return [retVal, assignees];
 }
 
 //                                   [ pid, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
