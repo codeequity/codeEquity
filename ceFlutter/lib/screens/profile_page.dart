@@ -449,7 +449,7 @@ class _CEProfileState extends State<CEProfilePage> {
            });
         retVal["Planned"] = addCommas( plan );
         retVal["Pending"] = addCommas( pend );
-        retVal["Accrued"] = addCommas( accr );
+        retVal["Granted"] = addCommas( accr );
      }
      
      return retVal;

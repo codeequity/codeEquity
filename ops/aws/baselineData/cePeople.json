@@ -15,9 +15,6 @@
           "CEUserName": {
             "S": "ceServer"
           },
-          "ImagePng": {
-            "NULL": true
-          },
           "Locked": {
             "BOOL": false
           },
@@ -32,9 +29,6 @@
         "Item": {
           "CEUserName": {
             "S": "connieCE"
-          },
-          "ImagePng": {
-            "NULL": true
           },
           "CEUserId": {
             "S": "cOHYQwDcwK"
@@ -59,9 +53,6 @@
         "Item": {
           "CEUserName": {
             "S": "ariCETester"
-          },
-          "ImagePng": {
-            "NULL": true
           },
           "CEUserId": {
             "S": "eaeIqcqqdp"
