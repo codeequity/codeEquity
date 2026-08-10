@@ -198,7 +198,7 @@ class Node extends StatelessWidget implements Tree {
         alloc   = "Allocation";  // These are designed names, do not link to app_state without pause.
         plan    = "Planned";
         pending = "Pending";
-        accrue  = "Accrued";
+        accrue  = "Granted";
         surplus = "Surplus";
         Widget spacer    = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
         nodes.add( [spacer, spacer, spacer, spacer, spacer, spacer] );  

@@ -91,7 +91,7 @@ class _CEApprovalState extends State<CEApprovalFrame> {
       Widget miniSpace = Container( height: 1, width: 6 * appState.GAP_PAD );
       Widget title     = makeIWTitleText( appState, cepName , false, 1, fontSize: 18 );
 
-      String expl1 = "Click ACCEPT to Accrue the issue, permanently splitting and granting the PEQs to the Assignees.";
+      String expl1 = "Click ACCEPT to Grant the issue, permanently splitting and granting the PEQs to the Assignees.";
       String expl2 = "Click REJECT to indicate there is more to be done on this task, first.";
 
       Widget e1 = makeIWTitleText( appState, expl1, false, 1 );
@@ -158,7 +158,7 @@ class _CEApprovalState extends State<CEApprovalFrame> {
             else { showToast( failMsg ); }
          },
          key: Key( 'accept ' + p.id ),
-         child: makeToolTip( Icon( Icons.check_circle_outline, color: Colors.green ), "Accrue this issue, evenly splitting PEQ between assignees", wait: true )
+         child: makeToolTip( Icon( Icons.check_circle_outline, color: Colors.green ), "Grant this issue, evenly splitting PEQ between assignees", wait: true )
          );
 
       Widget reject = GestureDetector(

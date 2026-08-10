@@ -416,7 +416,7 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
   Future< Map<String,String>> _getCollabPeqVals( context, container, cepId ) async {
-     Map<String,String> retVal = { "Planned": "0", "Pending": "0", "Accrued": "0", "Vested": "0" };
+     Map<String,String> retVal = { "Planned": "0", "Pending": "0", "Granted": "0", "Vested": "0" };
      int plan = 0;
      int pend = 0;
      int accr = 0;
@@ -449,7 +449,7 @@ class _CEProfileState extends State<CEProfilePage> {
            });
         retVal["Planned"] = addCommas( plan );
         retVal["Pending"] = addCommas( pend );
-        retVal["Accrued"] = addCommas( accr );
+        retVal["Granted"] = addCommas( accr );
      }
      
      return retVal;
@@ -475,7 +475,7 @@ class _CEProfileState extends State<CEProfilePage> {
                     children: [ makeTitleText( appState, "CE Project", width * 3.0, false, 1 ),
                                 makeTitleText( appState, "Planned", width, false, 1 ),
                                 makeTitleText( appState, "Pending", width, false, 1 ),
-                                makeTitleText( appState, "Accrued", width, false, 1 ),
+                                makeTitleText( appState, "Granted", width, false, 1 ),
                                 makeTitleText( appState, "Vested", width,  false, 1 ),
                        ]) );
               collabPeqTable.add( Wrap( spacing: 0, children: [
@@ -504,7 +504,7 @@ class _CEProfileState extends State<CEProfilePage> {
                        makeTableText( appState, cep.name, width * 3.0, height, false, 1 ),
                        makeTableText( appState, pv["Planned"], width, height, false, 1 ),
                        makeTableText( appState, pv["Pending"], width, height, false, 1 ),
-                       makeTableText( appState, pv["Accrued"], width, height, false, 1 ),
+                       makeTableText( appState, pv["Granted"], width, height, false, 1 ),
                        makeTableText( appState, pv["Vested"],  width, height, false, 1 ),
                        ]
                     ));
@@ -565,7 +565,7 @@ class _CEProfileState extends State<CEProfilePage> {
      Widget row1 = makeToolTip( Container( width: 0.7*width, child: makeTableText( appState, enumToStr( MemberRole.Executive ), width, appState!.CELL_HEIGHT, false, 1 )),
                                 "An Executive role can perform any action in the venture, including creating and modifying the Equity Plan." );
      Widget row2 = makeToolTip( Container( width: 0.7*width, child: makeTableText( appState, enumToStr( MemberRole.Grantor ), width, appState!.CELL_HEIGHT, false, 1 )),
-                                "A Grantor can do anything a Member can, and additionally can approve PEQs to be accrued on the approvals page." );
+                                "A Grantor can do anything a Member can, and additionally can approve PEQs to be granted on the approvals page." );
      Widget row3 = makeToolTip( Container( width: 0.7*width, child: makeTableText( appState, enumToStr( MemberRole.Member ), width, appState!.CELL_HEIGHT, false, 1 )),
                                 "A Member can do and view anything within CodeEquity with the exception of approving PEQs or modifying the Equity Plan." );
      
@@ -772,7 +772,7 @@ class _CEProfileState extends State<CEProfilePage> {
                     children: <TableRow>[
                        TableRow(
                           children: <Widget>[
-                             makeTitleText( appState, "    Accrued:", textWidth, false, 1, fontSize: 14 ),
+                             makeTitleText( appState, "    Granted:", textWidth, false, 1, fontSize: 14 ),
                              makeTitleText( appState, makePercent( accr ), textWidth, false, 1, fontSize: 14 ),
                              ]),
                        TableRow(

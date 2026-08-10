@@ -200,12 +200,12 @@ class _CEStatusState extends State<CEStatusFrame> {
          accrHPeqs = hPeqs.where( (PEQ p) => p.peqType == PeqType.grant ).toList();
 
       }
-      String cePeqDetail  = planPeqs.length.toString() + " planned, " + pendPeqs.length.toString() + " pending, " + accrPeqs.length.toString() + " accrued.";
+      String cePeqDetail  = planPeqs.length.toString() + " planned, " + pendPeqs.length.toString() + " pending, " + accrPeqs.length.toString() + " granted.";
       String cePeqs       = peqs.length.toString() + " PEQs: " + cePeqDetail;
       String ceStorage    = "CodeEquity Data (AWS)";
       
       String hostStorage   = "Host Data (" + cep.hostPlatform + ")";
-      String hostPeqDetail = planHPeqs.length.toString() + " planned, " + pendHPeqs.length.toString() + " pending, " + accrHPeqs.length.toString() + " accrued.";
+      String hostPeqDetail = planHPeqs.length.toString() + " planned, " + pendHPeqs.length.toString() + " pending, " + accrHPeqs.length.toString() + " granted.";
       String hostPeqs      = hPeqs.length.toString() + " PEQs: " + hostPeqDetail; 
       
       Widget t1 = makeTitleText( appState, ceStorage, buttonWidth * 3.0, false, 1, fontSize: 16 );
@@ -586,7 +586,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       assert( p != null );
       String msg1 = "Write One: Write this Host PEQ to CodeEquity, overwriting any PEQ with the same hostIssueId or hostIssueTitle.\n\n";
       String msg2 = "Write All: Overwrite all CodeEquity PEQs for this Code Equity Project with all host PEQs listed under \'Needing Repair\'.\n\n";
-      String msg3 = "Note that accrued PEQs in CodeEquity will not be modified.";
+      String msg3 = "Note that granted PEQs in CodeEquity will not be modified.";
       List<Widget> buttons = [];
       buttons.add( new TextButton( key: Key( 'Write one host' ), child: new Text("Write one"), onPressed: () => _writeHostToCE( p, false )) );
       buttons.add( new TextButton( key: Key( 'Write all host' ), child: new Text("Write all"), onPressed: () => _writeHostToCE( p, true  )) );

@@ -83,6 +83,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "CheckHostPop")   { resultPromise = checkHostPop( rb.CEProjectId, rb.RepoId ); }
     else if( endPoint == "CheckGrantAuth") { resultPromise = checkGrantAuth( rb.CEProjectId, rb.ActorId ); }
+    else if( endPoint == "CheckCEVReg")    { resultPromise = checkCEVReg( rb.CEProjectId, rb.Assignees ); }
     else if( endPoint == "GetPerson")      { resultPromise = getPerson( username ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.HostUserId, rb.CEProjectId, rb.isAlloc, rb.allAccrued ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
@@ -733,6 +734,29 @@ async function checkGrantAuth( ceProjId, actorId ) {
     // console.log( role );
     if( role == "Grantor" || role == "Executive" ) { return success( true ); }
     else                                           { return success( false ); }
+}
+
+async function checkCEVReg( ceProjId, assignees ) {
+    // assignees register with ventures.  if assignee has any role in venture, has registered.
+    let cepWrap = await getEntry( "CEProjects", { CEProjectId: ceProjId });
+    let cep     = JSON.parse( cepWrap.body );
+    // console.log( cep );
+    
+    let cevWrap  = await getEntry( "CEVentures", { CEVentureId: cep.CEVentureId });
+    let cev      = JSON.parse( cevWrap.body );
+    // console.log( cev );
+
+    let rv = true;
+    for( var hid of assignees ) {
+       let ceUIDWrap = await getCEUIDFromHost( "", hid );
+       let ceUID  = JSON.parse( ceUIDWrap.body );
+       // console.log( ceUID );
+    
+       let role  = cev.Roles[ceUID];
+       // console.log( role );
+       if( !( role == "Grantor" || role == "Executive" || role == "Member" ) ) { return success( false ); }
+    }
+    return success( true ); 
 }
 
 // acquire fine-grained lock

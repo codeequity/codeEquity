@@ -293,20 +293,31 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    assert( newCard.pid == link.hostProjectId );               // not yet supporting moves between projects
 
 	    let success = await ghV2.checkReserveSafe( authData, link.hostIssueId, newNameIndex );
-	    if( !success ) {
+	    assert( success.length == 2 );
+	    if( !success[0] ) {
 		let msg = "WARNING.  Need assignees before moving card to config.PROJ_PEND or config.PROJ_ACCR columns.  Moving card back.";
 		ingestUtils.rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, msg, true );
 		return;
 	    }
 
-	    // Need to be MemberRole.Grantor or above to move card out of PEND
-	    let authorized = await awsUtils.checkCERole( authData, pd.ceProjectId, pd.actorId );
-	    if( !authorized && oldNameIndex == config.PROJ_PEND ) {
-		let msg = "WARNING.  Need CodeEquity role of Grantor or above to move card out of the config.PROJ_PEND column.  Moving card back.";
-		ingestUtils.rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, msg, true );
-		return;
-	    }
+	    // Restrictions if moving out of PEND
+	    if( oldNameIndex == config.PROJ_PEND ) {
+		let msg = "";
 		
+		// Need to be MemberRole.Grantor or above to move card out of PEND
+		let authorized = await awsUtils.checkCERole( authData, pd.ceProjectId, pd.actorId );
+		if( !authorized ) { msg = "WARNING.  Need CodeEquity role of Grantor or above to move card out of the config.PROJ_PEND column.  Moving card back."; }
+		
+		// Assignees need to be registered with the venture for card to be moved out of PEND
+		let registered = await awsUtils.checkCEVReg( authData, pd.ceProjectId, success[1] );
+		if( !registered ) { msg = "WARNING.  All assignees must be registered with the CodeEquity Venture to card out of the config.PROJ_PEND column.  Moving card back."; }
+
+		if( msg != "" ) { 
+		    ingestUtils.rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, msg, true );
+		    return;
+		}
+	    }
+	    
 	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newCard.columnId, newColName );
 	    // ghLinks.show();
 	    

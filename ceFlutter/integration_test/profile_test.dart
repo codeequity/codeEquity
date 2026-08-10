@@ -125,14 +125,14 @@ Future<bool> validateFlutProfile( WidgetTester tester ) async {
    expect( find.text( 'Connie Star (Con)' ),               findsOneWidget );
    expect( find.text( 'connieTester (AHLjVaSIlH)' ), findsOneWidget );
    expect( find.text( 'Member of: 3' ),              findsOneWidget );
-   expect( find.text( 'Most active in: ' ),          findsNWidgets(2) );
-   expect( find.text( CEMD_PROJ_NAME ),              findsNWidgets(3) );
+   expect( find.text( 'Most active in: ' ),          findsNWidgets(3) );
+   expect( find.text( CEMD_PROJ_NAME ),              findsNWidgets(4) );
 
    expect( find.text( 'Internal testing: Front end' ), findsOneWidget );
 
    expect( find.text( CEMD_VENT_NAME),              findsOneWidget );
    expect( find.text( 'Venture Equity Plan PEQs:' ), findsOneWidget );
-   expect( find.text( '    Accrued:' ),             findsOneWidget );
+   expect( find.text( '    Granted:' ),             findsOneWidget );
    expect( find.text( '0.05%' ),                    findsOneWidget );
    expect( find.text( '0.12%' ),                    findsOneWidget );
    expect( find.text( '99.83%' ),                   findsOneWidget );
