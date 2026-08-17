@@ -9,16 +9,17 @@ class CEVenture {
    final String  ceVentureId;
    final String  name;
    final String? web;
+   final String? intro;
    final Map< String, MemberRole > roles;  // ceUID: role
    final List<String> applicants;          // CEPeople that have applied to register with this venture
 
-   CEVenture({ required this.ceVentureId, required this.name, this.web, required this.roles, required this.applicants });
+   CEVenture({ required this.ceVentureId, required this.name, this.web, this.intro, required this.roles, required this.applicants });
 
    dynamic toJson() {
       final Map< String, String> sRoles = {};
       assert( roles != null );
       roles.forEach( (k,v) { sRoles[k] = enumToStr( v ); } );
-      return { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web, 'Roles': sRoles, 'Applicants': applicants };
+      return { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web, 'Introduction': intro, 'Roles': sRoles, 'Applicants': applicants };
    }
 
    // No CEVenture found.  return empty 
@@ -27,6 +28,7 @@ class CEVenture {
          ceVentureId:  "-1",
          name:         "", 
          web:          "",
+         intro:        "",
          roles:        {},
          applicants:   []
          );
@@ -46,6 +48,7 @@ class CEVenture {
          ceVentureId:   json['CEVentureId'],
          name:          json['Name'],
          web:           json['Website'],
+         intro:         json['Introduction'],
          roles:         r,
          applicants:    apps
          );
@@ -119,6 +122,7 @@ class CEVenture {
    
    String toString() {
       String res = "\n" + name + " (" + ceVentureId + ") " + (web ?? "");
+      res += intro ?? "" + "\n";
       res += "Roles:\n";
       for( MapEntry<String, MemberRole> role in roles.entries ) {
          res += "   " + role.key + ": " + enumToStr( role.value );

@@ -1028,7 +1028,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       return body;
    }
    
-   Widget getStatus( context ) {
+   Widget _getStatus( context ) {
 
       List<List<Widget>> pending = [];
 
@@ -1090,6 +1090,6 @@ class _CEStatusState extends State<CEStatusFrame> {
       // if( appState.verbose >= 1 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString() + " " + enumToStr( sortType )); }
       if( appState.verbose >= 4 ) { print( "STATUS BUILD. " + updateView.toString() + " " + updateModel.toString() + " " + enumToStr( sortType )); }
       
-      return getStatus( context );
+      return _getStatus( context );
    }
 }

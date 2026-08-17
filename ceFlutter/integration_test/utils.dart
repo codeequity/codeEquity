@@ -451,7 +451,7 @@ Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
 Future<bool> statusTabNoServer( WidgetTester tester ) async {
    expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
 
-   print( "statusTabNoServer: expect to see: \"ClientException: Failed to fetch\" here" );
+   print( "\nNOTE! There should be a failed attemtp to reach ceServer here - you should see: \"ClientException: Failed to fetch\" below" );
    final Finder tab = find.byKey( const Key('Status' ));
    await tester.tap( tab );
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step

@@ -218,6 +218,7 @@ class _CEActivityState extends State<CEActivityPanel> {
          }
          
          String msg = "This action will end your participation in this Venture.\n All Provisional Equity in this Venture that hasn't vested already will be terminated.\n";
+         msg       += "If you are the last member of the Venture, the Venture will no longer be accessible.\n";
          msg       += "Press \'Continue\' to withdraw.";
          String ret = await confirm( context, "Withdraw from Venture?", msg, _noop, _cancel );
 

@@ -926,7 +926,8 @@ class _CEProfileState extends State<CEProfilePage> {
      List<Widget> cepWid  = [spacer];
      List<String> cepIds  = [];
      Widget rolesWid      = spacer;
-
+     final svWidth        = rhsFrameMinWidth * 2.0;             // XXX oi
+     
      if( !screenOpened ) {
         assert( appState.ceVenture != {} );
         cev = appState.ceVenture[ screenArgs["id"] ] ?? CEVenture.empty();
@@ -975,19 +976,26 @@ class _CEProfileState extends State<CEProfilePage> {
                  mainAxisAlignment: MainAxisAlignment.start,
                  children: cepWid ),
               ]);
-     
-     Widget roles =
+
+     List<Widget> rhsRows = [];
+     if( cev.intro != null && cev.intro != "" ) {
+        rhsRows.add( spacer );
+        rhsRows.add( makeBodyText( appState, cev.intro!, svWidth, true, 5 ) ); 
+        rhsRows.add( spacer );
+        rhsRows.add( makeHDivider( appState, svWidth, appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ) );
+        rhsRows.add( spacer );
+     }
+     rhsRows.add( spacer );
+     rhsRows.add( makeTitleText( appState, "Collaborator Roles within this Venture", 1.3*textWidth, false, 1, fontSize: 18 ) );
+     rhsRows.add( rolesWid );
+
+     Widget rhs =
         Column( 
            crossAxisAlignment: CrossAxisAlignment.start,
            mainAxisAlignment: MainAxisAlignment.start,
-           children: <Widget>[
-              spacer,
-              makeTitleText( appState, "Collaborator Roles within this Venture", 1.3*textWidth, false, 1, fontSize: 18 ),
-              spacer,
-              rolesWid,
-              ]);
+           children: rhsRows );
 
-     return _makeCEBody( context, ceProjects, roles, cepIds ); 
+     return _makeCEBody( context, ceProjects, rhs, cepIds ); 
      
   }
   
@@ -1011,6 +1019,7 @@ class _CEProfileState extends State<CEProfilePage> {
      Widget              cepWid     = spacer;
      Widget              ppWid      = spacer;
      Widget              peqTable   = spacer;
+     Widget              logout     = spacer;  // this can't be active during loadup else if pressed during setstate, badness
      
      if( !screenOpened ) {
         assert( myself != null );
@@ -1027,6 +1036,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  hostPeep["id"]       = ha.hostUserId;
                  cepWid               = _makeCEPs( context, ha, textWidth );
                  ppWid                = _makePperCEP( context, ha, textWidth );
+                 logout               = makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 3.0, _logout( context, appState));
               }
            }
            else { print( "Host organization not recognized." ); }
@@ -1069,7 +1079,7 @@ class _CEProfileState extends State<CEProfilePage> {
                                          MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
                                          confirmedNav( context, container, newPage );
                                       }),
-                                   makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 3.0, _logout( context, appState) )
+                                   logout
                           ])
                  :
                  Container( width: 1.0 ),
