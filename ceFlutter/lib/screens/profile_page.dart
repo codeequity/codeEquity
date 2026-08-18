@@ -693,6 +693,48 @@ class _CEProfileState extends State<CEProfilePage> {
      return pi;
   }
 
+  void _cancel() {
+     Navigator.of( context ).pop( 'Cancel' );
+  }
+
+
+  // update profiles. no need to wait for completion
+  void _updateProfile( String profileType, String profileId, String current, String choice ) {
+     final textWidth = lhsFrameMaxWidth + rhsFrameMaxWidth - 10 * appState.GAP_PAD;
+     void _set( TextEditingController cont ) {
+        if( profileType == "cep" ) {
+           assert( appState.ceProject[ profileId ] != null );
+           CEProject cep = appState.ceProject[ profileId ]!;
+           cep.description = cont.text;
+           writeCEProject( appState, context, container, cep );
+        }
+        else if( profileType == "cev" ) {
+           assert( appState.ceVenture[ profileId ] != null );
+           CEVenture cev = appState.ceVenture[ profileId ]!;
+           cev.intro = cont.text;
+           writeCEVenture( appState, context, container, cev );
+        }
+        else { assert( false ); }
+
+        Navigator.of( context ).pop( profileId );  // edit
+        Navigator.of( context ).pop( profileId );  // choose
+     }
+
+     String title = profileType == "cep" ? "Very brief project description" : "Venture information, short and plain";
+     
+     if( choice == "Description" ) {  // XXX at least const at top
+        TextEditingController controller = new TextEditingController();
+        editBox( context, appState, textWidth, title, "Description", controller, current, () => _set( controller ), _cancel );
+     }
+     else if( choice == "Profile Image" ) {
+        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
+        confirmedNav( context, container, newPage );
+     }
+     else { assert( false ); }
+              
+  }
+
+  
   Widget _makeCEBody( context, Widget botLeft, Widget rhs, List<String> cepIds ) {
      final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
      Widget? pi           = null;
@@ -735,6 +777,11 @@ class _CEProfileState extends State<CEProfilePage> {
      dynamic primeId = screenArgs["profType"] == "CEProject" ? cepId : cevId;
      dynamic minor   = screenArgs["profType"] == "CEProject" ? cev   : cep;
      String  desc    = screenArgs["profType"] == "CEProject" ? prime.description : prime.web;
+
+     String primeType = screenArgs["profType"] == "CEProject" ? "cep"  : "cev";
+     String primeHint = screenArgs["profType"] == "CEProject" ?
+                        cep.description ?? "Describe your project in one short sentence" : 
+                        cev.intro ?? "Describe your Venture in a few sentences.  Keep it short and pragmatic.";
      
      if( pi == null ) { pi = _getProfImage( primeId, "a" ); }
      
@@ -757,11 +804,12 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, desc, textWidth, false, 1 ),
                  screenArgs["profType"] == "CEProject" ? _makeCEVLink( cev.name, cev.ceVentureId, cepIds, textWidth ) : miniSpacer,
                  miniSpacer,
-                 Wrap( children: [ Container( width: appState.GAP_PAD ), 
-                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
-                                         MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
-                                         confirmedNav( context, container, newPage );
-                                      }),
+                 Wrap( children: [ Container( width: appState.GAP_PAD ),
+                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0,
+                                                          () async {
+                                                             radioDialog( context, "Update which part?", ["Description", "Profile Image"], "Description",
+                                                                          _updateProfile, _cancel, execArgs: [primeType, primeId, primeHint] );
+                                                          }),
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
