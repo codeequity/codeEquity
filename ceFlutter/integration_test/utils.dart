@@ -404,7 +404,7 @@ Future<bool> verifyOnProjectPage( WidgetTester tester, {hasProjTitle = true, has
    expect( find.text( 'Approvals' ),                       findsOneWidget );  
    expect( find.text( 'PEQ Summary' ),                     findsOneWidget );  
    expect( find.text( 'Equity Plan' ),                     findsOneWidget );  
-   expect( find.text( 'Agreements' ),                      findsOneWidget );  
+   expect( find.text( 'Collaborators' ),                   findsOneWidget );  
    expect( find.text( 'Status' ),                          findsOneWidget );  
    
    return true;

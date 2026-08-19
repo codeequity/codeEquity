@@ -699,7 +699,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
 
   // update profiles. no need to wait for completion
-  void _updateProfile( String profileType, String profileId, String current, String choice ) {
+  void _updateProfile( String profileType, String profileId, String current ) {
      final textWidth = lhsFrameMaxWidth + rhsFrameMaxWidth - 10 * appState.GAP_PAD;
      void _set( TextEditingController cont ) {
         if( profileType == "cep" ) {
@@ -717,20 +717,11 @@ class _CEProfileState extends State<CEProfilePage> {
         else { assert( false ); }
 
         Navigator.of( context ).pop( profileId );  // edit
-        Navigator.of( context ).pop( profileId );  // choose
      }
 
      String title = profileType == "cep" ? "Very brief project description" : "Venture information, short and plain";
-     
-     if( choice == "Description" ) {  // XXX at least const at top
-        TextEditingController controller = new TextEditingController();
-        editBox( context, appState, textWidth, title, "Description", controller, current, () => _set( controller ), _cancel );
-     }
-     else if( choice == "Profile Image" ) {
-        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
-        confirmedNav( context, container, newPage );
-     }
-     else { assert( false ); }
+     TextEditingController controller = new TextEditingController();
+     editBox( context, appState, textWidth, title, "Description", controller, current, () => _set( controller ), _cancel );
               
   }
 
@@ -807,8 +798,12 @@ class _CEProfileState extends State<CEProfilePage> {
                  Wrap( children: [ Container( width: appState.GAP_PAD ),
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0,
                                                           () async {
-                                                             radioDialog( context, "Update which part?", ["Description", "Profile Image"], "Description",
-                                                                          _updateProfile, _cancel, execArgs: [primeType, primeId, primeHint] );
+                                                             _updateProfile( primeType, primeId, primeHint ); 
+                                                          }),
+                                   makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 2.0,
+                                                          () async {
+                                                             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
+                                                             confirmedNav( context, container, newPage );
                                                           }),
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
