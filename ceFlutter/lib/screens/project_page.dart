@@ -13,6 +13,7 @@ import 'package:ceFlutter/screens/summary_frame.dart';
 import 'package:ceFlutter/screens/detail_page.dart';
 import 'package:ceFlutter/screens/equity_frame.dart';
 import 'package:ceFlutter/screens/approval_frame.dart';
+import 'package:ceFlutter/screens/collab_frame.dart';
 import 'package:ceFlutter/screens/status_frame.dart';
 
 
@@ -139,9 +140,13 @@ class _CEProjectState extends State<CEProjectPage> {
                appContainer:           container,
                frameHeightUsed:        fhu );
          }
-         Widget getAgreementsFrame() {
-            return makeTitleText( appState, "ZooBaDoo!", w, false, 1 ); 
+
+         Widget getCollaboratorsFrame() {
+            return CECollabFrame(
+               appContainer:           container,
+               frameHeightUsed:        fhu );
          }
+
          Widget getStatusFrame() {
             return CEStatusFrame(
                appContainer:           container,
@@ -177,7 +182,7 @@ class _CEProjectState extends State<CEProjectPage> {
                                           Tab( child: makeTitleText( appState, "Approvals", w, false, 1 )),
                                           Tab( child: makeTitleText( appState, "PEQ Summary", w, false, 1 )),
                                           Tab( child: makeTitleText( appState, "Equity Plan", w, false, 1 )),
-                                          Tab( child: makeTitleText( appState, "Agreements", w, false, 1 )),
+                                          Tab( child: makeTitleText( appState, "Collaborators", w, false, 1 )),
                                           Tab( child: makeTitleText( appState, "Status", w, false, 1 )),
                                           ],
                                        
@@ -196,7 +201,7 @@ class _CEProjectState extends State<CEProjectPage> {
                                           _makeTab( () => getApprovalFrame() ),
                                           _makeTab( () => getSummaryFrame() ),
                                           _makeTab( () => getEquityFrame() ),
-                                          _makeTab( () => getAgreementsFrame() ),
+                                          _makeTab( () => getCollaboratorsFrame() ),
                                           _makeTab( () => getStatusFrame() ),
                                           ]))
                                  ])))

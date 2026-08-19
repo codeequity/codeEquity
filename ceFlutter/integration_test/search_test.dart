@@ -236,6 +236,9 @@ Future<bool> validateScroll( WidgetTester tester ) async {
    await pumpSettle( tester, 2, verbose: true );
 
    // These seem sensitive.  try a few times
+   // XXX 8/26 Did the tree for sb get released somehow?  Flaky flutter?
+   //     Failure in the catch, after scrolling multiple times above sb suddenly is not available
+   //     The finder "Found 0 widgets with type "ListView" that are ancestors of widgets with text "ceServer"
    try {
       expect( find.text('LM Pending'), findsOneWidget );
       expect( find.text('Snow melt'), findsOneWidget );

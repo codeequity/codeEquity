@@ -2,7 +2,7 @@ class CEProject {
    final String ceProjectId;
    final String ceVentureId;
    final String name;
-   final String description;
+   String description;
    final String hostPlatform;
    final String hostOrganization;
    final String ownerCategory;

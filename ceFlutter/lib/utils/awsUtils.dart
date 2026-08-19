@@ -219,7 +219,7 @@ Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) asyn
 Future<dynamic> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
-   // print( "updateDynamo " + shortName + ": " + postData );
+   print( "updateDynamo " + shortName + ": " + postData );
    
    final response = await awsPost( shortName, postData, container );
    bool  res      = false;
@@ -568,6 +568,15 @@ Future<void> writeCEVenture( appState, context, container, cev ) async {
       String cevs = json.encode( cev );
       String postData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
       updateDynamo( context, container, postData, "UpdateCEV" );
+   }
+}
+
+Future<void> writeCEProject( appState, context, container, cep ) async {
+   if( cep != null ) {
+      print( "WRITE CEP " + cep.name );
+      String ceps = json.encode( cep );
+      String postData = '{ "Endpoint": "UpdateCEP", "ceProject": $ceps }';
+      updateDynamo( context, container, postData, "UpdateCEP" );
    }
 }
 

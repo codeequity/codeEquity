@@ -190,6 +190,8 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     # cmd = cmd + " --web-browser-flag=--headless=new"
     # cmd = cmd + " --web-browser-flag=--remote-debugging-port=9222" 
     # cmd = cmd + " --web-browser-flag=--disable-extensions"
+    # cmd = cmd + " --web-use-dwds-websocket-connection"
+    # cmd = cmd + " -- --web-use-dwds-websocket-connection"
     
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
