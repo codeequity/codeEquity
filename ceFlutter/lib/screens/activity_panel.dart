@@ -45,7 +45,7 @@ class _CEActivityState extends State<CEActivityPanel> {
    late bool updateView;
 
    final ScrollController _scrollController = ScrollController();
-   late UserDoc scrollDoc;
+   late UserDoc     scrollDoc;
    late Person      applicant;
    late Person      approver;
    late CEVenture   targCEV;
@@ -550,7 +550,9 @@ class _CEActivityState extends State<CEActivityPanel> {
    // Every time enter showDoc with relevant doc, roles are set.
    // Called after first entry (through checkThenShow, which sets roles), or as part of chain of current edits through onScroll
    void _showDoc( Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false, isApplicant = true } ) async {
-      Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
+      Agreement? agmtN = appState.agreements[ enumToStr( docType ) ];
+      assert( agmtN != null );
+      Agreement agmt = agmtN!;  // oi.  too many !
       
       if( docType == DocType.privacy ) {
          List<Widget> buttons = [];

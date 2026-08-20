@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_html/flutter_html.dart';
 
 import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/widgetUtils.dart';
@@ -19,7 +20,7 @@ import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/PEQ.dart';
-
+import 'package:ceFlutter/models/Agreement.dart';
 
 // enum accessibility funcs
 // https://medium.com/@amir.n3t/advanced-enums-in-flutter-a8f2e2702ffd
@@ -228,7 +229,11 @@ Future<void> initMDState( context, container ) async {
    List<CEProject> ceps  = [];
    List<CEVenture> cevs  = [];
    List<Person>    peeps = [];
+   List<String>    agmtType = [];
 
+   for( var dt in DocType.values ) {
+      if( dt != DocType.end ) { agmtType.add( enumToStr( dt ) ); }
+   }
 
    // NOTE a founder approving an application must trigger a host account update
    // NOTE Could push fetchCEPeople to reloadCEProject.  But, dynamo table does not carry that info, and constructing a
@@ -241,6 +246,9 @@ Future<void> initMDState( context, container ) async {
                         fetchCEProjects( context, container ).then(     (p) => ceps = p ),
                         
                         fetchCEVentures( context, container ).then(     (p) => cevs = p ),
+                        
+                        for( String dt in agmtType ) fetchAgreement( context, container, dt ).then( (p) => appState.agreements[dt] = p )
+                        
                         ]);
    appState.myHostAccounts = appState.ceHostAccounts[uid];
 
@@ -628,4 +636,50 @@ MemberRole getUserAuth( container ) {
    return cev!.roles[ appState.ceUserId ] ?? MemberRole.end;
 }
 
+// XXX scroll controller.. hmmm
+// agmtContent is pushed in separately from agmt to allow for doc edits
+Future<void> showCEDoc( context, Agreement agmt, String agmtContent, List<Widget> buttons, overlayWidth ) async {
 
+   if( agmt.type == DocType.privacy ) {
+      await showDialog(
+         context: context,
+         builder: (BuildContext context) {
+                          return AlertDialog(
+                             scrollable: true,
+                             title: new Text( agmt.title ),
+                             content: Container( width: 0.6 * overlayWidth, child: new Text( agmtContent )),
+                             actions: buttons);
+                       });
+   }
+   else if( agmt.type == DocType.equity ) {
+      await showDialog(
+         context: context,
+         builder: (BuildContext context) {
+                          return AlertDialog(
+                             key: Key( agmt.title ),
+                             content: SizedBox(
+                                height: 8000,
+                                child: SingleChildScrollView( 
+                                   scrollDirection: Axis.vertical,
+                                   key: Key( "scrollDoc" ),
+                                   // controller: _scrollController, 
+                                   child: Html( data: agmtContent,
+                                                // seems to require flex display, which pushes all list items into 1 paragraph
+                                                style: Style.fromCss('''         
+                                                                     ul {
+                                                                        list-style-type: none;
+                                                                        padding-left: 0;
+                                                                     },
+                                                                     ul li {
+                                                                     display: block;
+                                                                        column-gap: 0px;
+                                                                        align-items: center;
+                                                                        margin-bottom: 0px;
+                                                                     }
+                                                                     ''',
+                                                                     (css, errors) => errors.toString())
+                                      ))),
+                             actions: buttons);
+                       });
+   }
+}

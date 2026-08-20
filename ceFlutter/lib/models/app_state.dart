@@ -16,6 +16,7 @@ import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/Linkage.dart';
+import 'package:ceFlutter/models/Agreement.dart';
 
 import 'package:ceFlutter/components/node.dart';
 import 'package:ceFlutter/components/equityNode.dart';
@@ -73,6 +74,7 @@ class AppState {
    late Map< String, Linkage? >          ceHostLinks;     // ceProject : Linkage
    late Map< String, EquityPlan? >       ceEquityPlans;   // ceVenture : EquityPlan
    late Map< String, Image? >            ceImages;        // ceUser or ceProject : image
+   late Map< String, Agreement>          agreements;      // DocType   : Agreement 
    
    // Pointers into Core data
    late PEQSummary?       myPEQSummary;          // Summary info for the selectedCEProject
@@ -164,7 +166,8 @@ class AppState {
       cePEQSummaries  = new Map<String, PEQSummary?>();
       ceHostLinks     = new Map<String, Linkage?>();
       ceEquityPlans   = new Map<String, EquityPlan?>();
-      ceImages        = new Map<String, Image?>();          // XXX this needs to hook into platform cache 
+      ceImages        = new Map<String, Image?>();          // XXX this needs to hook into platform cache
+      agreements      = new Map<String, Agreement>();
       
       myPEQSummary   = null;
       myEquityPlan   = null;

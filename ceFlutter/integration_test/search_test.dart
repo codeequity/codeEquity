@@ -61,9 +61,20 @@ Future<void> dismiss( WidgetTester tester ) async {
       closed = true;
    }
    catch( e ) {}
-   try{ 
+   try{
+      // Note: this will take us to the collab tab, which then adds a connie.  Go back home in this case.
       final Finder out = find.text( CEMD_VENT_NAME );
       await tester.tap( out, warnIfMissed: false );
+      await tester.pumpAndSettle();
+      await pumpSettle( tester, 2, verbose: true );
+
+      print( "Entered Collab.  Attempting to go back home" );
+      Finder home = find.byIcon( customIcons.home );
+      expect( home, findsOneWidget );
+      await tester.tap( home, warnIfMissed: false );
+      await tester.pumpAndSettle();
+      await pumpSettle( tester, 2, verbose: true );
+      
       closed = true;
    }
    catch( e ) {}
@@ -371,7 +382,7 @@ Future<bool> validateCollab( WidgetTester tester ) async {
    await open( tester );
    await tester.enterText( search, "c" );
    await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
+   await pumpSettle( tester, 1, verbose: true );
    await tester.pumpAndSettle();
 
    expect( find.text('ceServer'), findsOneWidget );
