@@ -12,6 +12,8 @@ import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/Agreement.dart';
+import 'package:ceFlutter/models/UserDoc.dart';
 
 // XXX move to WidgetUtils?
 // Workaround breaking change 5/2021
@@ -135,6 +137,24 @@ class _CECollabState extends State<CECollabFrame> {
       Widget row6 = Container( width: .9*width,  child: children[6] );  // vest
       return [ row0, row1, row2, row3, row4, row5, row6 ];
    }
+
+   Widget _makeDocLink( String docVersion, Agreement agmt, String content ){
+      void _set( PointerEvent event )   { setState(() => appState.hoverChunk = docVersion ); }
+      void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+
+      final textWidth = 2 * appState.GAP_PAD;
+
+      // XXX from homepage
+      final lhsFrameMaxWidth = 300.0;
+      final rhsFrameMaxWidth = appState.MAX_PANE_WIDTH - lhsFrameMaxWidth;
+      final overlayWidth     = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
+      
+      return GestureDetector( 
+         onTap: () async { showCEDoc( context, agmt, content, [], overlayWidth ); },
+         child: makeActionableText( appState, docVersion, docVersion, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
+         );
+   }
+
    
    List<List<Widget>> _getHeader ( CEVenture cev ) {
       final buttonWidth = 100;
@@ -146,12 +166,22 @@ class _CECollabState extends State<CECollabFrame> {
       Widget miniSpace = Container( height: 1, width: 6 * appState.GAP_PAD );
       Widget title     = makeIWTitleText( appState, titletx, false, 1, fontSize: 18 );
 
+      Agreement? priv   = appState.agreements[ enumToStr( DocType.privacy ) ];
+      Agreement? equity = appState.agreements[ enumToStr( DocType.equity ) ];
+      assert( priv != null && equity != null );
+      UserDoc scrollDoc = new UserDoc( docType: equity!.type, docId: equity!.id, acceptedDate: getToday(), equityVals: {} );
+      String filledInDoc = scrollDoc.compose( appState, Person.empty(), Person.empty(), equity, cev.ceVentureId );
+         
       // XXX Doc links
-      String expl1 = "Member statistics for this Venture.  Every collaborator below has signed the following agreements: ";
-      String expl2 = "Privacy Agreement" + ", " + "Equity Agreement";
- 
+      String expl1 = "Member statistics for this Venture.  Every collaborator below has signed privacy and equity agreements.";
+      String expl2 = "Current versions available here: ";
+      
       Widget e1 = makeIWTitleText( appState, expl1, false, 1 );
-      Widget e2 = makeIWTitleText( appState, expl2, false, 1 );
+      Widget e2 = Wrap( children: [
+                           makeIWTitleText( appState, expl2, false, 1 ),
+                           _makeDocLink( priv!.title + " v" + priv!.version, priv!, priv!.content ),
+                           _makeDocLink( equity!.title + " v" + equity!.version, equity!, filledInDoc ),
+                           ]);
       
       header.add( [ Container( height: appState.MID_PAD ), empty, empty, empty, empty, empty, empty ] );
       header.add( [ spacer, title, empty, empty, empty, empty, empty ] );

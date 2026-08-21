@@ -1,9 +1,11 @@
 import 'dart:convert';                   // json encode/decode, b64 coding
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 
 // import 'package:docx_viewer/docx_viewer.dart';
 // import 'package:docx_file_viewer/docx_file_viewer.dart';
-import 'package:flutter_html/flutter_html.dart';
+// import 'package:flutter_html/flutter_html.dart';
+import 'package:file_saver/file_saver.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 
@@ -45,7 +47,7 @@ class _CEActivityState extends State<CEActivityPanel> {
    late bool updateView;
 
    final ScrollController _scrollController = ScrollController();
-   late UserDoc scrollDoc;
+   late UserDoc     scrollDoc;
    late Person      applicant;
    late Person      approver;
    late CEVenture   targCEV;
@@ -547,24 +549,39 @@ class _CEActivityState extends State<CEActivityPanel> {
       }
    }
 
+   Widget _makeDownload( Agreement agmt, String content ) {
+      return new TextButton( 
+         key: Key( 'Download' ),
+         child: new Text("Download"),
+         onPressed: () async {
+                         Uint8List fileBytes = utf8.encode(content);
+                         try {
+                            String savedPath = await FileSaver.instance.saveFile(
+                               name: agmt.title,
+                               bytes: fileBytes,
+                               fileExtension: 'txt',
+                               mimeType: MimeType.text, // Ensures correct extension tracking on mobile/web
+                               );
+                            showToast( "File saved" ); 
+                         } catch (e) { print("Error saving file: $e"); }
+                      },
+         );
+   }
+   
    // Every time enter showDoc with relevant doc, roles are set.
    // Called after first entry (through checkThenShow, which sets roles), or as part of chain of current edits through onScroll
    void _showDoc( Person cePeep, DocType docType, { cevId = "", cevName = "", useCurrent = false, isApplicant = true } ) async {
-      Agreement agmt = await fetchAgreement( context, container, enumToStr( docType ) );
+      Agreement? agmtN = appState.agreements[ enumToStr( docType ) ];
+      assert( agmtN != null );
+      Agreement agmt = agmtN!;  // oi.  too many !
       
       if( docType == DocType.privacy ) {
          List<Widget> buttons = [];
          buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt.type, docId: agmt.id ) ));
          buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: _cancel ));
-         await showDialog(
-            context: context,
-            builder: (BuildContext context) {
-                             return AlertDialog(
-                                scrollable: true,
-                                title: new Text( agmt.title ),
-                                content: Container( width: 0.6 * widget.overlayMaxWidth, child: new Text( agmt.content )),
-                                actions: buttons);
-                          });
+         buttons.add( _makeDownload( agmt, agmt.content ));
+         
+         await showCEDoc( context, agmt, agmt.content, buttons, widget.overlayMaxWidth );         
       }
       else {
 
@@ -615,37 +632,9 @@ class _CEActivityState extends State<CEActivityPanel> {
          if( !isApplicant && !applicant.registeredWithCEV( targCEV ) ) {
             buttons.add( new TextButton( key: Key( 'Reject' ), child: new Text("Reject"), onPressed: _reject ));
          }
+         buttons.add( _makeDownload( agmt, filledInDoc ));
          
-         await showDialog(
-            context: context,
-            builder: (BuildContext context) {
-                             return AlertDialog(
-                                // title: new Text( agmt.title ),
-                                key: Key( agmt.title ),
-                                content: SizedBox(
-                                   height: 8000,
-                                   child: SingleChildScrollView( 
-                                      scrollDirection: Axis.vertical,
-                                      key: Key( "scrollDoc" ),
-                                      controller: _scrollController, 
-                                      child: Html( data: filledInDoc,
-                                               // seems to require flex display, which pushes all list items into 1 paragraph
-                                               style: Style.fromCss('''         
-                                                                    ul {
-                                                                       list-style-type: none;
-                                                                       padding-left: 0;
-                                                                    },
-                                                                    ul li {
-                                                                    display: block;
-                                                                       column-gap: 0px;
-                                                                       align-items: center;
-                                                                       margin-bottom: 0px;
-                                                                    }
-                                                                    ''',
-                                                                    (css, errors) => errors.toString())
-                                         ))),
-                                actions: buttons);
-                          });
+         await showCEDoc( context, agmt, filledInDoc, buttons, widget.overlayMaxWidth, controller: _scrollController );
       }
    }
 
