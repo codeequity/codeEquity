@@ -638,7 +638,7 @@ MemberRole getUserAuth( container ) {
 
 // XXX scroll controller.. hmmm
 // agmtContent is pushed in separately from agmt to allow for doc edits
-Future<void> showCEDoc( context, Agreement agmt, String agmtContent, List<Widget> buttons, overlayWidth ) async {
+Future<void> showCEDoc( context, Agreement agmt, String agmtContent, List<Widget> buttons, overlayWidth, { ScrollController? controller = null } ) async {
 
    if( agmt.type == DocType.privacy ) {
       await showDialog(
@@ -662,7 +662,7 @@ Future<void> showCEDoc( context, Agreement agmt, String agmtContent, List<Widget
                                 child: SingleChildScrollView( 
                                    scrollDirection: Axis.vertical,
                                    key: Key( "scrollDoc" ),
-                                   // controller: _scrollController, 
+                                   controller: controller, 
                                    child: Html( data: agmtContent,
                                                 // seems to require flex display, which pushes all list items into 1 paragraph
                                                 style: Style.fromCss('''         
