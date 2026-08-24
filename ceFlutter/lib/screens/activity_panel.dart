@@ -9,6 +9,8 @@ import 'package:file_saver/file_saver.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 
+import 'package:ceFlutter/screens/profile_page.dart';
+
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
@@ -40,8 +42,6 @@ class _CEActivityState extends State<CEActivityPanel> {
    late AppState appState;
 
    late bool toggleRegister;
-   late bool toggleVenture; 
-   late bool toggleProject;
    late bool togglePending;
    late bool toggleDaily;  
    late bool updateView;
@@ -61,8 +61,6 @@ class _CEActivityState extends State<CEActivityPanel> {
       super.initState();
 
       toggleRegister = true;
-      toggleVenture  = true;   
-      toggleProject  = true;   
       togglePending  = true;   
       toggleDaily    = true;
       updateView     = true;
@@ -450,6 +448,19 @@ class _CEActivityState extends State<CEActivityPanel> {
       return retVal;
    }
 
+   void _createVenture( context, container, CEVenture cev, Person cePeep ) async {
+      
+      // need profile/privacy first
+      if( !cePeep.registered ) {
+         showToast( "Please complete your personal profile and accept the privacy notice before creating a new CodeEquity Venture." );
+         return;
+      }
+
+      // Work from blank
+      Map<String,String> screenArgs = {"id": "-1", "profType": "CEVenture", "cePeepId": cePeep.id };
+      MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+      confirmedNav( context, container, newPage );
+   }
    
    // So far, venture equity agreement is the only editable doc
    void _updateDoc( Map<String, String> edits ) async {
@@ -688,12 +699,6 @@ class _CEActivityState extends State<CEActivityPanel> {
          case "toggleDaily" :
             setState(() => toggleDaily = expand ? false : true );
             break;
-         case "toggleVenture" :
-            setState(() => toggleVenture = expand ? false : true );
-            break;
-         case "toggleProject" :
-            setState(() => toggleProject = expand ? false : true );
-            break;
          case "toggleRegister" :
             setState(() => toggleRegister = expand ? false : true );
             break;
@@ -714,7 +719,6 @@ class _CEActivityState extends State<CEActivityPanel> {
             ));
    }
 
-   
    Widget _makeEntry( String entry, double pad, bool title, { last = false } ) {
 
       double w2 = widget.rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
@@ -724,47 +728,14 @@ class _CEActivityState extends State<CEActivityPanel> {
       
       return Padding(
          padding: EdgeInsets.fromLTRB(pad, 0, 0, 0),
-         child: title ?
-         makeTitleText( appState, entry, w2, false, 1, lgap: 1.9 * appState.GAP_PAD, bgap: gap ) :
-         makeBodyText( appState, entry, w2, false, 1, bgap: gap )
-         );
+         child: GestureDetector( 
+            onTap: () => notYetImplemented( context ),
+            child: title ?
+            makeTitleText( appState, entry, w2, false, 1, lgap: 1.9 * appState.GAP_PAD, bgap: gap ) :
+            makeBodyText( appState, entry, w2, false, 1, bgap: gap )
+            ));
    }
 
-
-   List<Widget> makeVenture() {
-      Widget expand = makeExpander( "toggleVenture", true );
-      Widget shrink = makeExpander( "toggleVenture", false );
-
-      List<Widget> subTasks = [];
-      Widget venture = _makeEntry( "Create CodeEquity Venture", 0, true );
-      subTasks.add( Wrap( spacing: 0, children: [ venture, toggleVenture ? expand : shrink ] ));
-
-      if( !toggleVenture ) {
-         subTasks.add( _makeEntry( "Complete Venture Profile", 3.0 * appState.MID_PAD, false ));
-         subTasks.add( _makeEntry( "Build an Equity Plan", 3.0 * appState.MID_PAD, false ));
-         subTasks.add( _makeEntry( "Invite collaborators", 3.0 * appState.MID_PAD, false ));
-         subTasks.add( _makeEntry( "Check collaborator roles", 3.0 * appState.MID_PAD, false ));
-      }
-      return subTasks;
-   }
-
-   List<Widget> makeProject() {
-      Widget expand = makeExpander( "toggleProject", true );
-      Widget shrink = makeExpander( "toggleProject", false );
-
-      List<Widget> subTasks = [];
-      // Widget project     = _makeEntry( "Create CodeEquity Project", 0, true, last: toggleProject );
-      Widget project     = _makeEntry( "Create CodeEquity Project", 0, true);
-      subTasks.add( Wrap( spacing: 0, children: [ project, toggleProject ? expand : shrink ] ));
-
-      if( !toggleProject ) {
-         subTasks.add( _makeEntry( "Complete Project Profile", 3.0 * appState.MID_PAD, false ));
-         subTasks.add( _makeEntry( "Associate with a Host", 3.0 * appState.MID_PAD, false ));
-         subTasks.add( _makeEntry( "Associate Host projects with Equity Plan", 3.0 * appState.MID_PAD, false ));
-         // subTasks.add( _makeEntry( "Associate Host projects with Equity Plan", 3.0 * appState.MID_PAD, false, last: true ));
-      }
-      return subTasks;
-   }
    
    List<Widget> makeGettingStarted( ) {
       List<Widget> subTasks = [];
@@ -787,6 +758,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       assert( appState.ceUserId != "" );
       Person? cePeep = appState.cePeople[ appState.ceUserId ];
       assert( cePeep != null );
+      CEVenture cev = new CEVenture( ceVentureId: "", name: "", roles: {}, applicants: [] );
 
       Widget expand = makeExpander( "toggleRegister", true );
       Widget shrink = makeExpander( "toggleRegister", false );
@@ -798,9 +770,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       if( !toggleRegister ) {
          String msg = "Choose the CodeEquity Venture you wish to register with";
          subTasks.add( _makeLink( "Register with a Venture", widget.overlayMaxWidth * 0.2, () => _chooseVenture( msg, docType: DocType.equity, cePeep: cePeep! )));
-         subTasks.addAll( makeVenture() );
-         subTasks.addAll( makeProject() );
-         // subTasks.add( _makeLink( "Withdraw", widget.overlayMaxWidth * 0.2, () => _withdraw( cePeep! ) ));
+         subTasks.add( _makeLink( "Create a Venture", widget.overlayMaxWidth * 0.2, () => _createVenture( context, container, cev, cePeep! )));
          subTasks.add( _makeLink( "Withdraw", widget.overlayMaxWidth * 0.2, () => _withdrawChoice( cePeep! ) ));
       }
       return subTasks;

@@ -65,7 +65,6 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, buttons ) {
               });
 }
 
-
 class EditForm extends StatefulWidget {
 
    final scrollHeader;
