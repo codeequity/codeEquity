@@ -12,6 +12,7 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/screens/edit_page.dart';
+import 'package:ceFlutter/screens/equity_frame.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/Person.dart';
@@ -79,7 +80,7 @@ class _CEProfileState extends State<CEProfilePage> {
    late PEQSummary?       peqSummary;
    late Image?            profileImage;
    
-   late bool screenOpened;
+   late bool screenOpened;      // XXX name is suspect.  more like modelsLoaded
    late bool updatedPeqTable;
    
   @override
@@ -577,7 +578,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return header;
   }
 
-  List<List<Widget>> _getRoleBody( context, container, List<HostAccount> hostAccs, CEVenture cev ) {
+  List<List<Widget>> _getRoleBody( context, container, CEVenture cev ) {
      List<List<Widget>> roleBody = [];
      final width = ( rhsFrameMaxWidth - appState.FAT_PAD ) / 4.0;
      final lspace = Container( width: 0.1 * width );
@@ -631,9 +632,7 @@ class _CEProfileState extends State<CEProfilePage> {
            Container( width: 0.7 * width, child: Wrap( spacing: 0, children: [ lspace, Icon( Icons.circle_outlined, key: Key( kNoCheck), color: Colors.black ), rspace ] ))
            );
      }
-     
-     for( int i = 0; i < hostAccs.length; i++ ) {
-        String ceUserId         = hostAccs[i].ceUserId;
+     for( String ceUserId in cev.roles.keys ) {
         assert( appState.cePeople[ ceUserId ] != null );
         Person cePeep = appState.cePeople[ ceUserId ]!;
             
@@ -647,10 +646,10 @@ class _CEProfileState extends State<CEProfilePage> {
      return roleBody;
   }
 
-  Widget _makeRoles( context, container, List<HostAccount> hostAccs, CEVenture cev ) {
+  Widget _makeRoles( context, container, CEVenture cev ) {
      List<List<Widget>> roles = [];
      roles.addAll( _getRoleHeader() );
-     roles.addAll( _getRoleBody( context, container, hostAccs, cev ));
+     roles.addAll( _getRoleBody( context, container, cev ));
      
      final svHeight = ( appState.screenHeight ) * .4;
      final svWidth  = rhsFrameMinWidth * 2.0;             // XXX oi
@@ -726,7 +725,7 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
   
-  Widget _makeCEBody( context, Widget botLeft, Widget rhs, List<String> cepIds ) {
+  Widget _makeCEBody( context, Widget botLeft, Widget rhs, List<String> cepIds, {creating = false} ) {
      final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
      Widget? pi           = null;
      CEVenture cev        = CEVenture.empty();
@@ -741,8 +740,8 @@ class _CEProfileState extends State<CEProfilePage> {
         assert( appState.ceVenture != {} );
 
         if( screenArgs["profType"] == "CEProject" ) {
-           cep = appState.ceProject[ screenArgs["id"] ] ?? cep;
-           cepId   = cep.ceProjectId;
+           cep   = appState.ceProject[ screenArgs["id"] ] ?? cep;
+           cepId = cep.ceProjectId;
            cev = appState.ceVenture[ cep.ceVentureId ] ?? cev;
            cevId = cev.ceVentureId;
            assert( cevId != "-1" );
@@ -750,13 +749,9 @@ class _CEProfileState extends State<CEProfilePage> {
         }
         // XXX Currently build for 1:1 cev:cep
         else if( screenArgs["profType"] == "CEVenture" ) {
-           assert( cepIds.length >= 1 );
            cev   = appState.ceVenture[ screenArgs["id"] ] ?? cev;
            cevId = cev.ceVentureId;
-           cepId = cepIds[0];
-           cep   = appState.ceProject[ screenArgs["id"] ] ?? cep;
            assert( cevId != "-1" );
-           assert( cepId != "-1" );
         }
         
         if( profileImage != null ) { pi   = profileImage!; }
@@ -766,7 +761,6 @@ class _CEProfileState extends State<CEProfilePage> {
      }
      dynamic prime   = screenArgs["profType"] == "CEProject" ? cep   : cev;
      dynamic primeId = screenArgs["profType"] == "CEProject" ? cepId : cevId;
-     dynamic minor   = screenArgs["profType"] == "CEProject" ? cev   : cep;
      String  desc    = screenArgs["profType"] == "CEProject" ? prime.description : prime.web;
 
      String primeType = screenArgs["profType"] == "CEProject" ? "cep"  : "cev";
@@ -780,6 +774,18 @@ class _CEProfileState extends State<CEProfilePage> {
      double tasked   = ep.totalAllocation > 0 ? ( 1.0 * psum.taskedTot  ) / ep.totalAllocation : 0.0;
      double unTasked = ep.totalAllocation > 0 ? ( 1.0 - accr - tasked ) : 0.0;
 
+     if( creating ) {
+        if( prime.name == "" ) { prime.name = "(No name yet)"; }
+        if( prime.web  == "" ) {
+           prime.web  = "(Click \'Edit Profile\' to add a website)";
+           desc = prime.web;
+        }
+        
+     }
+
+     // XXX oh boy.  projectPage
+     double fhu = 24+18+7*appState.MID_PAD + 2*appState.TINY_PAD;
+     
      return Wrap(
         children: [
            spacer, 
@@ -796,19 +802,28 @@ class _CEProfileState extends State<CEProfilePage> {
                  screenArgs["profType"] == "CEProject" ? _makeCEVLink( cev.name, cev.ceVentureId, cepIds, textWidth ) : miniSpacer,
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ),
-                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0,
+                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 3.0,
                                                           () async {
                                                              _updateProfile( primeType, primeId, primeHint ); 
                                                           }),
-                                   makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 2.0,
+                                   makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 3.0,
                                                           () async {
                                                              MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
                                                              confirmedNav( context, container, newPage );
                                                           }),
+                                   makeActionButtonFixed( appState, "Delete Venture", lhsFrameMaxWidth / 3.0,
+                                                          () => notYetImplemented( context ) ),
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeToolTip( makeTitleText( appState, "Venture Equity Plan PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
+                 ep.totalAllocation == 0 ?
+                 Wrap( children: [spacer, makeActionButtonFixed( appState, "Build Initial Equity Plan", lhsFrameMaxWidth / 2.0,
+                                                                 () async {
+                                                                    MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEquityFrame( appContainer: container,
+                                                                                                                                                       frameHeightUsed: fhu ));
+                                                                    confirmedNav( context, container, newPage );
+                                                                 }) ]) :
                  Table(
                     defaultColumnWidth: FixedColumnWidth( 2.0 * textWidth / 3.0 ),
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -904,7 +919,6 @@ class _CEProfileState extends State<CEProfilePage> {
               ]);
 
      return _makeCEBody( context, hplat, collabs, [] ); 
-     
   }
 
   List<String> _getCEProjects( String cevId ) {
@@ -966,16 +980,17 @@ class _CEProfileState extends State<CEProfilePage> {
      final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
      CEVenture cev        = CEVenture.empty();
      String cevId         = cev.ceVentureId;
-     List<Widget> cepWid  = [spacer];
+     List<Widget> cepWid  = [];
      List<String> cepIds  = [];
      Widget rolesWid      = spacer;
      final svWidth        = rhsFrameMinWidth * 2.0;             // XXX oi
+     bool creating        = false;
      
      if( !screenOpened ) {
         assert( appState.ceVenture != {} );
         cev = appState.ceVenture[ screenArgs["id"] ] ?? CEVenture.empty();
         cevId   = cev.ceVentureId;
-        assert( cevId != "-1" );
+        if( cevId == "-1" ) { creating = true; }
 
         // CEProjects
         cepIds = _getCEProjects( cevId );
@@ -987,26 +1002,33 @@ class _CEProfileState extends State<CEProfilePage> {
            else        { cepWid.add( _makeCEPLink( cep.name, cep.ceProjectId, namePreface: "   " )); }
            first = false;
         }
-
-        // XXX can get from CEV now
-        // CEProject Collabs
-        List<HostAccount> collabs = [];
-        for( String ceuid in appState.ceHostAccounts.keys ) {
-           assert( appState.ceHostAccounts[ceuid] != null );
-           List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
-           for( String cepId in cepIds ) {
-              for( HostAccount ha in has ) {
-                 if( ha.hostPlatform == appState.ceProject[cepId]!.hostPlatform && ha.ceProjectIds.contains( cepId ) ) {
-                    // XXX can double-add.. fix
-                    collabs.add( ha );
-                 }
-              }
-           }
+        if( cepWid.length == 0 ) {
+           cepWid = [ Wrap( children: [spacer, makeActionButtonFixed( appState, "Where is your code hosted", lhsFrameMaxWidth / 2.0,
+                                                                      () => notYetImplemented( context )) ])
+              ];
         }
-        rolesWid = _makeRoles( context, container, collabs, cev );
+
+        if( creating ) {
+           print( "Creating a venture." );
+           assert( screenArgs["cePeepId"] != null );
+           Person? cePeep = appState.cePeople[ screenArgs["cePeepId"]! ];
+           assert( cePeep != null );
+
+           String intro = "Welcome to your new Venture's profile!  \n";
+           intro += "Click \'Edit Profile\' to start adding details";
+           cev.intro = intro;
+           cev.ceVentureId = randAlpha( 10 );
+           cev.addNewCollaborator( cePeep!, "Founder" ); // XXX formalize
+
+           // bookkeeping for makeCEBody
+           screenArgs["id"] = cev.ceVentureId;
+           appState.ceVenture[ cev.ceVentureId ] = cev;
+        }
+        
+        rolesWid = _makeRoles( context, container, cev );
      }
 
-     Widget ceProjects = 
+     Widget ceProjects =
         Column( 
            crossAxisAlignment: CrossAxisAlignment.start,
            mainAxisAlignment: MainAxisAlignment.start,
@@ -1038,8 +1060,7 @@ class _CEProfileState extends State<CEProfilePage> {
            mainAxisAlignment: MainAxisAlignment.start,
            children: rhsRows );
 
-     return _makeCEBody( context, ceProjects, rhs, cepIds ); 
-     
+     return _makeCEBody( context, ceProjects, rhs, cepIds, creating: creating ); 
   }
   
   
@@ -1168,8 +1189,6 @@ class _CEProfileState extends State<CEProfilePage> {
       assert( appState != null );
       screenArgs = ModalRoute.of(context)!.settings.arguments as Map<String,String>;
 
-      // print( "XXX " + screenArgs.toString() );
-      
       lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;
       lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       rhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;

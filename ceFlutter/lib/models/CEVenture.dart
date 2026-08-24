@@ -6,9 +6,9 @@ import 'package:ceFlutter/models/Person.dart';
 enum MemberRole  { Executive, Grantor, Member, end }
 
 class CEVenture {
-   final String  ceVentureId;
-   final String  name;
-   final String? web;
+   String  ceVentureId;
+   String  name;
+   String? web;
    String? intro;
    final Map< String, MemberRole > roles;  // ceUID: role
    final List<String> applicants;          // CEPeople that have applied to register with this venture
