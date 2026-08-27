@@ -351,71 +351,6 @@ void editProfile( context, container, Person cePeep, {void Function()? updateCal
                                                    required: required, toolTip: toolTip, saveFunc: _saveProfile, cancelFunc: _cancelEdit ));
 }
 
-// XXX kill this
-void editVentureProfile( context, container, CEVenture cev, Person cePeep, { bool create = false } ) async {
-   final appState = container.state;
-
-   /*
-   // need profile/privacy first
-   if( !cePeep.registered ) {
-      showToast( "Please complete your personal profile and accept the privacy notice before creating a new CodeEquity Venture." );
-      return;
-   }
-
-   void _cancelEdit( context ) {
-      print( "Cancel update profile" );
-      Navigator.of( context ).pop();
-   }
-
-   // Tricky popping the old windows off here.  EditImage is navigating us to a blank profile page at the end.  request an extra pop for that
-   // XXX before we invoke it, pop both the scroll below, and the edit profile form.
-   // XXX actually save stuff, with the correct cevId
-   // XXX add new dialog (pop this scroll first?) that instructs user to look for pending tasks
-   // XXX add pending tasks
-   
-   // XXX add callback to editPage - that will pop 2nd scroll when done.  check project/summary
-   Future<void> _saveProfile( List<TextEditingController> darg ) async {
-
-      String ceVentureId = "XXXXX";
-      if( create ) {
-         double lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;  // XXX
-         final baseWidth  = ( appState.MIN_PANE_WIDTH - 2*appState.FAT_PAD ) / 2.0;
-
-         Widget image = makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 2.0,
-                                               () async {
-                                                  Navigator.of( context ).pop(); // pop the scroll
-                                                  Navigator.of( context ).pop(); // pop the edit profile
-                                                  Map<String, String> screenArgs = {"id": ceVentureId, "holdNav": "true"};
-                                                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
-                                                  confirmedNav( context, container, newPage );
-                                               });
-         Widget ei = makeBodyText( appState, "Choose a new profile image.  This is recommended, but can be done at any time in the profile page", 3.0 * baseWidth, true, 2);
-         popScroll( context, "Select a profile image", ei, [ image ] );
-         
-         Widget gotit = makeActionButtonFixed( appState, "Understood", lhsFrameMaxWidth / 2.0, () => _cancelEdit );
-         Widget look  = makeBodyText( appState, "Your new Venture has been created.  Look under Pending Tasks on the home page for next steps.", 3.0 * baseWidth, true, 2);
-         popScroll( context, "Congratulations!", look, [gotit] );
-      }
-   }
-
-   String formTitle = create ? "Create a profile for a new CodeEquity Venture" : "Edit the profile for Venture: " + cev.name;
-
-   List<String> header   = ["Name", "Website", "Introduction"];
-   List<bool>   required = [ true, false, true ];
-   List<String> curVal   = ["Garlic Beer Venture", "http://www.garlicbeer.org", "We are building a garlic beer detector." ];
-   List<String> toolTip  = ["", "", "" ];
-   String ceVentureId    = randAlpha(10);
-   
-   // This construction allows editForm to return a widget that we apply here.
-   await showDialog(
-      context: context,
-      builder: (BuildContext context) => EditForm( appState: appState, scrollHeader: formTitle, header: header, curVal: curVal,
-                                                   required: required, toolTip: toolTip, saveFunc: _saveProfile, cancelFunc: _cancelEdit )
-      );
-   */
-   
-}
-
 
 // Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
 //        Could reduce calls by further limiting update to dirty, where dirty is set when empty or after updatePeq.
@@ -643,11 +578,11 @@ Future<bool> allIngested( container, context ) async {
 }
 
 // remember, active flag is for host, not ceMD
-Future<void> updateCEPeqs( container, context ) async {
+Future<void> updateCEPeqs( container, context, {cepId = ""} ) async {
    final appState  = container.state;
    
    // Get all peqs for currently selected CEP
-   String cep   = appState.selectedCEProject;
+   String cep = cepId == "" ? appState.selectedCEProject : cepId; 
    assert( cep != "" );
    
    if( appState.cePeqs[ cep ] == null ) {
