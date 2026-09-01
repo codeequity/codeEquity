@@ -51,8 +51,8 @@ class AppState {
 
    // App logic   
    late bool loaded;                           // control expensive aspects of state initialization
-   late String ceUserId;                       // set during signup, login, refresh, etc.
 
+   late String                          ceUserId;           // set during signup, login, refresh, etc.
    late String                          selectedCEVenture;  // always set if seeing equity plan                    cev id
    late String                          selectedCEProject;  // always set if seeing summary frame or equity plan   cep id
    late String                          selectedHostUID;    // Looking at details for this host user, currently

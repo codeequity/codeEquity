@@ -110,6 +110,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "UpdateCEV")      { resultPromise = putCEV( rb.ceVenture ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
     else if( endPoint == "CheckDup")       { resultPromise = checkDuplicates( rb.CEProjectId, rb.HostIssueId ); }
+    else if( endPoint == "KillVenture")    { resultPromise = killVenture( rb.id ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
@@ -390,7 +391,7 @@ async function getEntries( tableName, query ) {
 	props = [ "CEVentureId" ];
 	break;
     case "CEProjects":
-	props = [ "CEProjectId" ];
+	props = [ "CEProjectId", "CEVentureId" ];
 	break;
     case "CELinkage":
 	props = [ "CEProjectId" ];
@@ -1650,6 +1651,61 @@ async function checkDuplicates( ceProjId, issueId ) {
     return success( true );			
 }
 
+// Do NOT kill equity doc - this was signed and remains valid
+async function killVenture( ceVentId ) {
+   // CEV
+   let items = [];
+   items.push( { Delete: { TableName: "CEVentures",   Key: { "CEVentureId": ceVentId }}} );
+   items.push( { Delete: { TableName: "CEEquityPlan", Key: { "EquityPlanId": ceVentId }}} );
+
+   // CEPs
+   var query = { CEVentureId: ceVentId };
+   var cepsWrap = await getEntries( "CEProjects", query );
+   const ceps = JSON.parse( cepsWrap.body );
+   if( cepsWrap.statusCode == 201 ) {
+      for( const cep of ceps ) {
+         console.log( "Working on", cep.Name );
+         items.push( { Delete: { TableName: "CEProjects",     Key: { "CEProjectId":  cep.CEProjectId }}} );
+         items.push( { Delete: { TableName: "CEProfileImage", Key: { "CEProfileId":  cep.CEProjectId }}} );
+         items.push( { Delete: { TableName: "CEPEQSummary",   Key: { "PEQSummaryId": cep.CEProjectId }}} );
+
+         // linkage is not a pkey
+         var   query = { CEProjectId: cep.CEProjectId };
+         var   wrap  = await getEntries( "CELinkage", query );
+	 if( wrap.statusCode == 201 ) {
+            const link  = JSON.parse( wrap.body );
+            console.log( "link count", link.length );
+            if( link.length == 1 ) {
+               console.log( "link", wrap.CELinkageId );
+               items.push( { Delete: { TableName: "CELinkage",   Key: { "CELinkageId": wrap.CELinkageId }}} );
+            }
+         }
+
+         // hostUser updates
+         var parms = { TableName: "CEHostUser", Limit: 99, };
+         parms.FilterExpression = 'contains( CEProjectIds, :cepId )';
+         parms.ExpressionAttributeValues = { ":cepId": cep.CEProjectId };
+         var hostUsers = await paginatedScan( parms );
+         for( var hostUser of hostUsers ) {
+             console.log( "hostUser before ", hostUser.HostUserName, hostUser.CEProjectIds.toString());
+             const index = hostUser.CEProjectIds.indexOf( cep.CEProjectId );
+   	     if( index >= 1 ) { hostUser.CEProjectIds.splice( index, 1 ); }
+             console.log( "hostUser after, pushed ", hostUser.HostUserName, hostUser.CEProjectIds.toString());
+             items.push( { Put: { TableName: "CEHostUser",   Item: hostUser }} );
+         }
+      }
+   }
+   console.log( "Attempting Venture kill" );
+   for( const i of items ) {
+      if( typeof i.Delete !== 'undefined' ) { console.log( i.Delete, i.Delete.TableName, i.Delete.Key ); }
+      if( typeof i.Put !== 'undefined' )    { console.log( i.Put, i.Put.TableName, i.Put.Item.toString() );}
+   }
+
+   const twCmd = new TransactWriteCommand({
+      TransactItems: items 
+      });
+   return bsdb.send( twCmd ).then(() =>success( ceVentId ));
+}
 
 function errorResponse(status, errorMessage, awsRequestId) {
     return {

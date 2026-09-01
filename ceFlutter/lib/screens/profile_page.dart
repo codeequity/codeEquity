@@ -13,6 +13,7 @@ import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/screens/edit_page.dart';
 import 'package:ceFlutter/screens/equity_frame.dart';
+import 'package:ceFlutter/screens/home_page.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/Person.dart';
@@ -82,6 +83,8 @@ class _CEProfileState extends State<CEProfilePage> {
    
    late bool screenOpened;      // XXX name is suspect.  more like modelsLoaded
    late bool updatedPeqTable;
+
+   List<TextEditingController> controllerPool = [];
    
   @override
   void initState() {
@@ -96,6 +99,7 @@ class _CEProfileState extends State<CEProfilePage> {
   @override
   void dispose() {
     super.dispose();
+    controllerPool.forEach( (c) => c.dispose() );
     print( "profile disposed.  reset loading?" );
   }
 
@@ -108,6 +112,16 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
 
+  // XXX dup activityPanel
+  void _addControllerPool( int ith ) {
+     assert( controllerPool.length >= ith );
+     if( controllerPool.length > ith ) { return; }
+     else {
+        controllerPool.add( new TextEditingController() );
+     }
+  }
+
+  
   // if show/alert dialog needs dynamic updates, need to use statefulbuilder or statefulWidget
   void popMRScroll( BuildContext context, scrollHeader, ceUserId, ceps, cepIds, dismissFunc, textWidth ) {
      assert( ceps.length == cepIds.length );
@@ -697,34 +711,177 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
 
-  // update profiles. no need to wait for completion
-  void _updateProfile( String profileType, String profileId, String current ) {
+  void _updateProfile( dynamic prime ) {
      final textWidth = lhsFrameMaxWidth + rhsFrameMaxWidth - 10 * appState.GAP_PAD;
-     void _set( TextEditingController cont ) {
-        if( profileType == "cep" ) {
+     void _set( List<TextEditingController> cont ) {
+        String profileId = prime is CEVenture ? prime.ceVentureId : prime.ceProjectId;
+           
+        if( prime is CEProject ) {
            assert( appState.ceProject[ profileId ] != null );
+           assert( cont.length == 2 );
            CEProject cep = appState.ceProject[ profileId ]!;
-           cep.description = cont.text;
-           writeCEProject( appState, context, container, cep );
+           cep.name = cont[0].text;
+           cep.description = cont[1].text;
+           writeCEProject( appState, context, container, cep ); // don't wait
         }
-        else if( profileType == "cev" ) {
+        else if( prime is CEVenture ) {
+           print( "Writing CEV" );
            assert( appState.ceVenture[ profileId ] != null );
+           assert( cont.length == 3 );
            CEVenture cev = appState.ceVenture[ profileId ]!;
-           cev.intro = cont.text;
-           writeCEVenture( appState, context, container, cev );
+           cev.name = cont[0].text;
+           cev.intro = cont[1].text;
+           cev.web = cont[2].text;
+           writeCEVenture( appState, context, container, cev ); // don't wait
         }
         else { assert( false ); }
 
         Navigator.of( context ).pop( profileId );  // edit
      }
 
-     String title = profileType == "cep" ? "Very brief project description" : "Venture information, short and plain";
-     TextEditingController controller = new TextEditingController();
-     editBox( context, appState, textWidth, title, "Description", controller, current, () => _set( controller ), _cancel );
-              
+     assert( prime is CEVenture || prime is CEProject );
+     
+     String title       = prime is CEVenture ? "Update Venture Profile" : "Update Project Profile";
+     List<String> items = [];
+     List<String> hints = [];
+
+     items.add( "Name    " );
+     hints.add( prime.name == "" ? "(No name yet)" : prime.name );
+     _addControllerPool(0);
+
+     items.add( "Description" );
+     if( prime is CEVenture ) {
+        if( prime.intro == null || prime.intro == "" ) { hints.add( "Describe your Venture in a few sentences.  Keep it short and pragmatic." ); }
+        else { hints.add( prime.intro! ); }
+     }
+     else {
+        if( prime.description == null || prime.description == "" ) { hints.add( "Describe your project in one short sentence" ); }
+        else { hints.add( prime.description! ); }
+     }
+     _addControllerPool(1);
+
+     if( prime is CEVenture ) {
+        items.add( "Website" );
+        if( prime.web == null || prime.web == "" ) { hints.add( "http://www.yourVenture.org" ); }
+        else{ hints.add( prime.web! ); }
+        _addControllerPool(2);
+     }
+
+     editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), _cancel, null );
   }
 
   
+  void _deletePrime( dynamic prime ) async {
+     List<PEQ> peqs = [];
+     List<CEProject> ceps = [];
+
+     _removeVenture() async {
+        // remove peqs
+        if( peqs.length > 0 ) {
+           List<String> peqIds = peqs.map( (p) => p.id ).toList();
+           print( "Deleting peqs " + peqIds.toString() );
+           
+           String shortName = "RemoveEntries";
+           String pids = json.encode( [ peqIds ] );  // list of lists in case pkey is not singular
+           String postData = '{ "Endpoint": "$shortName", "tableName": "CEPEQs", "ids": $pids }';
+           bool res = await updateDynamo( context, container, postData, shortName );
+        }
+
+        List<String> cepIds = ceps.map( (p) => p.ceProjectId ).toList();
+        
+        // remove CEV, peqSummary, CEP, image, linkage, hostUserId, equityPlan 
+        String shortName  = "KillVenture";
+        String vid = prime.ceVentureId;
+        String postData = '{ "Endpoint": "$shortName", "id": "$vid" }';
+        bool res = await updateDynamo( context, container, postData, shortName );
+
+        // send PActs 1 per each of venture and project
+        String note          = '{"note": "Remove Venture"}';
+        await sendPAct( context, container, "-1", prime.ceVentureId, "GitHub", note );
+        for( String id in cepIds ) {
+           note  = '{"note": "Remove CEProject"}';
+           await sendPAct( context, container, id, id, "GitHub", note );
+        }
+
+        // Reload everything - cached venture data should no longer be available
+        screenArgs["profType"] = "---";  // Cancel briefly pops back to prof page before navigating.  without this, a new venture is created in makeVenBod
+        _cancel();
+        await flushAppState( context, container );
+        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
+        confirmedNav( context, container, newPage );
+     }
+     
+     _doubleConfirm() {
+        confirm( context, "Delete Venture", "There is no going back.  Are you certain you wish to delete this Venture?", _removeVenture, _cancel );
+     }
+     
+     if( prime is CEProject ) { print( "XXX NYI" ); }
+     
+     assert( appState.ceVenture[ prime.ceVentureId ] != null );
+     CEVenture cev = appState.ceVenture[ prime.ceVentureId ] ?? prime;
+
+     // Get all ceps for cev. Typically 1.
+     for( CEProject cep in appState.ceProject.values ) {
+        if( cep.ceVentureId == cev.ceVentureId ) { ceps.add( cep ); }
+        // Make sure peqs are updated first
+        await updateCEPeqs( container, context, cepId: cep.ceProjectId );
+     }
+
+     
+     // Get all peqs for all ceps in cev
+     for( CEProject cep in ceps ) {
+        print( "attempting to add peqs from " + cep.name + " " + (appState.cePeqs[ cep.ceProjectId ] ?? [] ).length.toString() );
+        
+        peqs.addAll( appState.cePeqs[ cep.ceProjectId ] ?? [] );
+     }
+
+     // XXX factor out the messaging
+     print( "Attempting to delete Venture.  It has " + ceps.length.toString() + " CEProjects with a total of " + peqs.length.toString() + " PEQs." );
+     int accr = 0;
+     int accrPeqs = 0;
+     int pend = 0;
+     int plan = 0;
+     for( PEQ peq in peqs ) {
+        if( peq.peqType == PeqType.grant )   { accr += 1; accrPeqs += peq.amount;}
+        if( peq.peqType == PeqType.pending ) { pend += 1; }
+        if( peq.peqType == PeqType.plan )    { plan += 1; }
+     }
+
+     // are you exec? 
+     if( prime.roles[ appState.ceUserId ] != MemberRole.Executive ) {
+        String msg = "Only an Executive can delete a Venture.";
+        showToast( msg );
+        return;
+     }
+     // are there granted peqs?
+     if( accr > 0 ) {
+        String msg = "CodeEquity guantees that once a PEQ has been granted, it can no longer be modified.  Your Venture\n";
+        msg       += " has " + accr.toString() + " individual PEQ grants for total of " + accrPeqs.toString() + " options.\n";
+        msg       += " This Venture can not be deleted.";
+        showToast( msg );
+        return;
+     }
+     // are you sure?
+     else if( pend > 0 ) {
+        String msg = "There are " + pend.toString() + " pending PEQs, which means work has already been carried out on this Venture.\n";
+        msg       += " If you delete the Venture, these pending PEQs will be removed as well, and will no longer be valid.\n";
+        msg       += " Are you sure you want to delete this Venture?  There is no going back.";
+        confirm( context, "Delete Venture", msg, _doubleConfirm, _cancel );
+     }
+     // never got past planning stage
+     else if( plan > 0 ) {
+        String msg = "There are " + plan.toString() + " planned PEQs already.\n";
+        msg       += " If you delete the Venture, these PEQs will be removed as well.\n";
+        msg       += " Are you sure you want to delete this Venture?  There is no going back.";
+        confirm( context, "Delete Venture", msg, _doubleConfirm, _cancel );
+     }
+     // Empty venture
+     else {
+        _doubleConfirm();
+     }
+  }
+
+  // XXX remove creating?
   Widget _makeCEBody( context, Widget botLeft, Widget rhs, List<String> cepIds, {creating = false} ) {
      final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
      Widget? pi           = null;
@@ -759,29 +916,19 @@ class _CEProfileState extends State<CEProfilePage> {
         if( peqSummary   != null ) { psum = peqSummary!; }
 
      }
-     dynamic prime   = screenArgs["profType"] == "CEProject" ? cep   : cev;
-     dynamic primeId = screenArgs["profType"] == "CEProject" ? cepId : cevId;
-     String  desc    = screenArgs["profType"] == "CEProject" ? prime.description : prime.web;
+     dynamic prime  = screenArgs["profType"] == "CEProject" ? cep   : cev;
+     String primeId = screenArgs["profType"] == "CEProject" ? cepId : cevId;
+     String desc    = screenArgs["profType"] == "CEProject" ? prime.description : prime.web ?? "";
+     String deltxt  = prime is CEVenture ? "Delete Venture" : "Delete Project";
 
-     String primeType = screenArgs["profType"] == "CEProject" ? "cep"  : "cev";
-     String primeHint = screenArgs["profType"] == "CEProject" ?
-                        cep.description ?? "Describe your project in one short sentence" : 
-                        cev.intro ?? "Describe your Venture in a few sentences.  Keep it short and pragmatic.";
+     if( prime.name == "" ) { prime.name = "(No name yet)"; }
+     if( screenArgs["profType"] == "CEVenture" && ( prime.web == null || prime.web == "" )) { desc = "(Click \'Edit Profile\' to add a website)"; }
      
      if( pi == null ) { pi = _getProfImage( primeId, "a" ); }
      
      double accr     = ep.totalAllocation > 0 ? ( 1.0 * psum.accruedTot ) / ep.totalAllocation : 0.0;
      double tasked   = ep.totalAllocation > 0 ? ( 1.0 * psum.taskedTot  ) / ep.totalAllocation : 0.0;
      double unTasked = ep.totalAllocation > 0 ? ( 1.0 - accr - tasked ) : 0.0;
-
-     if( creating ) {
-        if( prime.name == "" ) { prime.name = "(No name yet)"; }
-        if( prime.web  == "" ) {
-           prime.web  = "(Click \'Edit Profile\' to add a website)";
-           desc = prime.web;
-        }
-        
-     }
 
      // XXX oh boy.  projectPage
      double fhu = 24+18+7*appState.MID_PAD + 2*appState.TINY_PAD;
@@ -796,7 +943,6 @@ class _CEProfileState extends State<CEProfilePage> {
                  spacer, 
                  pi,
                  makeTitleText( appState, prime.name, textWidth * 1.1, false, 1, fontSize: 24 ),
-                 // project,
                  makeTitleText( appState, "Id: " + primeId, textWidth, false, 1 ),
                  makeTitleText( appState, desc, textWidth, false, 1 ),
                  screenArgs["profType"] == "CEProject" ? _makeCEVLink( cev.name, cev.ceVentureId, cepIds, textWidth ) : miniSpacer,
@@ -804,17 +950,20 @@ class _CEProfileState extends State<CEProfilePage> {
                  Wrap( children: [ Container( width: appState.GAP_PAD ),
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 3.0,
                                                           () async {
-                                                             _updateProfile( primeType, primeId, primeHint ); 
+                                                             _updateProfile( prime ); 
                                                           }),
                                    makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 3.0,
                                                           () async {
                                                              MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
                                                              confirmedNav( context, container, newPage );
                                                           }),
-                                   makeActionButtonFixed( appState, "Delete Venture", lhsFrameMaxWidth / 3.0,
-                                                          () => notYetImplemented( context ) ),
+                                   makeActionButtonFixed( appState, deltxt, lhsFrameMaxWidth / 3.0,
+                                                          () async {
+                                                             _deletePrime( prime ); 
+                                                          }),
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
+                 miniSpacer,
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeToolTip( makeTitleText( appState, "Venture Equity Plan PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
                  ep.totalAllocation == 0 ?

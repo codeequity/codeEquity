@@ -79,29 +79,6 @@ class _CECollabState extends State<CECollabFrame> {
       super.dispose();
    }
 
-   /* XXX from profile page.. if used, move to utils
-   Widget _makeCEVLink( cevName, cevId, List<String> cepIds, textWidth ){
-     void _set( PointerEvent event )   { setState(() => appState.hoverChunk = cevId+cevName ); }
-     void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
-
-     return Wrap( children: [
-                     Padding(
-                          padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
-                          child: IntrinsicWidth( child: Text( "Venture:", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)))
-                          ),
-                     GestureDetector( 
-                        onTap: () async
-                        {
-                           Map<String,String> screenArgs = {"id": cevId, "profType": "CEVenture" };
-                           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-                           confirmedNav( context, container, newPage );
-                        },
-                        child: makeActionableText( appState, cevName, cevId+cevName, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
-                        )
-                     ]);
-  }
-   */
-
    // XXX XXX copy
    void _loadPeqs() async {
       // get all CEPS the currently logged-in user is connected to.  
