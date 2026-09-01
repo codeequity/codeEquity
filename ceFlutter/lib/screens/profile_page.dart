@@ -13,6 +13,7 @@ import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/screens/edit_page.dart';
 import 'package:ceFlutter/screens/equity_frame.dart';
+import 'package:ceFlutter/screens/home_page.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/Person.dart';
@@ -721,16 +722,17 @@ class _CEProfileState extends State<CEProfilePage> {
            CEProject cep = appState.ceProject[ profileId ]!;
            cep.name = cont[0].text;
            cep.description = cont[1].text;
-           writeCEProject( appState, context, container, prime ); // don't wait
+           writeCEProject( appState, context, container, cep ); // don't wait
         }
         else if( prime is CEVenture ) {
+           print( "Writing CEV" );
            assert( appState.ceVenture[ profileId ] != null );
            assert( cont.length == 3 );
            CEVenture cev = appState.ceVenture[ profileId ]!;
-           cev.name = cont[1].text;
+           cev.name = cont[0].text;
            cev.intro = cont[1].text;
            cev.web = cont[2].text;
-           writeCEVenture( appState, context, container, prime ); // don't wait
+           writeCEVenture( appState, context, container, cev ); // don't wait
         }
         else { assert( false ); }
 
@@ -767,15 +769,58 @@ class _CEProfileState extends State<CEProfilePage> {
 
      editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), _cancel, null );
   }
+
   
   void _deletePrime( dynamic prime ) async {
-     if( prime is CEProject ) { print( "XXX NYI" ); }
+     List<PEQ> peqs = [];
+     List<CEProject> ceps = [];
 
+     _removeVenture() async {
+        // remove peqs
+        if( peqs.length > 0 ) {
+           List<String> peqIds = peqs.map( (p) => p.id ).toList();
+           print( "Deleting peqs " + peqIds.toString() );
+           
+           String shortName = "RemoveEntries";
+           String pids = json.encode( [ peqIds ] );  // list of lists in case pkey is not singular
+           String postData = '{ "Endpoint": "$shortName", "tableName": "CEPEQs", "ids": $pids }';
+           bool res = await updateDynamo( context, container, postData, shortName );
+        }
+
+        List<String> cepIds = ceps.map( (p) => p.ceProjectId ).toList();
+        
+        // remove CEV, peqSummary, CEP, image, linkage, hostUserId, equityPlan 
+        String shortName  = "KillVenture";
+        String vid = prime.ceVentureId;
+        String postData = '{ "Endpoint": "$shortName", "id": "$vid" }';
+        bool res = await updateDynamo( context, container, postData, shortName );
+
+        // send PActs 1 per each of venture and project
+        String note          = '{"note": "Remove Venture"}';
+        await sendPAct( context, container, "-1", prime.ceVentureId, "GitHub", note );
+        for( String id in cepIds ) {
+           note  = '{"note": "Remove CEProject"}';
+           await sendPAct( context, container, id, id, "GitHub", note );
+        }
+
+        // Reload everything - cached venture data should no longer be available
+        screenArgs["profType"] = "---";  // Cancel briefly pops back to prof page before navigating.  without this, a new venture is created in makeVenBod
+        _cancel();
+        await flushAppState( context, container );
+        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
+        confirmedNav( context, container, newPage );
+     }
+     
+     _doubleConfirm() {
+        confirm( context, "Delete Venture", "There is no going back.  Are you certain you wish to delete this Venture?", _removeVenture, _cancel );
+     }
+     
+     if( prime is CEProject ) { print( "XXX NYI" ); }
+     
      assert( appState.ceVenture[ prime.ceVentureId ] != null );
      CEVenture cev = appState.ceVenture[ prime.ceVentureId ] ?? prime;
 
      // Get all ceps for cev. Typically 1.
-     List<CEProject> ceps = [];
      for( CEProject cep in appState.ceProject.values ) {
         if( cep.ceVentureId == cev.ceVentureId ) { ceps.add( cep ); }
         // Make sure peqs are updated first
@@ -784,13 +829,13 @@ class _CEProfileState extends State<CEProfilePage> {
 
      
      // Get all peqs for all ceps in cev
-     List<PEQ> peqs = [];
      for( CEProject cep in ceps ) {
         print( "attempting to add peqs from " + cep.name + " " + (appState.cePeqs[ cep.ceProjectId ] ?? [] ).length.toString() );
         
         peqs.addAll( appState.cePeqs[ cep.ceProjectId ] ?? [] );
      }
 
+     // XXX factor out the messaging
      print( "Attempting to delete Venture.  It has " + ceps.length.toString() + " CEProjects with a total of " + peqs.length.toString() + " PEQs." );
      int accr = 0;
      int accrPeqs = 0;
@@ -816,11 +861,24 @@ class _CEProfileState extends State<CEProfilePage> {
         showToast( msg );
         return;
      }
-     
      // are you sure?
-     // remove CEPs
-     // remove CEV
-     // check for all aws tables that refer to a cev, update
+     else if( pend > 0 ) {
+        String msg = "There are " + pend.toString() + " pending PEQs, which means work has already been carried out on this Venture.\n";
+        msg       += " If you delete the Venture, these pending PEQs will be removed as well, and will no longer be valid.\n";
+        msg       += " Are you sure you want to delete this Venture?  There is no going back.";
+        confirm( context, "Delete Venture", msg, _doubleConfirm, _cancel );
+     }
+     // never got past planning stage
+     else if( plan > 0 ) {
+        String msg = "There are " + plan.toString() + " planned PEQs already.\n";
+        msg       += " If you delete the Venture, these PEQs will be removed as well.\n";
+        msg       += " Are you sure you want to delete this Venture?  There is no going back.";
+        confirm( context, "Delete Venture", msg, _doubleConfirm, _cancel );
+     }
+     // Empty venture
+     else {
+        _doubleConfirm();
+     }
   }
 
   // XXX remove creating?

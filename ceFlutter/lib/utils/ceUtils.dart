@@ -214,8 +214,18 @@ Future<void> reloadCEProject( context, container ) async {
    if( appState.myPEQSummary != null ) { appState.updateAllocTree = true;  } // force alloc tree update
 }
 
+// eliminate most everything in appState, start over.
+Future<void> flushAppState( context, container ) async {
+   final appState  = container.state;
+   appState.initAppData();
+   await initMDState( context, container );
+   appState.updateAllocTree  = true;
+   appState.updateEquityPlan = true;                
+   appState.updateEquityView = true;
+   appState.loaded           = true;
+}
 
-// Called on login, signup, refreshProjects
+// Called on login, signup, refreshProjects, delete venture
 Future<void> initMDState( context, container ) async {
    print( "initMDState" );
    final appState  = container.state;
@@ -505,6 +515,44 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
    return !setInStone;
 }
 
+// This only sends notices
+Future<bool> sendPAct( context, container, String cepId, String subject, String hostPlatform, String note ) async {
+   final appState  = container.state;
+
+   // send PAct as a notice.
+   print( "Adding PAct" );
+   
+   String hostUserId = "";
+   for( HostAccount ha in appState.myHostAccounts ) {
+      if( ha.hostPlatform == hostPlatform && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
+         hostUserId = ha.hostUserId;
+         break;
+      }
+   }
+   
+   DateTime now = DateTime.now();
+   
+   Map<String, dynamic> pact  = { };
+   pact["CEUID"]       = appState.ceUserId; 
+   pact["HostUserId"]  = hostUserId;
+   pact["CEProjectId"] = cepId;
+   pact["Verb"]        = "confirm";               // XXX formalize
+   pact["Action"]      = "notice";                // XXX formalize
+   pact["Subject"]     = [subject];
+   pact["Note"]        = note;
+   pact["Date"]        = getToday();
+   pact["RawBody"]     = note;
+   pact["Ingested"]    = "true";                  // there is no ingest work to do.  additionally, don't want to retrigger ingest notice for status frame.
+   pact["Locked"]      = "false";
+   pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
+   
+   String shortName = "RecordPEQAction";
+   String newPAct   = json.encode( pact );
+   final postData   = '{ "Endpoint": "$shortName", "newPAction": $newPAct }';
+   await updateDynamo( context, container, postData, shortName );
+   return true;
+}
+
 Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PEQ> cPeqs ) async {
    final appState  = container.state;
 
@@ -526,38 +574,9 @@ Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, 
       String postData = '{ "Endpoint": "$shortName", "tableName": "CEPEQs", "ids": $pids }';
       bool res = await updateDynamo( context, container, postData, shortName );
       
-      // send PAct as a notice.
-      print( "Adding PAct" );
-      
-      String hostUserId = "";
-      for( HostAccount ha in appState.myHostAccounts ) {
-         if( ha.hostPlatform == "GitHub" && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
-            hostUserId = ha.hostUserId;
-            break;
-         }
-      }
-      
-      DateTime now = DateTime.now();
+      // send PAct 
       String note  = setInStone ? '{"note": "Remove granted attempted via CEMD"}' : '{"note": "Remove peq via CEMD, no raw body present"}';
-      
-      Map<String, dynamic> pact  = { };
-      pact["CEUID"]       = appState.ceUserId; 
-      pact["HostUserId"]  = hostUserId;
-      pact["CEProjectId"] = p.ceProjectId;
-      pact["Verb"]        = "confirm";               // XXX formalize
-      pact["Action"]      = "notice";                // XXX formalize
-      pact["Subject"]     = [p.id];
-      pact["Note"]        = note;
-      pact["Date"]        = getToday();
-      pact["RawBody"]     = note;
-      pact["Ingested"]    = "true";                  // there is no ingest work to do.  additionally, don't want to retrigger ingest notice for status frame.
-      pact["Locked"]      = "false";
-      pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
-      
-      shortName       = "RecordPEQAction";
-      String newPAct  = json.encode( pact );
-      postData        = '{ "Endpoint": "$shortName", "newPAction": $newPAct }';
-      await updateDynamo( context, container, postData, shortName );
+      await sendPAct( context, container, p.ceProjectId, p.id, "GitHub", note );
    }
 
    return !setInStone;
