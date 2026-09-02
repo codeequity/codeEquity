@@ -295,7 +295,7 @@ class _CEApprovalState extends State<CEApprovalFrame> {
 
 
       if( appState.gotUserPeqs )   { peqsLoaded = true; }
-      if( appState.verbose >= 2 ) { print( "APPROVAL BUILD. " + peqsLoaded.toString() ); }
+      if( appState.verbose >= 1 ) { print( "APPROVAL BUILD. " + peqsLoaded.toString() ); }
       
       return getPending( context );
    }

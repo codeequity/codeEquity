@@ -1088,7 +1088,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       hdiv         = Wrap( spacing: 0, children: [fatPad, hd] );   
 
       // if( appState.verbose >= 1 ) { print( "STATUS BUILD. " + ingestNoticeDisplayed.toString() + " " + enumToStr( sortType )); }
-      if( appState.verbose >= 4 ) { print( "STATUS BUILD. " + updateView.toString() + " " + updateModel.toString() + " " + enumToStr( sortType )); }
+      if( appState.verbose >= 1 ) { print( "STATUS BUILD. " + updateView.toString() + " " + updateModel.toString() + " " + enumToStr( sortType )); }
       
       return _getStatus( context );
    }

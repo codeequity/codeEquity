@@ -277,7 +277,7 @@ class _CECollabState extends State<CECollabFrame> {
       Widget hd = makeHDivider( appState, svWidth - 2*appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD );
       hdiv      = Wrap( spacing: 0, children: [fatPad, hd] );   
 
-      if( appState.verbose >= 2 ) { print( "COLLAB BUILD. " ); }
+      if( appState.verbose >= 1 ) { print( "COLLAB BUILD. " ); }
       
       if( appState.gotUserPeqs )   { peqsLoaded = true; }
       return _getBody();

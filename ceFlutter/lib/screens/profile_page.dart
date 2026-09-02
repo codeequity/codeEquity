@@ -12,7 +12,7 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/screens/edit_page.dart';
-import 'package:ceFlutter/screens/equity_frame.dart';
+import 'package:ceFlutter/screens/project_page.dart';
 import 'package:ceFlutter/screens/home_page.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
@@ -293,23 +293,30 @@ class _CEProfileState extends State<CEProfilePage> {
      }
   }
   
-  Widget _makeProjCard( context, String cepId, textWidth ) {
+  Widget _makeProjCard( context, String cepId, textWidth, {ventId = "-1"} ) {
      void _setTitle( PointerEvent event )   { setState(() => appState.hoverChunk = cepId ); }
      void _unsetTitle( PointerEvent event ) { setState(() => appState.hoverChunk = "" );    }
 
      CEProject cep = appState.ceProject[ cepId ] ?? CEProject.empty();
      CEVenture cev = appState.ceVenture[ cep.ceVentureId ] ?? CEVenture.empty();
+     if( cepId == "-1" ) {
+        assert( appState.ceVenture[ ventId ] != null );
+        cev = appState.ceVenture[ ventId ]!;
+     }
      final cepIds  = _getCEProjects( cev.ceVentureId );
  
-     Widget cepLink = GestureDetector(
-        onTap: () async
-        {
-           Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
-           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-           confirmedNav( context, container, newPage );
-        },
-        child: makeActionableText( appState, cep.name, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
-        );
+     Widget cepLink =
+        cepId == "-1" ?
+        makeTitleText( appState, "No CE Project yet", textWidth, false, 1, fontSize: 14 ) : 
+        GestureDetector(
+           onTap: () async
+           {
+              Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
+              MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+              confirmedNav( context, container, newPage );
+           },
+           child: makeActionableText( appState, cep.name, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
+           );
 
      
      Widget card = Card.outlined(
@@ -410,7 +417,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return card;
   }
   
-  Widget _makeCEPs( context, HostAccount ha, textWidth ) {
+  Widget _makeCEPs( context, HostAccount ha, List<String> emptyVent, textWidth ) {
      List<Widget> ceps = [];
      
      // print( "Making " + ha.ceProjectIds.toString() );
@@ -418,6 +425,14 @@ class _CEProfileState extends State<CEProfilePage> {
         List<Widget> row = [];
         row.add( _makeProjCard( context, ha.ceProjectIds[i], textWidth ) );
         if( ha.ceProjectIds.length > i+1 ) { row.add( _makeProjCard( context, ha.ceProjectIds[i+1], textWidth )); }
+        ceps.add( Wrap( spacing: appState.MID_PAD, children: row ) );
+        ceps.add( spacer );
+     }
+     // Start a new row for empty ventures.. should resolve quickly (pro user), or be unnoticeable (first timer)
+     for( int i = 0; i < emptyVent.length; i += 2 ) {
+        List<Widget> row = [];
+        row.add( _makeProjCard( context, "-1", textWidth, ventId: emptyVent[i] ) );
+        if( emptyVent.length > i+1 ) { row.add( _makeProjCard( context, "-1", textWidth, ventId: emptyVent[i+1] )); }
         ceps.add( Wrap( spacing: appState.MID_PAD, children: row ) );
         ceps.add( spacer );
      }
@@ -967,12 +982,14 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeToolTip( makeTitleText( appState, "Venture Equity Plan PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
                  ep.totalAllocation == 0 ?
-                 Wrap( children: [spacer, makeActionButtonFixed( appState, "Build Initial Equity Plan", lhsFrameMaxWidth / 2.0,
-                                                                 () async {
-                                                                    MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEquityFrame( appContainer: container,
-                                                                                                                                                       frameHeightUsed: fhu ));
-                                                                    confirmedNav( context, container, newPage );
-                                                                 }) ]) :
+                 Wrap( children: [spacer,
+                                  makeActionButtonFixed( appState, "Build Initial Equity Plan", lhsFrameMaxWidth / 2.0,
+                                                         () async {
+                                                            appState.selectedCEVenture = primeId;
+                                                            Map<String,int> sa = {"initialPage": 2};
+                                                            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
+                                                            confirmedNav( context, container, newPage );
+                                                         }) ]) :
                  Table(
                     defaultColumnWidth: FixedColumnWidth( 2.0 * textWidth / 3.0 ),
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -1240,6 +1257,26 @@ class _CEProfileState extends State<CEProfilePage> {
 
         if( profileImage != null ) { pi   = profileImage!; }        
         hostAccs = itsMe ? appState.myHostAccounts : ( appState.ceHostAccounts[ screenArgs["id"] ] ?? [] );
+
+        // Get any of user's ventures that are cep-free so far.
+        // XXX Maybe... store this?  also computed in homepage, differently
+        List<String> ventIds   = [];
+        List<String> emptyVent = [];
+        for( var ha in hostAccs ) {
+           if( ha.hostPlatform == enumToStr( HostPlatforms.GitHub ) ) {
+              if( ha.ceUserId == cePeep.id ) {
+                 for( int i = 0; i < ha.ceProjectIds.length; i++ ) {
+                    CEProject? cep = appState.ceProject[ ha.ceProjectIds[i] ];
+                    if( cep != null && !ventIds.contains( cep.ceVentureId ) ) { ventIds.add( cep.ceVentureId ); }
+                 }
+              }
+           }
+        }
+        for( final cev in appState.ceVenture.values ) {
+           if( !ventIds.contains( cev.ceVentureId ) && cev.roles.keys.contains( appState.ceUserId )) {
+              emptyVent.add( cev.ceVentureId );
+           }
+        }
         
         // CE Host User
         for( var ha in hostAccs ) {
@@ -1247,7 +1284,7 @@ class _CEProfileState extends State<CEProfilePage> {
               if( ha.ceUserId == cePeep.id ) {
                  hostPeep["userName"] = ha.hostUserName;
                  hostPeep["id"]       = ha.hostUserId;
-                 cepWid               = _makeCEPs( context, ha, textWidth );
+                 cepWid               = _makeCEPs( context, ha, emptyVent, textWidth );
                  ppWid                = _makePperCEP( context, ha, textWidth );
                  logout               = makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 3.0, _logout( context, appState));
               }

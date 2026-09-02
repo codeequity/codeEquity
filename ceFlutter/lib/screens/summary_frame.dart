@@ -244,7 +244,10 @@ class _CESummaryState extends State<CESummaryFrame> {
       var c = Container( width: 1, height: 1 );
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       // Was anything set yet?
-      if( cep == null ) { return makeTitleText( appState, "First choose Project from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
+      if( appState.selectedCEProject == "-1" ) {
+         return makeTitleText( appState, "A CodeEquity Project hasn't been initialized yet.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); 
+      }
+      else if( cep == null ) { return makeTitleText( appState, "First choose Project from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
                            
       // Spinny
       if( appState.peqAllocsLoading ) {

@@ -576,7 +576,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       midPad    = Container( width: appState.MID_PAD, height: 1 );
       empty = Container( width: 1, height: 1 );
       
-      if( appState.verbose >= 4 ) { print( "EQUITY BUILD. " + (appState == Null).toString()); }
+      if( appState.verbose >= 1 ) { print( "EQUITY BUILD. " + (appState == Null).toString()); }
       
       // Set this here to update view if minimized, then recovered.
       appState.updateEquityView = true;      
