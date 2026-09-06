@@ -229,7 +229,7 @@ class _CEProjectState extends State<CEProjectPage> {
       appState.screenHeight = MediaQuery.of(context).size.height;
       appState.screenWidth  = MediaQuery.of(context).size.width;
 
-      if( appState.verbose >= 4 ) { print( "build project page" ); }
+      if( appState.verbose >= 1 ) { print( "build project page" ); }
 
       return Scaffold(
          appBar: makeTopAppBar( context, "Project" ),

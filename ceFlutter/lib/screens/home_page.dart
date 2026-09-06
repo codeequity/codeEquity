@@ -44,16 +44,20 @@ class _CEHomeState extends State<CEHomePage> {
 
    late bool updateView;
 
+   late List<String> ventIds;
+   
    @override
    void initState() {
       super.initState();
       ceProjectLoading = false;
-      updateView  = true;      
+      updateView  = true;
+      ventIds = [];
    }
 
    @override
    void dispose() {
       super.dispose();
+      ventIds = [];
    }
 
    Widget _newCEProjButton() {
@@ -217,39 +221,55 @@ class _CEHomeState extends State<CEHomePage> {
    }
    
    // XXX Need to add visual cue for scroll when relevant - hard to tell.
-   List<Widget> _makeCEVs( hosta ) {
+   List<Widget> _makeCEVs( hosta, segment, { CEVenture? cev = null }) {
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
       final textWidth = min( lhsFrameMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> chunks = [];
       var chunkHeight = 0.0;
 
-      Widget _ceVentBar = Row(
-         crossAxisAlignment: CrossAxisAlignment.center,
-         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         children: <Widget>[ makeTitleText( appState, "CodeEquity Ventures", textWidth, false, 1 ),
-                             Container( width: 10 ),
-                             _newCEProjButton(),
-                             Container( width: 10 ),
-            ]);
+      if( segment == "header" ) {
+         Widget _ceVentBar = Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[ makeTitleText( appState, "CodeEquity Ventures", textWidth, false, 1 ),
+                                Container( width: 10 ),
+                                _newCEProjButton(),
+                                Container( width: 10 ),
+               ]);
          
-      chunks.add( _ceVentBar );
-      chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-
-      for( final vent in hosta.getVentures( appState) ) {
-         List<CEProject> projs = hosta.getCEPsPerVenture( appState, vent.ceVentureId );
-         String pname = projs.length == 1 ? projs[0].ceProjectId : "";
-         chunks.add( _makeChunk( vent.name, vent.ceVentureId, pname, ceVent:true, ));
+         chunks.add( _ceVentBar );
          chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-         for( final cep in projs ) {
-            chunks.add( _makeChunk( cep.name, cep.ceProjectId, vent.ceVentureId ));
+      }
+      else if( segment == "body" ) {
+         
+         if( cev != null ) {
+            chunks.add( _makeChunk( cev.name, cev.ceVentureId, "", ceVent:true, ));
+            ventIds.add( cev.ceVentureId );
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+            chunks.add( _makeChunk("<No CodeEquity Project yet>", "-1", cev.ceVentureId ));
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.TINY_PAD;
          }
+         else {
+            for( final vent in hosta.getVentures( appState) ) {
+               List<CEProject> projs = hosta.getCEPsPerVenture( appState, vent.ceVentureId );
+               String pname = projs.length == 1 ? projs[0].ceProjectId : "";
+               chunks.add( _makeChunk( vent.name, vent.ceVentureId, pname, ceVent:true, ));
+               ventIds.add( vent.ceVentureId );
+               chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+               for( final cep in projs ) {
+                  chunks.add( _makeChunk( cep.name, cep.ceProjectId, vent.ceVentureId ));
+                  chunkHeight += appState.BASE_TXT_HEIGHT + appState.TINY_PAD;
+               }
+            }
+         }
       }
-      chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-      chunks.add( makeHDivider( appState, textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
-      chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-      chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
-
+      else if( segment == "footer") {
+         chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+         chunks.add( makeHDivider( appState, textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+         chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+         chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
+      }
+         
       runningLHSHeight += chunkHeight;
       return chunks;
    }
@@ -272,12 +292,23 @@ class _CEHomeState extends State<CEHomePage> {
             acctList.addAll( _makeRepos( -1 ) );
          }
          else {
+            ventIds = [];
+            acctList.addAll( _makeCEVs( null, "header" ));
             for( final hosta in appState.myHostAccounts ) {
-               acctList.addAll( _makeCEVs( hosta ));
-               // acctList.addAll( _makeCEProjs( hosta ));
+               acctList.addAll( _makeCEVs( hosta, "body" ));
+            }
+            // Now get ventures that do not yet have an associated CEP
+            for( final cev in appState.ceVenture.values ) {
+               if( !ventIds.contains( cev.ceVentureId ) && cev.roles.keys.contains( appState.ceUserId )) {
+                  acctList.addAll( _makeCEVs( null, "body", cev: cev ));
+               }
+            }
+            acctList.addAll( _makeCEVs( null, "footer" ));            
+            for( final hosta in appState.myHostAccounts ) {
                acctList.addAll( _makeRepos( hosta ));
                acctList.addAll( _makeRefresh() );
             }
+            
          }
       }
 

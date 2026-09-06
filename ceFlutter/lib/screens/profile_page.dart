@@ -12,8 +12,9 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/screens/edit_page.dart';
-import 'package:ceFlutter/screens/equity_frame.dart';
+import 'package:ceFlutter/screens/project_page.dart';
 import 'package:ceFlutter/screens/home_page.dart';
+import 'package:ceFlutter/screens/add_host_page.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/Person.dart';
@@ -81,7 +82,7 @@ class _CEProfileState extends State<CEProfilePage> {
    late PEQSummary?       peqSummary;
    late Image?            profileImage;
    
-   late bool screenOpened;      // XXX name is suspect.  more like modelsLoaded
+   late bool loadingData;   
    late bool updatedPeqTable;
 
    List<TextEditingController> controllerPool = [];
@@ -91,16 +92,16 @@ class _CEProfileState extends State<CEProfilePage> {
       super.initState();
       collabPeqTable    = [];
       displayedPeqTable = [];
-      screenOpened      = true;
+      loadingData      = true;
       updatedPeqTable   = false;
   }
 
 
   @override
   void dispose() {
-    super.dispose();
     controllerPool.forEach( (c) => c.dispose() );
-    print( "profile disposed.  reset loading?" );
+    // print( "profile disposed.  reset loading?" );
+    super.dispose();
   }
 
   
@@ -166,7 +167,7 @@ class _CEProfileState extends State<CEProfilePage> {
   // Need projects for full profile.
   // NOTE: userName is displayed, but selected value is the id.
   void updatePerson( context, container ) async {
-     if( screenOpened && screenArgs["profType"] == "Person" ) {
+     if( loadingData && screenArgs["profType"] == "Person" ) {
         assert( screenArgs["id"] != null );
         String profId = screenArgs["id"]!;
         // Signed in user?  
@@ -207,7 +208,8 @@ class _CEProfileState extends State<CEProfilePage> {
         }
         profileImage = appState.ceImages[profId];
 
-        setState(() => screenOpened = false );
+        print( "updatePerson done, SS" );
+        setState(() => loadingData = false );
      }
   }
 
@@ -215,7 +217,7 @@ class _CEProfileState extends State<CEProfilePage> {
   // XXX there is no need to get all this data - can reduce amount xferred
   void updateProjects( context, container, HostPlatforms hostPlat ) async {
      
-     if( screenOpened  && ( screenArgs["profType"] == "CEProject" || screenArgs["profType"] == "CEVenture" )) {
+     if( loadingData  && ( screenArgs["profType"] == "CEProject" || screenArgs["profType"] == "CEVenture" )) {
         assert( screenArgs["id"] != null );
 
         String pid = "";
@@ -225,7 +227,8 @@ class _CEProfileState extends State<CEProfilePage> {
         if( screenArgs["profType"] == "CEProject" ) {
            pid = screenArgs["id"]!;
            CEProject myCEP = appState.ceProject[ pid ] ?? CEProject.empty();
-           vid = myCEP.ceVentureId;
+           if( pid == "-1" && screenArgs["ventId"] != null ) { vid = screenArgs["ventId"]!; } // early CEP creation stage
+           else                                              { vid = myCEP.ceVentureId; }
            primeId = pid;
         }
         else {
@@ -271,6 +274,7 @@ class _CEProfileState extends State<CEProfilePage> {
                              ]);
         peqSummary = appState.cePEQSummaries[pid];
         equityPlan = appState.ceEquityPlans[vid];
+        print( "Set equity plan to " + vid );
 
         if( !appState.hostPlatformsLoaded.contains(  enumToStr( hostPlat ) ) ) { appState.hostPlatformsLoaded.add(  enumToStr( hostPlat ) ); }
         // One ha per platform, list length is 1
@@ -289,27 +293,36 @@ class _CEProfileState extends State<CEProfilePage> {
         profileImage = appState.ceImages[primeId];
         
         // need setState to trigger makeBody else blank info
-        setState(() => screenOpened = false );
+        print( "updateCEV-CEP done, SS" );
+        setState(() => loadingData = false );
      }
   }
   
-  Widget _makeProjCard( context, String cepId, textWidth ) {
+  Widget _makeProjCard( context, String cepId, textWidth, {ventId = "-1"} ) {
      void _setTitle( PointerEvent event )   { setState(() => appState.hoverChunk = cepId ); }
      void _unsetTitle( PointerEvent event ) { setState(() => appState.hoverChunk = "" );    }
 
      CEProject cep = appState.ceProject[ cepId ] ?? CEProject.empty();
      CEVenture cev = appState.ceVenture[ cep.ceVentureId ] ?? CEVenture.empty();
+     if( cepId == "-1" ) {
+        assert( appState.ceVenture[ ventId ] != null );
+        cev = appState.ceVenture[ ventId ]!;
+     }
      final cepIds  = _getCEProjects( cev.ceVentureId );
  
-     Widget cepLink = GestureDetector(
-        onTap: () async
-        {
-           Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
-           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-           confirmedNav( context, container, newPage );
-        },
-        child: makeActionableText( appState, cep.name, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
-        );
+     Widget cepLink =
+        cepId == "-1" ?
+        makeTitleText( appState, "No CE Project yet", textWidth, false, 1, fontSize: 14 ) : 
+        GestureDetector(
+           onTap: () async
+           {
+              _cancel();
+              Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
+              MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+              confirmedNav( context, container, newPage );
+           },
+           child: makeActionableText( appState, cep.name, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
+           );
 
      
      Widget card = Card.outlined(
@@ -340,6 +353,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return GestureDetector(
         onTap: () async
         {
+           _cancel();
            Map<String,String> screenArgs = {"id": ceUserId, "profType": "Person" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            confirmedNav( context, container, newPage );
@@ -410,7 +424,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return card;
   }
   
-  Widget _makeCEPs( context, HostAccount ha, textWidth ) {
+  Widget _makeCEPs( context, HostAccount ha, List<String> emptyVent, textWidth ) {
      List<Widget> ceps = [];
      
      // print( "Making " + ha.ceProjectIds.toString() );
@@ -418,6 +432,14 @@ class _CEProfileState extends State<CEProfilePage> {
         List<Widget> row = [];
         row.add( _makeProjCard( context, ha.ceProjectIds[i], textWidth ) );
         if( ha.ceProjectIds.length > i+1 ) { row.add( _makeProjCard( context, ha.ceProjectIds[i+1], textWidth )); }
+        ceps.add( Wrap( spacing: appState.MID_PAD, children: row ) );
+        ceps.add( spacer );
+     }
+     // Start a new row for empty ventures.. should resolve quickly (pro user), or be unnoticeable (first timer)
+     for( int i = 0; i < emptyVent.length; i += 2 ) {
+        List<Widget> row = [];
+        row.add( _makeProjCard( context, "-1", textWidth, ventId: emptyVent[i] ) );
+        if( emptyVent.length > i+1 ) { row.add( _makeProjCard( context, "-1", textWidth, ventId: emptyVent[i+1] )); }
         ceps.add( Wrap( spacing: appState.MID_PAD, children: row ) );
         ceps.add( spacer );
      }
@@ -717,7 +739,7 @@ class _CEProfileState extends State<CEProfilePage> {
         String profileId = prime is CEVenture ? prime.ceVentureId : prime.ceProjectId;
            
         if( prime is CEProject ) {
-           assert( appState.ceProject[ profileId ] != null );
+           print( "Writing CEP" );
            assert( cont.length == 2 );
            CEProject cep = appState.ceProject[ profileId ]!;
            cep.name = cont[0].text;
@@ -881,8 +903,7 @@ class _CEProfileState extends State<CEProfilePage> {
      }
   }
 
-  // XXX remove creating?
-  Widget _makeCEBody( context, Widget botLeft, Widget rhs, List<String> cepIds, {creating = false} ) {
+  Widget _makeCEBody( context, Widget botLeft, Widget rhs, List<String> cepIds ) {
      final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
      Widget? pi           = null;
      CEVenture cev        = CEVenture.empty();
@@ -891,24 +912,24 @@ class _CEProfileState extends State<CEProfilePage> {
      String cevId         = cev.ceVentureId;
      EquityPlan ep        = EquityPlan.empty( screenArgs["id"]! );
      PEQSummary psum      = PEQSummary.empty( screenArgs["id"]! );
-     
-     if( !screenOpened ) {
+
+     // print( "MCEB " + loadingData.toString() + " " + (screenArgs["ventId"] ?? "noVent") );     
+     if( !loadingData ) {
         assert( appState.ceProject != {} );
         assert( appState.ceVenture != {} );
 
         if( screenArgs["profType"] == "CEProject" ) {
            cep   = appState.ceProject[ screenArgs["id"] ] ?? cep;
            cepId = cep.ceProjectId;
-           cev = appState.ceVenture[ cep.ceVentureId ] ?? cev;
+           // creating?
+           if( screenArgs["ventId"] != null ) { cev = appState.ceVenture[ screenArgs[ "ventId" ]] ?? cev; }
+           else                               { cev = appState.ceVenture[ cep.ceVentureId ]       ?? cev; }
            cevId = cev.ceVentureId;
-           assert( cevId != "-1" );
-           assert( cepId != "-1" );
         }
         // XXX Currently build for 1:1 cev:cep
         else if( screenArgs["profType"] == "CEVenture" ) {
            cev   = appState.ceVenture[ screenArgs["id"] ] ?? cev;
            cevId = cev.ceVentureId;
-           assert( cevId != "-1" );
         }
         
         if( profileImage != null ) { pi   = profileImage!; }
@@ -967,12 +988,15 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeToolTip( makeTitleText( appState, "Venture Equity Plan PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
                  ep.totalAllocation == 0 ?
-                 Wrap( children: [spacer, makeActionButtonFixed( appState, "Build Initial Equity Plan", lhsFrameMaxWidth / 2.0,
-                                                                 () async {
-                                                                    MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEquityFrame( appContainer: container,
-                                                                                                                                                       frameHeightUsed: fhu ));
-                                                                    confirmedNav( context, container, newPage );
-                                                                 }) ]) :
+                 Wrap( children: [spacer,
+                                  makeActionButtonFixed( appState, "Build Initial Equity Plan", lhsFrameMaxWidth / 2.0,
+                                                         () async {
+                                                            _cancel();
+                                                            appState.selectedCEVenture = primeId;
+                                                            Map<String,int> sa = {"initialPage": 2};
+                                                            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
+                                                            confirmedNav( context, container, newPage );
+                                                         }) ]) :
                  Table(
                     defaultColumnWidth: FixedColumnWidth( 2.0 * textWidth / 3.0 ),
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -1013,12 +1037,14 @@ class _CEProfileState extends State<CEProfilePage> {
      CEProject cep        = CEProject.empty();
      String cepId         = cep.ceProjectId;
      List<Widget> repoWid = [spacer];
+
+     // print( "MPB " + loadingData.toString() + " " + (screenArgs["ventId"] ?? "noVent") );
      
-     if( !screenOpened ) {
+     if( !loadingData ) {
         assert( appState.ceProject != {} );
-        cep = appState.ceProject[ screenArgs["id"] ] ?? CEProject.empty();
-        cepId   = cep.ceProjectId;
-        assert( cepId != "-1" );
+        // cep = appState.ceProject[ screenArgs["id"] ] ?? CEProject.empty();
+        cep   = appState.ceProject[ screenArgs["id"] ] ?? cep;
+        cepId = cep.ceProjectId;
 
         // CEProject repos
         for( int i = 0; i < cep.repositories.length; i++ ) {
@@ -1037,24 +1063,54 @@ class _CEProfileState extends State<CEProfilePage> {
               }
            }
         }
+
+        if( cepId == "-1" ) {
+           print( "Creating a project" );
+           String intro = "Welcome to your new Project's profile!  \n";
+           intro += "Click \'Edit Profile\' to start adding details";
+           cep.description = intro;
+           cep.ceProjectId = randAlpha( 10 );
+
+           assert( screenArgs["ventId"] != null );
+           cep.ceVentureId = screenArgs["ventId"]!;
+
+           // bookkeeping for makeCEBody
+           screenArgs["id"] = cep.ceProjectId;
+           appState.ceProject[ cep.ceProjectId ] = cep;
+        }
+        
         collabWid = _makeCollabs( context, collabs, textWidth );
      }
 
-     Widget hplat = 
+     List<Widget> platData = [];
+     platData.add( makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ) );
+     platData.add( makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ) );
+     if( cep.hostPlatform == "" ) {
+        platData.add( miniSpacer );
+        platData.add( Wrap( children: [spacer,
+                                       makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0,
+                                             () async
+                                             {
+                                                _cancel();
+                                                print( "Initialized Platform!" );
+                                             })
+                               ]));
+     }
+     else {
+        platData.add( makeTitleText( appState, "Project management system:" , textWidth, false, 1 ) );
+        platData.add( makeTitleText( appState, "   " + cep.projectMgmtSys , textWidth, false, 1 ) );
+        platData.add( makeTitleText( appState, "Repositories:", textWidth, false, 1 ) );
+        platData.add( Column( 
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         mainAxisAlignment: MainAxisAlignment.start,
+                         children: repoWid ));
+     }
+
+     Widget hplat =
         Column( 
            crossAxisAlignment: CrossAxisAlignment.start,
            mainAxisAlignment: MainAxisAlignment.start,
-           children: <Widget>[
-              makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
-              makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ),
-              makeTitleText( appState, "Project management system:" , textWidth, false, 1 ),
-              makeTitleText( appState, "   " + cep.projectMgmtSys , textWidth, false, 1 ),
-              makeTitleText( appState, "Repositories:", textWidth, false, 1 ),
-              Column( 
-                 crossAxisAlignment: CrossAxisAlignment.start,
-                 mainAxisAlignment: MainAxisAlignment.start,
-                 children: repoWid ),
-              ]);
+           children: platData );
      
      Widget collabs =
         Column( 
@@ -1094,6 +1150,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return GestureDetector( 
         onTap: () async
         {
+           _cancel();
            Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            confirmedNav( context, container, newPage );
@@ -1116,6 +1173,7 @@ class _CEProfileState extends State<CEProfilePage> {
                      GestureDetector( 
                         onTap: () async
                         {
+                           _cancel();
                            Map<String,String> screenArgs = {"id": cevId, "profType": "CEVenture" };
                            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                            confirmedNav( context, container, newPage );
@@ -1135,11 +1193,10 @@ class _CEProfileState extends State<CEProfilePage> {
      final svWidth        = rhsFrameMinWidth * 2.0;             // XXX oi
      bool creating        = false;
      
-     if( !screenOpened ) {
+     if( !loadingData ) {
         assert( appState.ceVenture != {} );
         cev = appState.ceVenture[ screenArgs["id"] ] ?? CEVenture.empty();
         cevId   = cev.ceVentureId;
-        if( cevId == "-1" ) { creating = true; }
 
         // CEProjects
         cepIds = _getCEProjects( cevId );
@@ -1152,12 +1209,22 @@ class _CEProfileState extends State<CEProfilePage> {
            first = false;
         }
         if( cepWid.length == 0 ) {
-           cepWid = [ Wrap( children: [spacer, makeActionButtonFixed( appState, "Where is your code hosted", lhsFrameMaxWidth / 2.0,
-                                                                      () => notYetImplemented( context )) ])
+           cepWid = [ miniSpacer,
+                      Wrap( children:
+                            [spacer,
+                             makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0,
+                                                    () async
+                                                    {
+                                                       _cancel();
+                                                       Map<String,String> screenArgs = {"id": "-1", "profType": "CEProject", "ventId": cev.ceVentureId };
+                                                       MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+                                                       confirmedNav( context, container, newPage );
+                                                    })
+                               ])
               ];
         }
 
-        if( creating ) {
+        if( cevId == "-1" ) {
            print( "Creating a venture." );
            assert( screenArgs["cePeepId"] != null );
            Person? cePeep = appState.cePeople[ screenArgs["cePeepId"]! ];
@@ -1209,7 +1276,8 @@ class _CEProfileState extends State<CEProfilePage> {
            mainAxisAlignment: MainAxisAlignment.start,
            children: rhsRows );
 
-     return _makeCEBody( context, ceProjects, rhs, cepIds, creating: creating ); 
+     // print( "MVB calling MCEB" );
+     return _makeCEBody( context, ceProjects, rhs, cepIds ); 
   }
   
   
@@ -1234,12 +1302,32 @@ class _CEProfileState extends State<CEProfilePage> {
      Widget              peqTable   = spacer;
      Widget              logout     = spacer;  // this can't be active during loadup else if pressed during setstate, badness
      
-     if( !screenOpened ) {
+     if( !loadingData ) {
         assert( myself != null );
         cePeep = myself!;
 
         if( profileImage != null ) { pi   = profileImage!; }        
         hostAccs = itsMe ? appState.myHostAccounts : ( appState.ceHostAccounts[ screenArgs["id"] ] ?? [] );
+
+        // Get any of user's ventures that are cep-free so far.
+        // XXX Maybe... store this?  also computed in homepage, differently
+        List<String> ventIds   = [];
+        List<String> emptyVent = [];
+        for( var ha in hostAccs ) {
+           if( ha.hostPlatform == enumToStr( HostPlatforms.GitHub ) ) {
+              if( ha.ceUserId == cePeep.id ) {
+                 for( int i = 0; i < ha.ceProjectIds.length; i++ ) {
+                    CEProject? cep = appState.ceProject[ ha.ceProjectIds[i] ];
+                    if( cep != null && !ventIds.contains( cep.ceVentureId ) ) { ventIds.add( cep.ceVentureId ); }
+                 }
+              }
+           }
+        }
+        for( final cev in appState.ceVenture.values ) {
+           if( !ventIds.contains( cev.ceVentureId ) && cev.roles.keys.contains( appState.ceUserId )) {
+              emptyVent.add( cev.ceVentureId );
+           }
+        }
         
         // CE Host User
         for( var ha in hostAccs ) {
@@ -1247,7 +1335,7 @@ class _CEProfileState extends State<CEProfilePage> {
               if( ha.ceUserId == cePeep.id ) {
                  hostPeep["userName"] = ha.hostUserName;
                  hostPeep["id"]       = ha.hostUserId;
-                 cepWid               = _makeCEPs( context, ha, textWidth );
+                 cepWid               = _makeCEPs( context, ha, emptyVent, textWidth );
                  ppWid                = _makePperCEP( context, ha, textWidth );
                  logout               = makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 3.0, _logout( context, appState));
               }
@@ -1347,6 +1435,7 @@ class _CEProfileState extends State<CEProfilePage> {
       vSpace           = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
       empty            = Container( width: 1, height: 1 );
 
+      // print( "PP build " + screenArgs.toString() );
       updatePerson( context, container );
       updateProjects( context, container, HostPlatforms.GitHub );
       

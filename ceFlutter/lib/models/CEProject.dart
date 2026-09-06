@@ -1,6 +1,6 @@
 class CEProject {
-   final String ceProjectId;
-   final String ceVentureId;
+   String ceProjectId;
+   String ceVentureId;
    String name;
    String description;
    final String hostPlatform;
