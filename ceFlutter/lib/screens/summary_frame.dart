@@ -245,7 +245,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       // Was anything set yet?
       if( appState.selectedCEProject == "-1" ) {
-         return makeTitleText( appState, "A CodeEquity Project hasn't been initialized yet.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); 
+         return makeTitleText( appState, "This CodeEquity Project hasn't been initialized yet.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); 
       }
       else if( cep == null ) { return makeTitleText( appState, "First choose Project from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
                            

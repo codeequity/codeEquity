@@ -500,7 +500,7 @@ Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
 
 Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
    String shortName = "fetchPEQSummary";
-   print("FETCH PEQSUM" );
+   // print("FETCH PEQSUM" );
    final response = await awsPost( shortName, postData, container );
 
    if (response.statusCode == 201) {
@@ -508,7 +508,7 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
       PEQSummary peqSummary = PEQSummary.fromJson(ps);
       return peqSummary;
    } else if( response.statusCode == 204) {
-      print( "Fetch: no previous PEQ Summary found" );
+      // print( "Fetch: no previous PEQ Summary found" );
       return null;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
@@ -518,7 +518,7 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
 
 Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
    String shortName = "fetchEquityPlan";
-   print("FETCH EQPLAN" );
+   // print("FETCH EQPLAN " + postData );
    
    final response = await awsPost( shortName, postData, container );
 
@@ -527,7 +527,7 @@ Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
       EquityPlan equityPlan = EquityPlan.fromJson(ep);
       return equityPlan;
    } else if( response.statusCode == 204) {
-      print( "Fetch: no previous Equity Plan found" );
+      // print( "Fetch: no previous Equity Plan found" );
       return null;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
