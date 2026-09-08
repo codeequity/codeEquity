@@ -8,8 +8,45 @@ import 'package:ceFlutter/utils/ghUtils.dart';      // associateGH
 import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
+import 'package:ceFlutter/models/CEProject.dart';
 
 import 'package:ceFlutter/screens/home_page.dart';
+
+
+      
+void initProject( context, container, CEProject cep ) async {
+   void _cancel() {
+      Navigator.of( context ).pop();
+   }
+   
+   void _save() {
+      final appState  = container.state;      
+      
+      Navigator.of( context ).pop();
+   }
+   
+   assert( cep.ceProjectId != "" );
+   assert( cep.ceVentureId != "" );
+   final appState = container.state;
+   
+   String       popupTitle       = "Describe where and how your code is hosted:";
+   List<String> header           = ["Host platform", "Owner category", "Host project management version", "Organization name on host"];
+   List<bool>   dropDown         = [ true,           true,             true,                              false ];
+   List<List<String>> ghOptions  = [["GitHub"],
+                                    ["Organization", "Individual"],
+                                    ["GH Version 2", "GH Classic" ],
+                                    []   ];
+   List<String> curVals          = ["", "", "", "<Elgoog Inc>"];
+   List<String> ghToolTips       = ["CodeEquity is working to expand to other hosting platforms",
+                                    "Individual owners are no longer fully supported on GitHub, nor on CodeEquity",
+                                    "GH Classic is legacy on GitHub, no longer supported on CodeEquity",
+                                    "Enter the name of the host organization that owns your code repositories" ];
+
+   // XXX use, then dispose
+   List<TextEditingController?> controllers = [ null, null, null, new TextEditingController()];
+   
+   await showDropdownDialog( context, container, popupTitle, header, dropDown, ghOptions, curVals, ghToolTips, controllers, _save, _cancel );
+}
 
 class CEAddHostPage extends StatefulWidget {
    CEAddHostPage({Key? key}) : super(key: key);
@@ -72,8 +109,8 @@ class _CEAddHostState extends State<CEAddHostPage> {
                         child: makeInputField( appState, "Github Personal Access Token", false, pat )
          );
    }
-      
-
+   
+   
    Widget _makeAssociateGH() {
       // XXX This is not clearly true.  Need PAT each time refresh Host repos, since have to use listRepositories.
       // XXX <Profile> (below in ghexplain) should be clickable, take you to profile. 

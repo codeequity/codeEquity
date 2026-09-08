@@ -10,19 +10,21 @@ class HostUser {
    final String   ceUserId;
    final String   hostUserId;
    List<String>   ceProjectIds;
-   List<String> futureCEProjects;           // list of host repos not yet part of CE
+   String?        hostPAT;                  // personal access token
+   List<String>  futureCEProjects;          // list of host repos not yet part of CE
    Map<String, List<String>>? vToc;         // TRANSIENT.  VentureId to ProjId, built during first homepage view
 
    HostUser({required this.hostPlatform, required this.hostUserName, required this.ceUserId, required this.hostUserId,
-            required this.ceProjectIds, required this.futureCEProjects, this.vToc})
+            required this.ceProjectIds, hostPAT, required this.futureCEProjects, this.vToc})
    {
       if( vToc == null ) { this.vToc = {}; }
+      this.hostPAT = hostPAT;
    }
 
    // Will be going up to dynamo
    dynamic toJson() {
       return { 'hostPlatform': hostPlatform, 'hostUserId': hostUserId, 'ceUserId': ceUserId, 'hostUserName': hostUserName,
-            'ceProjectIds': ceProjectIds, 'futureCEProjects': futureCEProjects };
+            'hostPAT': hostPAT, 'ceProjectIds': ceProjectIds, 'futureCEProjects': futureCEProjects };
    }
 
    factory HostUser.fromJson(Map<String, dynamic> json) {
@@ -36,6 +38,7 @@ class HostUser {
          ceUserId:         json['CEUserId'],
          hostUserId:       json['HostUserId'], 
          ceProjectIds:     new List<String>.from( dynamicProjs ),
+         hostPAT:          json['HostPAT'],
          futureCEProjects: new List<String>.from( dynamicFuts ),
          vToc:             {}
          );
@@ -66,7 +69,8 @@ class HostUser {
    }
 
    String toString() {
-      String res = "\nHost user : " + hostUserName + " CE user id: " + ceUserId + " ceProjectIds: ";
+      if( hostPAT != null ) {  print( "To String hpat " + hostPAT! ); }
+      String res = "\nHost user : " + hostUserName + " CE user id: " + ceUserId + " " + (hostPAT ?? "-1" ) + " ceProjectIds: ";
       for( var cepId in ceProjectIds ) {
          res += "\nCEProject: " + cepId;
          var first = true;

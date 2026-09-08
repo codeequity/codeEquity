@@ -208,7 +208,6 @@ class _CEProfileState extends State<CEProfilePage> {
         }
         profileImage = appState.ceImages[profId];
 
-        print( "updatePerson done, SS" );
         setState(() => loadingData = false );
      }
   }
@@ -293,7 +292,7 @@ class _CEProfileState extends State<CEProfilePage> {
         profileImage = appState.ceImages[primeId];
         
         // need setState to trigger makeBody else blank info
-        print( "updateCEV-CEP done, SS" );
+        // print( "updateCEV-CEP done, SS" );
         setState(() => loadingData = false );
      }
   }
@@ -1039,7 +1038,7 @@ class _CEProfileState extends State<CEProfilePage> {
      List<Widget> repoWid = [spacer];
 
      // print( "MPB " + loadingData.toString() + " " + (screenArgs["ventId"] ?? "noVent") );
-     
+             
      if( !loadingData ) {
         assert( appState.ceProject != {} );
         // cep = appState.ceProject[ screenArgs["id"] ] ?? CEProject.empty();
@@ -1082,18 +1081,20 @@ class _CEProfileState extends State<CEProfilePage> {
         collabWid = _makeCollabs( context, collabs, textWidth );
      }
 
+     /*
+     String ghPAT = "";
+     if( appState.ceHostAccounts[ appState.ceUserId ] != null ) {
+        List<HostAccount> has = appState.ceHostAccounts[ appState.ceUserId ]!;
+        ghPAT = has[0].hostUser.hostPAT ?? "-1";
+     }
+     */
+
      List<Widget> platData = [];
      platData.add( makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ) );
      platData.add( makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ) );
      if( cep.hostPlatform == "" ) {
         platData.add( miniSpacer );
-        platData.add( Wrap( children: [spacer,
-                                       makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0,
-                                             () async
-                                             {
-                                                _cancel();
-                                                print( "Initialized Platform!" );
-                                             })
+        platData.add( Wrap( children: [spacer, makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0, () => initProject( context, container, cep ))
                                ]));
      }
      else {
@@ -1436,6 +1437,8 @@ class _CEProfileState extends State<CEProfilePage> {
       empty            = Container( width: 1, height: 1 );
 
       // print( "PP build " + screenArgs.toString() );
+      // print( "PP build " + screenArgs.toString() + appState.ceHostAccounts[ appState.ceUserId ]![0].hostUser.toString() );      
+
       updatePerson( context, container );
       updateProjects( context, container, HostPlatforms.GitHub );
       

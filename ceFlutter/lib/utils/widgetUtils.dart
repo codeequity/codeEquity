@@ -253,6 +253,66 @@ Future<void> editBox( BuildContext context, appState, maxWidth, boxHeader, itemH
               });
 }
 
+
+// This dialog can be a mix of drop down and full text entries.  every list is same length .. make entries "" if not relevant
+Future<void> showDropdownDialog(BuildContext context, container, String title, List<String> header, List<bool> isDD, List<List<String>> ddOptions,
+                                List<String> hints, List<String> toolTips, List<TextEditingController?> controllers, execFunc, cancelFunc) async {
+   List<Widget> buttons = [];
+   buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Confirm"), onPressed: execFunc ));
+   buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: cancelFunc ));
+
+   assert( isDD.length == header.length && isDD.length == ddOptions.length && isDD.length == hints.length );
+   assert( isDD.length == toolTips.length && isDD.length == controllers.length );
+
+   final appState  = container.state;         
+   // List<DropdownMenu<String>> rows = [];
+   List<Widget> rows = [];
+   
+   for( int i = 0; i < header.length; i++ ) {
+      if( isDD[i] ) {
+         assert( ddOptions[i].length > 0 );
+         List<DropdownMenuEntry<String>> entries = [];
+         for( String option in ddOptions[i]) {
+            entries.add( DropdownMenuEntry( value: option, label: option ) );
+         }
+         rows.add(
+            Wrap( children: [ makeToolTip( makeTableText( appState, header[i], appState.MIN_PANE_WIDTH/1.3, appState.CELL_HEIGHT, false, 1 ), toolTips[i] ),
+                              DropdownMenu<String>(
+                                 initialSelection: ddOptions[i][0],
+                                 enableSearch: true, // Allows typing to find items
+                                 enableFilter: true, // Filters items as you type
+                                 dropdownMenuEntries: entries, 
+                                 onSelected: (newValue) { print('Selected: $newValue'); }
+                                 )
+                     ])
+            ); 
+      }
+      else {
+         assert( controllers[i] != null );
+         rows.add(
+            Wrap( children: [ makeToolTip( makeTableText( appState, header[i], appState.MIN_PANE_WIDTH/1.3, appState.CELL_HEIGHT, false, 1 ), toolTips[i] ),
+                              Container( width: appState.MIN_PANE_WIDTH, child: makeInputField( appState, header[i], false, controllers[i]! ))
+                                ])
+               );
+      }
+   }
+   
+   await showDialog(
+      context: context,
+      builder: (BuildContext context)
+      {
+         return AlertDialog(
+            title: new Text( title ),
+            content: Column(
+               mainAxisSize: MainAxisSize.min,
+               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: rows,
+               ),
+            actions: buttons );
+      });
+}
+
 // okFunc and cancelFunc need to return strings.  See home_screen:confirm
 Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) async {
    return await showDialog(
