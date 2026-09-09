@@ -3,12 +3,12 @@ class CEProject {
    String ceVentureId;
    String name;
    String description;
-   final String hostPlatform;
-   final String hostOrganization;
-   final String ownerCategory;
-   final String projectMgmtSys;
-   final List<String> repositories;          //  host repoName  TRANSIENT
-   final List<String> hostRepoId;            //  host repoId    TRANSIENT
+   String hostPlatform;
+   String hostOrganization;
+   String ownerCategory;
+   String projectMgmtSys;
+   List<String> repositories;          //  host repoName  TRANSIENT
+   List<String> hostRepoId;            //  host repoId    TRANSIENT
 
    CEProject({ required this.ceProjectId, required this.ceVentureId, required this.name, required this.description,
             required this.hostPlatform, required this.hostOrganization, required this.ownerCategory,  required this.projectMgmtSys,

@@ -1,5 +1,6 @@
 import assert from 'assert';
 
+import * as auth      from '../auth/gh/ghAuth.js';
 import * as awsAuth   from '../auth/aws/awsAuth.js';
 import * as config    from '../config.js';
 
@@ -45,6 +46,7 @@ async function setCEVTestRoles( authData, cevId ) {
 
 async function addCEHostProject( authData, actor, cepId ) {
     let actorCEUID = "eaeIqcqqdp";
+    let actorPAT   = await auth.getPAT( config.TEST_ACTOR );
 
     let hostUser = await awsUtils.getHostUser( authData, actorCEUID, config.HOST_GH );
     console.log( "Current host user:", hostUser );
@@ -52,6 +54,10 @@ async function addCEHostProject( authData, actor, cepId ) {
     let mod      = false;
     if( !hostUser.CEProjectIds.includes( cepId ) ) {
 	hostUser.CEProjectIds.push( cepId );
+	mod = true;
+    }
+    if( typeof hostUser.HostPAT === 'undefined' ) {
+	hostUser.HostPAT = actorPAT;
 	mod = true;
     }
 
@@ -65,6 +71,7 @@ async function addCEHostProject( authData, actor, cepId ) {
 	hostUser.hostPlatform = hostUser.HostPlatform;
 	hostUser.ceProjectIds = hostUser.CEProjectIds;
 	hostUser.futureCEProjects = hostUser.FutureCEProjects;
+	hostUser.hostPAT = hostUser.HostPAT;
 	await awsUtils.updateHostUser( authData, hostUser );
     }
     

@@ -102,7 +102,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "PutEqPlan")      { resultPromise = putEqPlan( rb.NewPlan ); }
     else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
     else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId, rb.HostPlatform, rb.UserOnly ); }
-    else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update, rb.pat ); }
+    else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
@@ -1468,52 +1468,37 @@ async function updatePEQActions( peqa, ceUID ) {
 
 // working with hostUser only.  If update is true, do not look to update peq user ids
 // Note: newHostAcct.id is NOT the same as the Host ownerId
-async function putHostA( newHostAcct, update, pat ) {
-    if( update == "true" ) {
-	const params = {
-            TableName: 'CEHostUser',
-	    Key: { "HostUserId": newHostAcct.hostUserId },
-	    UpdateExpression: 'set CEUserId = :ceoid, HostUserName = :hostun, CEProjectIds = :pid, FutureCEProjects = :fid',
-	    ExpressionAttributeValues: { ':ceoid': newHostAcct.ceUserId, ':hostun': newHostAcct.hostUserName, ':pid': newHostAcct.ceProjectIds, ':fid': newHostAcct.futureCEProjects }
-	};
-	
-	console.log( "Update hostUser", params);
-	const updateCmd = new UpdateCommand( params );	
-	await bsdb.send( updateCmd ); 
-    }
-    else {
-	const params = {
-            TableName: 'CEHostUser',
-	    Item: {
-		"HostUserId":       newHostAcct.hostUserId, 
-		"CEUserId":         newHostAcct.ceUserId,
-		"HostUserName":     newHostAcct.hostUserName,
-		"HostPlatform":     newHostAcct.hostPlatform,
-		"CEProjectIds":     newHostAcct.ceProjectIds,
-		"FutureCEProjects": newHostAcct.futureCEProjects,
-		"HostPAT":          pat
+async function putHostA( newHostAcct, update ) {
+   const params = {
+   TableName: 'CEHostUser',
+      Item: {
+         "HostUserId":       newHostAcct.hostUserId, 
+	 "CEUserId":         newHostAcct.ceUserId,
+         "HostUserName":     newHostAcct.hostUserName,
+	 "HostPlatform":     newHostAcct.hostPlatform,
+         "CEProjectIds":     newHostAcct.ceProjectIds,
+	 "FutureCEProjects": newHostAcct.futureCEProjects,
+         "HostPAT":          newHostAcct.hostPAT
 	    }
 	};
 	
-	console.log( "Put new hostUser", params);
-	const putCmd = new PutCommand( params );
-	
-	await bsdb.send( putCmd ); 
-    }
+   console.log( "Put new hostUser", params);
+   const putCmd = new PutCommand( params );
+   
+   await bsdb.send( putCmd ); 
 
-
-    let updated = true;
-    if( update == "false" ) {
-	// Must update any PEQActions created before hostUser had ceUID
-	// Suure would be nice to have a real 'update where'.   bah
-	// Majority of cases will be 0 or just a few PEQActions without a CE UID, 
-	// especially since a PEQAction requires a PEQ label.
-	const hostPEQA = await getPEQActionsFromHost( newHostAcct.hostUserName );
-	await hostPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newHostAcct.ceUserId ));
-	console.log( "putHostA returning", updated );
-    }
-
-    return success( updated );
+   let updated = true;
+   if( update == "false" ) {
+      // Must update any PEQActions created before hostUser had ceUID
+      // Suure would be nice to have a real 'update where'.   bah
+      // Majority of cases will be 0 or just a few PEQActions without a CE UID, 
+      // especially since a PEQAction requires a PEQ label.
+      const hostPEQA = await getPEQActionsFromHost( newHostAcct.hostUserName );
+      await hostPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newHostAcct.ceUserId ));
+      console.log( "putHostA returning", updated );
+   }
+   
+   return success( updated );
 }
 
 async function getProjectStatus( cepIds ) {

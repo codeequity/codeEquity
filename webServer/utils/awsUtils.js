@@ -534,7 +534,7 @@ async function updateHostUser( authData, hostUser ) {
 
     let shortName = "PutHostA"; 
 
-    let pd = { Endpoint: shortName, NewHostA: hostUser, update: "true", pat: "" }; 
+    let pd = { Endpoint: shortName, NewHostA: hostUser, update: "true" }; 
     return await wrappedPostAWS( authData, shortName, pd );
 }
 

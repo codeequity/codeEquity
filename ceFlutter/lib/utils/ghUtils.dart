@@ -462,7 +462,7 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    
    String newHostA = json.encode( myHostAcct );
    print( newHostA );
-   String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "false", "pat": "$PAT" }';
+   String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "false" }';
    await updateDynamo( context, container, postData, "PutHostA" );
 }
 

@@ -1050,6 +1050,10 @@ class _CEProfileState extends State<CEProfilePage> {
            if( i == 0 ) { repoWid = [ makeTitleText( appState, "   " + cep.repositories[i]  + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 ) ]; }
            else         { repoWid.add( makeTitleText( appState, "   " + cep.repositories[i] + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 )); }
         }
+        if( cep.repositories.length == 0 ) {
+           repoWid = [ miniSpacer,
+                       Wrap( children: [spacer, makeActionButtonFixed( appState, "Add Code Repos", lhsFrameMaxWidth / 2.0, () => initRepos( context, container, cep )) ]) ];
+        }
 
         // CEProject Collabs
         List<HostAccount> collabs = [];
@@ -1080,14 +1084,6 @@ class _CEProfileState extends State<CEProfilePage> {
         
         collabWid = _makeCollabs( context, collabs, textWidth );
      }
-
-     /*
-     String ghPAT = "";
-     if( appState.ceHostAccounts[ appState.ceUserId ] != null ) {
-        List<HostAccount> has = appState.ceHostAccounts[ appState.ceUserId ]!;
-        ghPAT = has[0].hostUser.hostPAT ?? "-1";
-     }
-     */
 
      List<Widget> platData = [];
      platData.add( makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ) );
