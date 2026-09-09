@@ -269,12 +269,13 @@ Future<void> initMDState( context, container ) async {
    for( Person p in peeps )     { appState.cePeople[ p.id ] = p; }
 
    // so far hostAccount was only set for current user.
+   // XXX 1 extra pull
    for( Person p in peeps ) {
-      uid  = p.id; 
-      pdHA = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );
+      String newuid  = p.id; 
+      pdHA = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$newuid"  } );
       await Future.wait([
-                           (appState.ceHostAccounts[uid] == null ? 
-                            fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
+                           (appState.ceHostAccounts[newuid] == null ? 
+                            fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[newuid] = p ) :
                             new Future<bool>.value(true) ),
                            ]);
       

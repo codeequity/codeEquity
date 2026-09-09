@@ -457,12 +457,12 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    print( "HOI! " + appState.ceUserId + " " + huid );
    assert( huid != "-1" );
    HostUser hostUser      = new HostUser( hostPlatform: "GitHub", hostUserName: hostLogin, ceUserId: appState.ceUserId, hostUserId: huid, 
-                                          ceProjectIds: ceProjs, futureCEProjects: futProjs );
+                                          hostPAT: PAT, ceProjectIds: ceProjs, futureCEProjects: futProjs );
    HostAccount myHostAcct = new HostAccount( hostUser: hostUser, ceProjRepos: ceProjRepos );
    
    String newHostA = json.encode( myHostAcct );
    print( newHostA );
-   String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "false", "pat": "$PAT" }';
+   String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "false" }';
    await updateDynamo( context, container, postData, "PutHostA" );
 }
 
@@ -478,9 +478,6 @@ Future<void> updateGHRepos( context, container ) async {
 
       if( acct.hostPlatform == "GitHub" ) {
 
-         // XXX
-         print( "XXX XXX Not yet storing PAT.  Not yet decided.  Skip" );
-         /*
          // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
          var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "GitHub" } };
          final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
@@ -495,7 +492,7 @@ Future<void> updateGHRepos( context, container ) async {
                });
          
          await _buildCEProjectRepos( context, container, PAT, github, acct.hostUserName );
-         */
+
       }
    }
 

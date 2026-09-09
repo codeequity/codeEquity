@@ -1,3 +1,4 @@
+import 'dart:convert';                   // json encode/decode, b64 coding
 import 'package:flutter/material.dart';
 import 'dart:math';
 
@@ -6,10 +7,87 @@ import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ghUtils.dart';      // associateGH
 import 'package:ceFlutter/utils/ceUtils.dart';
+import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
+import 'package:ceFlutter/models/CEProject.dart';
+import 'package:ceFlutter/models/HostAccount.dart';
 
 import 'package:ceFlutter/screens/home_page.dart';
+
+
+void initRepos( context, container, CEProject cep ) async {
+   final appState = container.state;
+
+   print( "We have ce person " + appState.ceUserId );
+   HostAccount? myAcct = null;
+   
+   List<HostAccount>? has = appState.ceHostAccounts[ appState.ceUserId ];
+   if( has != null ) {
+      for( HostAccount ha in has! ) {
+         if( ha.hostUser.hostPlatform == cep.hostPlatform ) {
+            myAcct = ha;
+         }
+      }
+   }
+
+   if( myAcct != null ) {
+      print( "Already have Host Account.  " + myAcct.toString() );
+   }
+   else {
+      print( "No host account yet.  add it" ); 
+   }
+   
+}
+
+void initProject( context, container, CEProject cep ) async {
+   void _cancel() {
+      Navigator.of( context ).pop();
+   }
+
+   // XXX This is leaking.  
+   List<TextEditingController?> controllers = [ null, null, null, new TextEditingController()];
+
+   void _save( List<String> saveData ) async {
+      assert( controllers.length == 4 && controllers[3] != null );
+      print( "HO! " + saveData.toString() + " " + controllers[3]!.text );
+
+      // NOTE hostUser does not necessarily exist yet
+      cep.hostPlatform     = saveData[0];
+      cep.ownerCategory    = saveData[1];
+      cep.projectMgmtSys   = saveData[2];
+      cep.hostOrganization = controllers[3]!.text;
+
+      String cepS = json.encode( cep );
+      String postData = '{ "Endpoint": "UpdateCEP", "ceProject": $cepS }';
+      await updateDynamo( context, container, postData, "UpdateCEP" );
+      
+      Navigator.of( context ).pop();
+   }
+   
+   assert( cep.ceProjectId != "" );
+   assert( cep.ceVentureId != "" );
+   final appState = container.state;
+
+   // Note ghOptions plus controllers means every header will either be paired with a list of options, or a textEditingController
+   String       popupTitle       = "Describe where and how your code is hosted:";
+   List<String> header           = ["Host platform", "Owner category", "Host project management version", "Organization name on host"];
+   List<bool>   dropDown         = [ true,           true,             true,                              false ];
+   List<List<String>> ghOptions  = [["GitHub"],
+                                    ["Organization", "Individual"],
+                                    ["GH Version 2", "GH Classic" ],
+                                    []   ];
+   List<String> curVals          = ["", "", "", "<Elgoog Inc>"];
+   List<String> ghToolTips       = ["CodeEquity is working to expand to other hosting platforms",
+                                    "Individual owners are no longer fully supported on GitHub, nor on CodeEquity",
+                                    "GH Classic is legacy on GitHub, no longer supported on CodeEquity",
+                                    "Enter the name of the host organization that owns your code repositories" ];
+
+   
+   await showDropdownDialog( context, container, popupTitle, header, dropDown, ghOptions, curVals, ghToolTips, controllers, _save, _cancel );
+}
+
+      
 
 class CEAddHostPage extends StatefulWidget {
    CEAddHostPage({Key? key}) : super(key: key);
@@ -72,8 +150,8 @@ class _CEAddHostState extends State<CEAddHostPage> {
                         child: makeInputField( appState, "Github Personal Access Token", false, pat )
          );
    }
-      
-
+   
+   
    Widget _makeAssociateGH() {
       // XXX This is not clearly true.  Need PAT each time refresh Host repos, since have to use listRepositories.
       // XXX <Profile> (below in ghexplain) should be clickable, take you to profile. 

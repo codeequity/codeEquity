@@ -145,7 +145,7 @@ class _CEActivityState extends State<CEActivityPanel> {
          host.hostUser.ceProjectIds = [];
          host.hostUser.futureCEProjects = [];
          String newHostA = json.encode( host.hostUser );
-         String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
+         String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
          updateDynamo( context, container, postData, "PutHostA" );
       }
       
@@ -191,7 +191,7 @@ class _CEActivityState extends State<CEActivityPanel> {
          if( mod ) {
             print( "HostUser mods made" );
             String newHostA = json.encode( host.hostUser );
-            String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
+            String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
             await updateDynamo( context, container, postData, "PutHostA" );
          }
       }
@@ -268,7 +268,7 @@ class _CEActivityState extends State<CEActivityPanel> {
                   List<HostAccount> hosts = appState.ceHostAccounts[cePeep.id]!.where( (h) => h.hostUserId == huid && h.hostPlatform == p ).toList();
                   assert( hosts.length == 1 );
                   String newHostA = json.encode( hosts[0].hostUser );
-                  String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "true" }';
+                  String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
                   // Don't wait
                   updateDynamo( context, container, postData, "PutHostA" );
                });

@@ -3,22 +3,19 @@ class CEProject {
    String ceVentureId;
    String name;
    String description;
-   final String hostPlatform;
-   final String hostOrganization;
-   final String ownerCategory;
-   final String projectMgmtSys;
-   final List<String> repositories;          //  host repoName
-   final List<String> hostRepoId;            //  host repoId
+   String hostPlatform;
+   String hostOrganization;
+   String ownerCategory;
+   String projectMgmtSys;
+   List<String> repositories;          //  host repoName  TRANSIENT
+   List<String> hostRepoId;            //  host repoId    TRANSIENT
 
    CEProject({ required this.ceProjectId, required this.ceVentureId, required this.name, required this.description,
-            required this.hostPlatform, required this.hostOrganization, required this.ownerCategory,  required this.projectMgmtSys,  
-               required this.repositories, required this.hostRepoId}) {
-      assert( repositories.length == hostRepoId.length );
-   }
+            required this.hostPlatform, required this.hostOrganization, required this.ownerCategory,  required this.projectMgmtSys,
+               required this.repositories, required this.hostRepoId});
 
    dynamic toJson() => { 'CEProjectId': ceProjectId, 'CEVentureId': ceVentureId, 'Name': name, 'Description': description,
-         'HostPlatform': hostPlatform, 'HostOrganization': hostOrganization, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys,
-            'Repositories': repositories, 'HostRepoId': hostRepoId }; 
+         'HostPlatform': hostPlatform, 'HostOrganization': hostOrganization, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys }; 
 
    // No CEProject found.  return empty 
    factory CEProject.empty() {
