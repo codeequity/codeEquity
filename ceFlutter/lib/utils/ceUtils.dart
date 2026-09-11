@@ -285,11 +285,29 @@ Future<void> initMDState( context, container ) async {
    // XXX Scales poorly.  This could move to reloadCEProject, since idMapHost usage is by cep.
    //     Would be work to get cep, then hostRepo, which is stored in hostUser table, no real gains for a long time here.
    for( var hostPlat in HostPlatforms.values ) {
-      appState.idMapHost = await fetchHostMap( context, container, enumToStr( hostPlat ), appState.cePeople ); 
+      if( hostPlat != HostPlatforms.end ) {
+         appState.idMapHost = await fetchHostMap( context, container, hostPlat, appState.cePeople );
+      }
    }
-   
 }
 
+// Called on refreshProjects
+Future<void> updateHostAccts( context, container ) async {
+   print( "updateHostAccts" );
+   final appState  = container.state;
+
+   appState.ceUserId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" );
+   String uid = appState.ceUserId;
+   assert( uid != "" );
+   print( "UID: " + uid );
+
+   var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostAccounts.ceProjs
+
+   await Future.wait([
+                        fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ),
+                        ]);
+   appState.myHostAccounts = appState.ceHostAccounts[uid];
+}
 
 
 // appState.selectedHostUIDs is ceUID + UNASSIGN_USER
@@ -485,7 +503,7 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
       // XXX Consider making this standalone
       String hostUserId = "";
       for( HostAccount ha in appState.myHostAccounts ) {
-         if( ha.hostPlatform == "GitHub" && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
+         if( ha.hostPlatform == HostPlatforms.GitHub && ha.ceUserId == appState.ceUserId ) {
             hostUserId = ha.hostUserId;
             break;
          }
@@ -517,7 +535,7 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
 }
 
 // This only sends notices
-Future<bool> sendPAct( context, container, String cepId, String subject, String hostPlatform, String note ) async {
+Future<bool> sendPAct( context, container, String cepId, String subject, HostPlatforms hostPlatform, String note ) async {
    final appState  = container.state;
 
    // send PAct as a notice.
@@ -577,7 +595,7 @@ Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, 
       
       // send PAct 
       String note  = setInStone ? '{"note": "Remove granted attempted via CEMD"}' : '{"note": "Remove peq via CEMD, no raw body present"}';
-      await sendPAct( context, container, p.ceProjectId, p.id, "GitHub", note );
+      await sendPAct( context, container, p.ceProjectId, p.id, HostPlatforms.GitHub, note );
    }
 
    return !setInStone;
@@ -620,7 +638,7 @@ Future<void> updateCEPeqs( container, context, {cepId = ""} ) async {
 Future<void> updateHostPeqs( container, CEProject cep ) async {
    final appState  = container.state;
 
-   if( cep.hostPlatform == "GitHub" ) {
+   if( cep.hostPlatform == HostPlatforms.GitHub ) {
       print( "building host peq data for " + cep.ceProjectId );
       appState.hostPeqs[ cep.ceProjectId ] = await updateGHPeqs( container, cep );
    }

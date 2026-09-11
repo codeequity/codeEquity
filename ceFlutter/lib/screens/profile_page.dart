@@ -254,7 +254,7 @@ class _CEProfileState extends State<CEProfilePage> {
         List<HostAccount>   haccts     = [];
 
         await Future.wait([
-                             (!appState.hostPlatformsLoaded.contains( enumToStr( hostPlat ) ) ? 
+                             (!appState.hostPlatformsLoaded.contains( hostPlat ) ? 
                               fetchHostAcct( context, container, pdpa ).then(                 (p) => haccts = p ) : 
                               new Future<bool>.value(true) ),
                              
@@ -275,7 +275,7 @@ class _CEProfileState extends State<CEProfilePage> {
         equityPlan = appState.ceEquityPlans[vid];
         print( "Set equity plan to " + vid );
 
-        if( !appState.hostPlatformsLoaded.contains(  enumToStr( hostPlat ) ) ) { appState.hostPlatformsLoaded.add(  enumToStr( hostPlat ) ); }
+        if( !appState.hostPlatformsLoaded.contains( hostPlat ) ) { appState.hostPlatformsLoaded.add( hostPlat ); }
         // One ha per platform, list length is 1
         for( HostAccount ha in haccts ) { appState.ceHostAccounts[ha.ceUserId] = [ha]; }
            
@@ -587,6 +587,12 @@ class _CEProfileState extends State<CEProfilePage> {
         mainAxisAlignment: MainAxisAlignment.start,
         children: ceps
         );
+
+     if( ceps.length == 0 ) {
+        String msg = "<Adding repositories connects the CodeEquity Project to the platform hosting your code, and connects your host account to ";
+        msg       += "this project as well. Once the project has been initialized, please add your code repositories.>";
+        frame = makeTitleText( appState, msg, textWidth*2.0, false, 3, italic: true );
+     }
      
      return frame;
   }
@@ -818,10 +824,10 @@ class _CEProfileState extends State<CEProfilePage> {
 
         // send PActs 1 per each of venture and project
         String note          = '{"note": "Remove Venture"}';
-        await sendPAct( context, container, "-1", prime.ceVentureId, "GitHub", note );
+        await sendPAct( context, container, "-1", prime.ceVentureId, HostPlatforms.GitHub, note );
         for( String id in cepIds ) {
            note  = '{"note": "Remove CEProject"}';
-           await sendPAct( context, container, id, id, "GitHub", note );
+           await sendPAct( context, container, id, id, HostPlatforms.GitHub, note );
         }
 
         // Reload everything - cached venture data should no longer be available
@@ -1066,7 +1072,7 @@ class _CEProfileState extends State<CEProfilePage> {
               }
            }
         }
-
+        
         if( cepId == "-1" ) {
            print( "Creating a project" );
            String intro = "Welcome to your new Project's profile!  \n";
@@ -1087,8 +1093,8 @@ class _CEProfileState extends State<CEProfilePage> {
 
      List<Widget> platData = [];
      platData.add( makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ) );
-     platData.add( makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ) );
-     if( cep.hostPlatform == "" ) {
+     platData.add( makeTitleText( appState, "Host Platform: " + enumToStr( cep.hostPlatform ), textWidth, false, 1, fontSize: 18 ) );
+     if( cep.hostPlatform == HostPlatforms.end ) {
         platData.add( miniSpacer );
         platData.add( Wrap( children: [spacer, makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0, () => initProject( context, container, cep ))
                                ]));
@@ -1311,7 +1317,7 @@ class _CEProfileState extends State<CEProfilePage> {
         List<String> ventIds   = [];
         List<String> emptyVent = [];
         for( var ha in hostAccs ) {
-           if( ha.hostPlatform == enumToStr( HostPlatforms.GitHub ) ) {
+           if( ha.hostPlatform == HostPlatforms.GitHub ) {
               if( ha.ceUserId == cePeep.id ) {
                  for( int i = 0; i < ha.ceProjectIds.length; i++ ) {
                     CEProject? cep = appState.ceProject[ ha.ceProjectIds[i] ];
@@ -1328,7 +1334,7 @@ class _CEProfileState extends State<CEProfilePage> {
         
         // CE Host User
         for( var ha in hostAccs ) {
-           if( ha.hostPlatform == enumToStr( HostPlatforms.GitHub ) ) {
+           if( ha.hostPlatform == HostPlatforms.GitHub ) {
               if( ha.ceUserId == cePeep.id ) {
                  hostPeep["userName"] = ha.hostUserName;
                  hostPeep["id"]       = ha.hostUserId;

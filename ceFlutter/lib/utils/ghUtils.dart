@@ -46,10 +46,11 @@ Future<String> getHostPAT( container, CEProject cep ) async {
    final appState  = container.state;
    if( appState.myGHPAT != "" ) { return appState.myGHPAT; }
    
-   String host  = cep.hostPlatform;
-   assert( host == "GitHub" );
+   HostPlatforms host  = cep.hostPlatform;
+   assert( host == HostPlatforms.GitHub );
+   String hp = enumToStr( host );
    
-   var postData = '{"Endpoint": "ceMD", "Request": "getBuilderPAT", "host": "$host" }';
+   var postData = '{"Endpoint": "ceMD", "Request": "getBuilderPAT", "host": "$hp" }';
    var response = await postCE( appState, postData );
    if( response.statusCode == 401 ) {
       print( "WARNING.  Could not reach ceServer." );
@@ -456,7 +457,7 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    String huid = await _getOwnerId( PAT, hostLogin );
    print( "HOI! " + appState.ceUserId + " " + huid );
    assert( huid != "-1" );
-   HostUser hostUser      = new HostUser( hostPlatform: "GitHub", hostUserName: hostLogin, ceUserId: appState.ceUserId, hostUserId: huid, 
+   HostUser hostUser      = new HostUser( hostPlatform: HostPlatforms.GitHub, hostUserName: hostLogin, ceUserId: appState.ceUserId, hostUserId: huid, 
                                           hostPAT: PAT, ceProjectIds: ceProjs, futureCEProjects: futProjs );
    HostAccount myHostAcct = new HostAccount( hostUser: hostUser, ceProjRepos: ceProjRepos );
    
@@ -464,6 +465,9 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    print( newHostA );
    String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "false" }';
    await updateDynamo( context, container, postData, "PutHostA" );
+
+   // Update CEMD state
+   await updateHostAccts( context, container );
 }
 
 
@@ -476,10 +480,11 @@ Future<void> updateGHRepos( context, container ) async {
    // Iterate over all known HostAccounts.  One per host.
    for( HostAccount acct in appState.myHostAccounts ) {
 
-      if( acct.hostPlatform == "GitHub" ) {
+      if( acct.hostPlatform == HostPlatforms.GitHub ) {
 
          // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
-         var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "GitHub" } };
+         String hp = enumToStr( HostPlatforms.GitHub );
+         var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "$hp" } };
          final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
 
          print( "UpdateGHRepo has PAT " + PAT.toString() );

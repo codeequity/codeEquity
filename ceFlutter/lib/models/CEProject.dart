@@ -1,9 +1,13 @@
+import 'package:ceFlutter/utils/ceUtils.dart';
+
+enum HostPlatforms { GitHub, end }
+
 class CEProject {
    String ceProjectId;
    String ceVentureId;
    String name;
    String description;
-   String hostPlatform;
+   HostPlatforms hostPlatform;
    String hostOrganization;
    String ownerCategory;
    String projectMgmtSys;
@@ -15,7 +19,7 @@ class CEProject {
                required this.repositories, required this.hostRepoId});
 
    dynamic toJson() => { 'CEProjectId': ceProjectId, 'CEVentureId': ceVentureId, 'Name': name, 'Description': description,
-         'HostPlatform': hostPlatform, 'HostOrganization': hostOrganization, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys }; 
+         'HostPlatform': enumToStr( hostPlatform ), 'HostOrganization': hostOrganization, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys }; 
 
    // No CEProject found.  return empty 
    factory CEProject.empty() {
@@ -24,7 +28,7 @@ class CEProject {
          ceVentureId:         "-1",
          name:                "",
          description:         "",
-         hostPlatform:        "",
+         hostPlatform:        HostPlatforms.end,
          hostOrganization:    "",
          ownerCategory:       "",
          projectMgmtSys:      "",
@@ -54,7 +58,7 @@ class CEProject {
          ceVentureId:        json['CEVentureId'],
          name:               json['Name'],
          description:        json['Description'],
-         hostPlatform:       json['HostPlatform'],
+         hostPlatform:       enumFromStr<HostPlatforms>( json['HostPlatform'], HostPlatforms.values  ),
          hostOrganization:   json['HostOrganization'] ?? "",  // Some host setups (like GH classic) don't have this
          ownerCategory:      json['OwnerCategory'],
          projectMgmtSys:     json['ProjectMgmtSys'],
@@ -67,7 +71,7 @@ class CEProject {
    String toString() {
       String res = "\n" + name + " (" + ceProjectId + ") " + description;
       res += "\n   Part of the venture: " + ceVentureId;
-      res += "\n   " + hostOrganization + " " + hostPlatform + " " + ownerCategory; 
+      res += "\n   " + hostOrganization + " " + enumToStr( hostPlatform ) + " " + ownerCategory; 
       res += "\n    Repositories: " + repositories.toString();
       res += "\n";
 

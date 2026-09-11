@@ -99,7 +99,7 @@ class _CESearchState extends State<CESearch> {
       else if( obj is CEProject ) {
          CEProject p = obj as CEProject;
          objName     = p.ceProjectId;
-         objDetail   = "a CodeEquity project on " + p.hostPlatform + ": " + p.description;
+         objDetail   = "a CodeEquity project on " + enumToStr( p.hostPlatform ) + ": " + p.description;
       }
       else {
          print( "Error.  Search object is not recognized. " );

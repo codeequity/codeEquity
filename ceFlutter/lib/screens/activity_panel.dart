@@ -240,17 +240,17 @@ class _CEActivityState extends State<CEActivityPanel> {
       print( "addCEV hostuids: " + huids.toString() );
       huids.forEach( (huid) {
             // for the CEPs in the CEV cePeep's registering for, find any valid host account that belongs to me and matches the CEP host platform
-            List<String> platforms = [];  // only way this is >1 is if huid is same on 2+ host platforms.
+            List<HostPlatforms> platforms = [];  // only way this is >1 is if huid is same on 2+ host platforms.
             ceps.forEach( (cep) {
 
                   if( appState.ceHostAccounts[cePeep.id] == null ) {
-                     showToast( cePeep.goesBy + " has not registered any host platform " + cep.hostPlatform + " with CodeEquity yet.  Please address this on the home page. ");
+                     showToast( cePeep.goesBy + " has not registered any host platform " + enumToStr( cep.hostPlatform ) + " with CodeEquity yet.  Please address this on the home page. ");
                   }
                   else {
                      List<HostAccount> hosts = appState.ceHostAccounts[cePeep.id]!.where( (h) => h.hostUserId == huid && h.hostPlatform == cep.hostPlatform ).toList();
                      // If cePeep doesn't have hostUID for the platform related to this CEP, warn and skip
                      if( hosts.length == 0 ) {
-                        showToast( cePeep.goesBy + " has not registered the host platform " + cep.hostPlatform + " with CodeEquity yet.  Please address this on the home page. ");
+                        showToast( cePeep.goesBy + " has not registered the host platform " + enumToStr( cep.hostPlatform ) + " with CodeEquity yet.  Please address this on the home page. ");
                      }
                      else {
                         assert( hosts.length == 1 );

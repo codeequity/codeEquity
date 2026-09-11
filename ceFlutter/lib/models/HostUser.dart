@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 
+import 'package:ceFlutter/utils/ceUtils.dart';
+
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
 
 // Combines dynamo:CEHostUser with dynamo:CEProjects
 class HostUser {
-   final String   hostPlatform;
-   final String   hostUserName;
-   final String   ceUserId;
-   final String   hostUserId;
-   List<String>   ceProjectIds;
-   String?        hostPAT;                  // personal access token
-   List<String>  futureCEProjects;          // list of host repos not yet part of CE
+   final HostPlatforms hostPlatform;
+   final String        hostUserName;
+   final String        ceUserId;
+   final String        hostUserId;
+   List<String>        ceProjectIds;
+   String?             hostPAT;                  // personal access token
+   List<String>        futureCEProjects;          // list of host repos not yet part of CE
    Map<String, List<String>>? vToc;         // TRANSIENT.  VentureId to ProjId, built during first homepage view
 
    HostUser({required this.hostPlatform, required this.hostUserName, required this.ceUserId, required this.hostUserId,
@@ -23,7 +25,7 @@ class HostUser {
 
    // Will be going up to dynamo
    dynamic toJson() {
-      return { 'hostPlatform': hostPlatform, 'hostUserId': hostUserId, 'ceUserId': ceUserId, 'hostUserName': hostUserName,
+      return { 'hostPlatform': enumToStr( hostPlatform ), 'hostUserId': hostUserId, 'ceUserId': ceUserId, 'hostUserName': hostUserName,
             'hostPAT': hostPAT, 'ceProjectIds': ceProjectIds, 'futureCEProjects': futureCEProjects };
    }
 
@@ -33,7 +35,7 @@ class HostUser {
       var dynamicFuts  = json['FutureCEProjects'];
 
       return HostUser(
-         hostPlatform:     json['HostPlatform'], 
+         hostPlatform:     enumFromStr<HostPlatforms>( json['HostPlatform'], HostPlatforms.values ), 
          hostUserName:     json['HostUserName'],
          ceUserId:         json['CEUserId'],
          hostUserId:       json['HostUserId'], 

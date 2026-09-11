@@ -9,6 +9,7 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
+import 'package:ceFlutter/models/CEProject.dart';
 
 
 
@@ -53,10 +54,10 @@ class _CELaunchPageState extends State<CELaunchPage> {
         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
         ),
      10,0,0,10);
-  
+
   Widget _contribHead = paddedLTRB(
      Text(
-        'For the ' + enumToStr( HostPlatforms.values[0] ) + ' Contributor',
+        'For the ' + enumToStr( HostPlatforms.values[0] ) + ' Contributor',    // XXX Yikes!!
         softWrap: true,
         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
         ),
@@ -64,7 +65,7 @@ class _CELaunchPageState extends State<CELaunchPage> {
   
   Widget _founderHead = paddedLTRB(
      Text(
-        'For the ' + enumToStr( HostPlatforms.values[0] ) + ' Founder',
+        'For the ' + enumToStr( HostPlatforms.values[0] ) + ' Founder',      // XXX Yikes!!
         softWrap: true,
         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
         ),

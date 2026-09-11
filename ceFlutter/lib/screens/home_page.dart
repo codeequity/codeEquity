@@ -148,15 +148,17 @@ class _CEHomeState extends State<CEHomePage> {
 
       List<Widget> _connectBar = [];
       for( var hostPlat in HostPlatforms.values ) {
-         Widget connect = Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[ makeTitleText( appState, "Connect to " + enumToStr( hostPlat ), textWidth, false, 1 ),
-                                Container( width: 10 ),
-                                _addHostAcct( hostPlat ),
-                                Container( width: 10 ),
-               ]);
-         _connectBar.add( connect );
+         if( hostPlat != HostPlatforms.end ) {
+            Widget connect = Row(
+               crossAxisAlignment: CrossAxisAlignment.center,
+               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+               children: <Widget>[ makeTitleText( appState, "Connect to " + enumToStr( hostPlat ), textWidth, false, 1 ),
+                                   Container( width: 10 ),
+                                   _addHostAcct( hostPlat ),
+                                   Container( width: 10 ),
+                  ]);
+            _connectBar.add( connect );
+         }
       }
       
       bool addedMore = false;

@@ -18,6 +18,12 @@ import 'package:ceFlutter/screens/home_page.dart';
 
 void initRepos( context, container, CEProject cep ) async {
    final appState = container.state;
+   assert( cep.hostPlatform == HostPlatforms.GitHub );
+   final textWidth = appState.MIN_PANE_WIDTH * 0.6;
+   
+   void _cancel() {
+      Navigator.of( context ).pop( 'cancel');
+   }
 
    print( "We have ce person " + appState.ceUserId );
    HostAccount? myAcct = null;
@@ -31,8 +37,43 @@ void initRepos( context, container, CEProject cep ) async {
       }
    }
 
+   void _save( List<bool> on ) {
+      print( "ON " + on.toString() );
+   }
+
+   void _cancelPop( context ) {
+      print( "Cancel repo" );
+      Navigator.of( context ).pop();
+   }
+   
+   // XXX verify organization
    if( myAcct != null ) {
       print( "Already have Host Account.  " + myAcct.toString() );
+
+      // refresh - this will update futureCERepos - i.e. those not already part of a CEP
+      await updateGHRepos( context, container );
+      myAcct.hostUser.ceProjectIds.add( cep.ceProjectId );
+      
+      List<String> candidate = [];
+      
+      for( String repo in myAcct.hostUser.futureCEProjects ) {
+         // makeToolTip "Repositories can only belong to one project.  Click to add it."
+         candidate.add( repo );
+      }
+      
+      if( candidate.length == 0 ) {
+         String msg = "No candidate repositories were found.  Candidates must be in the " + cep.hostOrganization + " organization, ";
+         msg       += "and you must be a member of that organization with access to the candidate repository.";
+         Widget body = makeBodyText( appState, msg, textWidth * 3, true, 2 );
+         confirm( context, "No candidates found", msg, _cancel, _cancel, body: body );
+      }
+      else {
+         await showDialog(
+            context: context,
+            builder: (BuildContext context) => CheckboxDialog( appState: appState, header: "Repos", choices: ["Aaaaa", "Bbbbbb"], saveFunc: _save, cancelFunc: _cancelPop ));
+      }
+      
+      // XXX update aws hostUser, ceProject .. note that some of these have already happened
    }
    else {
       print( "No host account yet.  add it" ); 
@@ -53,7 +94,7 @@ void initProject( context, container, CEProject cep ) async {
       print( "HO! " + saveData.toString() + " " + controllers[3]!.text );
 
       // NOTE hostUser does not necessarily exist yet
-      cep.hostPlatform     = saveData[0];
+      cep.hostPlatform     = enumFromStr<HostPlatforms>( saveData[0], HostPlatforms.values );
       cep.ownerCategory    = saveData[1];
       cep.projectMgmtSys   = saveData[2];
       cep.hostOrganization = controllers[3]!.text;
@@ -205,7 +246,7 @@ class _CEAddHostState extends State<CEAddHostPage> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
       assert( appState != null );
-      platMap = ModalRoute.of(context)!.settings.arguments as Map<String,HostPlatforms>;
+      platMap = ModalRoute.of(context)!.settings.arguments as Map<String, HostPlatforms>;
       
       pat = TextEditingController();
       

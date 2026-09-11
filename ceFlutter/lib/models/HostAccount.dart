@@ -41,10 +41,10 @@ class HostAccount {
          );
    }
 
-   String get hostPlatform     => hostUser.hostPlatform;
-   String get hostUserName     => hostUser.hostUserName;
-   String get ceUserId         => hostUser.ceUserId;
-   String get hostUserId       => hostUser.hostUserId;
+   HostPlatforms get hostPlatform     => hostUser.hostPlatform;
+   String        get hostUserName     => hostUser.hostUserName;
+   String        get ceUserId         => hostUser.ceUserId;
+   String        get hostUserId       => hostUser.hostUserId;
 
    List<String> get ceProjectIds     => hostUser.ceProjectIds;
    List<String> get futureCEProjects => hostUser.futureCEProjects;
