@@ -312,6 +312,8 @@ class _CEProfileState extends State<CEProfilePage> {
      Widget cepLink =
         cepId == "-1" ?
         makeTitleText( appState, "No CE Project yet", textWidth, false, 1, fontSize: 14 ) : 
+        // makeTitleText( appState, "<Not finalized - connect host repos>", textWidth, false, 1, fontSize: 14 ) : 
+        // makeTitleText( appState, "<this project needs your host repos>", textWidth, false, 1, fontSize: 14 ) : 
         GestureDetector(
            onTap: () async
            {
@@ -437,8 +439,16 @@ class _CEProfileState extends State<CEProfilePage> {
      // Start a new row for empty ventures.. should resolve quickly (pro user), or be unnoticeable (first timer)
      for( int i = 0; i < emptyVent.length; i += 2 ) {
         List<Widget> row = [];
-        row.add( _makeProjCard( context, "-1", textWidth, ventId: emptyVent[i] ) );
-        if( emptyVent.length > i+1 ) { row.add( _makeProjCard( context, "-1", textWidth, ventId: emptyVent[i+1] )); }
+
+        // is there a CEP without connected repositories here?
+        // XXX doesn't scale well see homePage
+        CEVenture? cev = appState.ceVenture[ emptyVent[i] ];
+        assert( cev != null );
+        CEProject? cep = appState.ceProject.values.firstWhere( (cep) => cep.ceVentureId == cev!.ceVentureId );
+        String cepId = cep != null ? cep.ceProjectId : "-1";
+        row.add( _makeProjCard( context, cepId, textWidth, ventId: emptyVent[i] ) );
+        if( emptyVent.length > i+1 ) { row.add( _makeProjCard( context, cepId, textWidth, ventId: emptyVent[i+1] )); }
+
         ceps.add( Wrap( spacing: appState.MID_PAD, children: row ) );
         ceps.add( spacer );
      }

@@ -27,7 +27,8 @@ void initRepos( context, container, CEProject cep ) async {
 
    print( "We have ce person " + appState.ceUserId );
    HostAccount? myAcct = null;
-   
+
+   // XXX repeated below.. awkward.  
    List<HostAccount>? has = appState.ceHostAccounts[ appState.ceUserId ];
    if( has != null ) {
       for( HostAccount ha in has! ) {
@@ -52,11 +53,22 @@ void initRepos( context, container, CEProject cep ) async {
 
       // refresh - this will update futureCERepos - i.e. those not already part of a CEP
       await updateGHRepos( context, container );
-      myAcct.hostUser.ceProjectIds.add( cep.ceProjectId );
-      
+
+      // refresh myAcct since updateGHRepos created a new object
+      List<HostAccount>? has = appState.ceHostAccounts[ appState.ceUserId ];
+      if( has != null ) {
+         for( HostAccount ha in has! ) {
+            if( ha.hostUser.hostPlatform == cep.hostPlatform ) {
+               myAcct = ha;
+            }
+         }
+      }
+      assert( myAcct != null );
+      myAcct!.hostUser.ceProjectIds.add( cep.ceProjectId );
+
       List<String> candidate = [];
-      
-      for( String repo in myAcct.hostUser.futureCEProjects ) {
+
+      for( String repo in myAcct!.hostUser.futureCEProjects ) {
          // makeToolTip "Repositories can only belong to one project.  Click to add it."
          candidate.add( repo );
       }

@@ -80,14 +80,17 @@ class CheckboxDialog extends StatefulWidget {
 class _CheckboxDialogState extends State<CheckboxDialog> {
    List<bool> _on = [];
 
+   @override
+   void initState() {
+      super.initState();
+      _on = List.filled( widget.choices.length, false );
+   }
+   
   @override
      Widget build(BuildContext context) {
 
      List<Widget> tiles = [];
      for( int i = 0; i < widget.choices.length; i++ ) {
-        if( _on.length > i ) { _on[i] = false; }
-        else                 { _on.add( false ); }
-        
         tiles.add( Container( height: widget.appState.CELL_HEIGHT,
                               child: CheckboxListTile(
                                  value: _on[i],

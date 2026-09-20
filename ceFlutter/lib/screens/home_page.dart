@@ -16,6 +16,7 @@ import 'package:ceFlutter/models/CEProject.dart';
 
 import 'package:ceFlutter/screens/add_host_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
+import 'package:ceFlutter/screens/profile_page.dart';
 import 'package:ceFlutter/screens/activity_panel.dart';
 
 class CEHomePage extends StatefulWidget {
@@ -86,7 +87,7 @@ class _CEHomeState extends State<CEHomePage> {
 
    // If user clicks ceProject, we know ceVenture.
    // If user clicks ceVenture, we may know ceProject .. depends on if there are multiple.
-   Widget _makeChunk( String itemName, String itemId, String partner, { ceVent = false } ) {
+   Widget _makeChunk( String itemName, String itemId, String partner, { ceVent = false, initialized = true } ) {
       final textWidth = appState.screenWidth * .4;
 
       void _setTitle( PointerEvent event )   { setState(() => appState.hoverChunk = ceVent ? "vent " + itemName : itemName ); }
@@ -103,11 +104,11 @@ class _CEHomeState extends State<CEHomePage> {
       return GestureDetector(
          onTap: () async
          {
-            Map<String,int> screenArgs = {"initialPage": 0 };            
+            Map<String,int> screenArgs = {"initialPage": 0 };
             if( ceVent ) {
                appState.selectedCEVenture = itemId;
                setState(() => ceProjectLoading = true );
-
+               
                if( partner != "" ) {
                   appState.selectedCEProject = partner;
                   await reloadCEProject( context, container );
@@ -120,19 +121,27 @@ class _CEHomeState extends State<CEHomePage> {
                screenArgs["initialPage"] = 3;
             }
             else {
-
+               
                appState.selectedCEProject = itemId;
                assert( partner != "" ); 
                appState.selectedCEVenture = partner;
-
+               
                setState(() => ceProjectLoading = true );
                await reloadCEProject( context, container );
                ceProjectLoading = false;
                screenArgs["initialPage"] = 1;
             }
-            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: screenArgs ));
-            confirmedNav( context, container, newPage );
-         },
+            
+            if( initialized ) {
+               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: screenArgs ));
+               confirmedNav( context, container, newPage );
+            }
+            else {
+               Map<String,String> screenArgs = {"id": itemId, "profType": "CEProject" };
+               if( ceVent ) { screenArgs["profType"] = "CEVenture"; }
+               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+               confirmedNav( context, container, newPage );
+            }},
          child: itemTxt
          );
    }
@@ -243,19 +252,25 @@ class _CEHomeState extends State<CEHomePage> {
          chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
       }
       else if( segment == "body" ) {
-         
+
+         // triggers when ventures are found but CEP is either uncreated, or not yet connected to repos for the current user
          if( cev != null ) {
-            chunks.add( _makeChunk( cev.name, cev.ceVentureId, "", ceVent:true, ));
+            // XXX doesn't scale well, see profilePage
+            CEProject? cep = appState.ceProject.values.firstWhere( (cep) => cep.ceVentureId == cev.ceVentureId );
+            String cepId = cep != null ? cep.ceProjectId : "";
+
+            chunks.add( _makeChunk( cev.name, cev.ceVentureId, cepId, ceVent:true, ));
             ventIds.add( cev.ceVentureId );
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-            chunks.add( _makeChunk("<No CodeEquity Project yet>", "-1", cev.ceVentureId ));
+            if( cep != null ) { chunks.add( _makeChunk( cep!.name, cepId, cev.ceVentureId, initialized: false )); }
+            else              { chunks.add( _makeChunk("<No CodeEquity Project yet>", "-1", cev.ceVentureId )); }
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.TINY_PAD;
          }
          else {
             for( final vent in hosta.getVentures( appState) ) {
                List<CEProject> projs = hosta.getCEPsPerVenture( appState, vent.ceVentureId );
-               String pname = projs.length == 1 ? projs[0].ceProjectId : "";
-               chunks.add( _makeChunk( vent.name, vent.ceVentureId, pname, ceVent:true, ));
+               String pid = projs.length == 1 ? projs[0].ceProjectId : "";
+               chunks.add( _makeChunk( vent.name, vent.ceVentureId, pid, ceVent:true, ));
                ventIds.add( vent.ceVentureId );
                chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
                for( final cep in projs ) {

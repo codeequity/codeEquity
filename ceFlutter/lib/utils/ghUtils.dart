@@ -463,6 +463,8 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    
    String newHostA = json.encode( myHostAcct );
    print( newHostA );
+   // XXX update should not always be false.  False sez this is a new addition not an update, so check peqs.
+   //     but this func is called when about to add futureRepos to a new CEP - there will not be peqs at this point.
    String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "false" }';
    await updateDynamo( context, container, postData, "PutHostA" );
 
