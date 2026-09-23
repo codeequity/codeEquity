@@ -411,6 +411,38 @@ Future<String> _getOwnerId( PAT, owner ) async {
    return retId;
 }
 
+// Called when associating a futureGHRepo with a CEProject.  Need the id, finally.  PAT exists.
+// Don't do this until last moment, in case GH changes ids again.
+Future<List<String>> getGHRepoIds( appState, repoNames ) async {
+
+   // Iterate over all known HostAccounts.  One per host.
+   for( HostAccount acct in appState.myHostAccounts ) {
+
+      if( acct.hostPlatform == HostPlatforms.GitHub ) {
+
+         assert( acct.hostUser.hostPAT != null );
+         final PAT = acct.hostUser.hostPAT!;
+         
+         var github = await GitHub(auth: Authentication.withToken( PAT ));
+         await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.hostUserName ); })
+            .catchError((e) {
+                  print( "Could not validate github acct." + e.toString() + " " + PAT + " " + acct.hostUserName );
+                  showToast( "Github validation failed.  Please try again." );
+               });
+         
+         List<String> repos = [];
+         var repoStream =  await github.repositories.listRepositories( type: 'all' );
+         
+         await for (final r in repoStream) {
+            // print( 'Checking Repo: ${r.fullName} ${r.nodeId}' );
+            assert( r.nodeId != null );
+            if( repoNames.contains( r.fullName ) ) { repos.add( r.nodeId! ); }
+         }
+         return repos;
+      }}
+   return [];
+}
+
 // Called when click on assocGH, or refresh projects buttons.
 // Build the association between ceProjects and github repos by finding all repos on github that user has auth on,
 // then associating those with known repos in aws:CEProjects.
@@ -427,10 +459,10 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    List<String> repos = [];
    var repoStream =  await github.repositories.listRepositories( type: 'all' );
    await for (final r in repoStream) {
-      // print( 'Repo: ${r.fullName}' );
+      // print( 'Repo: ${r.fullName} ${r.nodeId}' );
       repos.add( r.fullName );
    }
-   print( "Found GitHub Repos " + repos.toString() );
+   // print( "Found GitHub Repos " + repos.toString() );
    
    // then check which are associated with which ceProjects.  The rest are in futureProjects.
    // XXX do this on the server?  shipping all this data is not scalable
@@ -484,7 +516,7 @@ Future<void> updateGHRepos( context, container ) async {
 
       if( acct.hostPlatform == HostPlatforms.GitHub ) {
 
-         // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
+         // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here
          String hp = enumToStr( HostPlatforms.GitHub );
          var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "$hp" } };
          final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
@@ -540,7 +572,6 @@ Future<bool> associateGithub( context, container, PAT ) async {
          await _buildCEProjectRepos( context, container, PAT, github, patLogin! );
          
          await initMDState( context, container );
-         // appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.ceUserId}"  }' );
       }
    }
    return newAssoc;

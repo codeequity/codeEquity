@@ -7,7 +7,7 @@ import 'package:ceFlutter/models/HostUser.dart';
 // Combines dynamo:CEHostUser with dynamo:CEProjects
 class HostAccount {
    final HostUser hostUser;
-   final Map<String, List<String>> ceProjRepos;   // ceProjectId to list of host repos
+   final Map<String, List<String>> ceProjRepos;   // ceProjectId to list of host repo names
 
 
    HostAccount({required this.hostUser, required this.ceProjRepos});
@@ -53,6 +53,15 @@ class HostAccount {
    
    List<CEProject> getCEPsPerVenture( appState, String cevId ) { return hostUser.getCEPsPerVenture( appState, cevId ); }
 
+   void addRepo( CEProject cep, String repoName ) {
+      if( ceProjRepos[ cep.ceProjectId ] == null ) {
+         ceProjRepos[ cep.ceProjectId ] = [ repoName ];
+      }
+      else {
+         if( !ceProjRepos[ cep.ceProjectId ]!.contains( repoName ) ) { ceProjRepos[ cep.ceProjectId ]!.add( repoName ); }
+      }
+   }
+   
    String toString() {
       String res = hostUser.toString();
       for( var cepId in ceProjectIds ) {

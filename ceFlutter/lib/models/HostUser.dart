@@ -71,7 +71,7 @@ class HostUser {
    }
 
    String toString() {
-      if( hostPAT != null ) {  print( "To String hpat " + hostPAT! ); }
+      if( hostPAT != null ) {  print( "hpat: " + hostPAT! ); }
       String res = "\nHost user : " + hostUserName + " CE user id: " + ceUserId + " " + (hostPAT ?? "-1" ) + " ceProjectIds: ";
       for( var cepId in ceProjectIds ) {
          res += "\nCEProject: " + cepId;

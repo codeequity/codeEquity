@@ -89,16 +89,16 @@ class _CheckboxDialogState extends State<CheckboxDialog> {
   @override
      Widget build(BuildContext context) {
 
+     double height = widget.appState.CELL_HEIGHT - widget.appState.GAP_PAD - widget.appState.TINY_PAD;
      List<Widget> tiles = [];
      for( int i = 0; i < widget.choices.length; i++ ) {
-        tiles.add( Container( height: widget.appState.CELL_HEIGHT,
-                              child: CheckboxListTile(
-                                 value: _on[i],
-                                 onChanged: (bool? newValue) => setState(() { _on[i] = newValue ?? false; } ),
-                                 title: Text(widget.choices[i]),
-                                 tileColor: widget.appState.BACKGROUND,
-                                 selectedTileColor: Colors.white
-                                 )));
+        tiles.add(  CheckboxListTile(
+                       value: _on[i],
+                       onChanged: (bool? newValue) => setState(() { _on[i] = newValue ?? false; } ),
+                       title: makeText( widget.appState, widget.choices[i], widget.appState.MIN_PANE_WIDTH * .7, height, true, 1, tgap: 0),
+                       tileColor: widget.appState.BACKGROUND,
+                       selectedTileColor: Colors.white
+                       ));
      }
 
      Widget body = Material( 
@@ -373,7 +373,7 @@ Future<void> showDropdownDialog(BuildContext context, container, String title, L
 }
 
 // okFunc and cancelFunc need to return strings.  See home_screen:confirm
-Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc, {Widget? body = null } ) async {
+Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc, { Widget? body = null } ) async {
    return await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -389,6 +389,22 @@ Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc
                           key: Key( 'cancelContinue' ),
                           child: new Text("Cancel"),
                           onPressed: cancelFunc )
+                       ]);
+              });
+}
+
+Future<String> justConfirm( BuildContext context, confirmHeader, confirmBody, okFunc, { Widget? body = null } ) async {
+   return await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+                 return AlertDialog(
+                    title: new Text( confirmHeader ),
+                    content: body == null ? new Text( confirmBody ) : body!,
+                    actions: <Widget>[
+                       new TextButton(
+                          key: Key( 'confirmContinue' ),
+                          child: new Text("Continue"),
+                          onPressed: okFunc ),
                        ]);
               });
 }
@@ -637,12 +653,13 @@ Widget makeBodyText( appState, title, width, wrap, lines, { bgap = 0.0, keyTxt =
 }
 
 Widget makeText( appState, title, width, height, wrap, lines,
-                 { lgap = 0, bgap = 0.0, keyTxt = null, fontSize = 14, mux = 1.0, bold = true, iw = false, sw = null, color = Colors.black, italic = false } ) {
-   if( lgap == 0 ) { lgap = mux * appState.GAP_PAD; }
+                 { tgap = -1, lgap = 0, bgap = 0.0, keyTxt = null, fontSize = 14, mux = 1.0, bold = true, iw = false, sw = null, color = Colors.black, italic = false } ) {
+   if( lgap == 0 )  { lgap = mux * appState.GAP_PAD; }
+   if( tgap == -1 ) { tgap = appState.TINY_PAD; }
    
    if( iw ) {
       return Padding(
-         padding: EdgeInsets.fromLTRB( lgap, appState.TINY_PAD, appState.TINY_PAD, bgap),
+         padding: EdgeInsets.fromLTRB( lgap, tgap, appState.TINY_PAD, bgap),
          child: IntrinsicWidth(
             stepWidth: sw,
             key: keyTxt == null ? null : Key( keyTxt ),

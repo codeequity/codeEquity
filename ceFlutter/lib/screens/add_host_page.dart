@@ -14,32 +14,77 @@ import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 
 import 'package:ceFlutter/screens/home_page.dart';
+import 'package:ceFlutter/screens/project_page.dart';
 
 
 void initRepos( context, container, CEProject cep ) async {
    final appState = container.state;
    assert( cep.hostPlatform == HostPlatforms.GitHub );
    final textWidth = appState.MIN_PANE_WIDTH * 0.6;
+
+   List<String> candidate = [];
    
    void _cancel() {
       Navigator.of( context ).pop( 'cancel');
    }
 
    print( "We have ce person " + appState.ceUserId );
-   HostAccount? myAcct = null;
+   HostAccount? myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
 
-   // XXX repeated below.. awkward.  
-   List<HostAccount>? has = appState.ceHostAccounts[ appState.ceUserId ];
-   if( has != null ) {
-      for( HostAccount ha in has! ) {
-         if( ha.hostUser.hostPlatform == cep.hostPlatform ) {
-            myAcct = ha;
+   void _save( List<bool> on ) async {
+      assert( on.length == candidate.length );
+      List<String> repoNames = [];
+      for( int i = 0; i < on.length; i++ ) {
+         if( on[i] ) {
+            print( "Adding " + candidate[i] + " to project." );
+            repoNames.add( candidate[i] );
          }
       }
-   }
+      if( repoNames.length == 0 ) { return; }
 
-   void _save( List<bool> on ) {
-      print( "ON " + on.toString() );
+      // XXX protect vs. non-GH
+      // have name.. get id
+      List<String> repoIds = await getGHRepoIds( appState, repoNames );
+      assert( repoIds.length == repoNames.length );
+
+      // update CEP with new repo(s).  Don't wait.
+      bool added = false;
+      for( int i = 0; i < repoNames.length; i++ ) { added = cep.addRepo( repoNames[i], repoIds[i] ); }
+      if( added ) { writeCEProject( appState, context, container, cep ); } 
+
+      // update CEHostAcct ceProjRepos, CEHostUser: add ceProject, remove futureCEProjects from hostUser
+      // note: list of ceProjects already updated for hostuser, but not yet pushed to aws
+      myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
+      assert( myAcct != null );
+      for( String rn in repoNames ) {
+         myAcct!.hostUser.futureCEProjects.remove( rn );
+         myAcct!.addRepo( cep, rn );
+      }
+      String newHostA = json.encode( myAcct!.hostUser );
+      String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
+      updateDynamo( context, container, postData, "PutHostA" ); // Don't wait
+      
+      // CELinkage?  Under server control.
+      
+      // update appState  myHostAcct is pointer, myAcct is pointer both acting on appState.ceHostAccounts object.  CEP may have been created.
+      assert( myAcct! == appState.ceHostAccounts[ appState.ceUserId ][0] );
+      assert( myAcct! == appState.myHostAccounts[0] );
+      // all objects created on the heap, even from a class method, so this will exist
+      appState.ceProject[ cep.ceProjectId ] = cep;
+      assert( appState.ceProject[ cep.ceProjectId ] == cep );
+
+      // Jump to equity page
+      Navigator.of( context ).pop();  // save dialog
+      appState.selectedCEVenture = cep.ceVentureId;
+      Map<String,int> sa = {"initialPage": 2};
+      MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
+      confirmedNav( context, container, newPage );
+
+      String msg  = "PEQs arrive with a host classification that is the host project name and column in which that issue is located.  ";
+      msg        += "For example, a PEQ issue in your new repository in the Planned column of the Operations project is classified as:  ";
+      msg        += "Operations:Planned:<issueName>.  You can connect host classifications to your Equity Plan by clicking on the Equity categories.";
+      Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH, true, 5 );
+      await justConfirm( context, "Connect the Equity Table and your Host Repository", msg, _cancel, body: body );
    }
 
    void _cancelPop( context ) {
@@ -49,24 +94,15 @@ void initRepos( context, container, CEProject cep ) async {
    
    // XXX verify organization
    if( myAcct != null ) {
-      print( "Already have Host Account.  " + myAcct.toString() );
+      print( "Already have Host Account.  " + myAcct!.toString() );
 
       // refresh - this will update futureCERepos - i.e. those not already part of a CEP
       await updateGHRepos( context, container );
 
       // refresh myAcct since updateGHRepos created a new object
-      List<HostAccount>? has = appState.ceHostAccounts[ appState.ceUserId ];
-      if( has != null ) {
-         for( HostAccount ha in has! ) {
-            if( ha.hostUser.hostPlatform == cep.hostPlatform ) {
-               myAcct = ha;
-            }
-         }
-      }
+      myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
       assert( myAcct != null );
       myAcct!.hostUser.ceProjectIds.add( cep.ceProjectId );
-
-      List<String> candidate = [];
 
       for( String repo in myAcct!.hostUser.futureCEProjects ) {
          // makeToolTip "Repositories can only belong to one project.  Click to add it."
@@ -80,9 +116,10 @@ void initRepos( context, container, CEProject cep ) async {
          confirm( context, "No candidates found", msg, _cancel, _cancel, body: body );
       }
       else {
+         String header = "Check the repos to add";
          await showDialog(
             context: context,
-            builder: (BuildContext context) => CheckboxDialog( appState: appState, header: "Repos", choices: ["Aaaaa", "Bbbbbb"], saveFunc: _save, cancelFunc: _cancelPop ));
+            builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _save, cancelFunc: _cancelPop ));
       }
       
       // XXX update aws hostUser, ceProject .. note that some of these have already happened

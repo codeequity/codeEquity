@@ -18,8 +18,16 @@ class CEProject {
             required this.hostPlatform, required this.hostOrganization, required this.ownerCategory,  required this.projectMgmtSys,
                required this.repositories, required this.hostRepoId});
 
-   dynamic toJson() => { 'CEProjectId': ceProjectId, 'CEVentureId': ceVentureId, 'Name': name, 'Description': description,
-         'HostPlatform': enumToStr( hostPlatform ), 'HostOrganization': hostOrganization, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys }; 
+   dynamic toJson() {
+      List<Map<String, String>> hostRepositories = [];
+      assert( repositories.length == hostRepoId.length );
+      for( int i = 0; i < repositories.length; i++ ) {
+         hostRepositories.add( {"repoName": repositories[i], "repoId": hostRepoId[i] } );
+      }
+      return { 'CEProjectId': ceProjectId, 'CEVentureId': ceVentureId, 'Name': name, 'Description': description,
+            'HostPlatform': enumToStr( hostPlatform ), 'HostOrganization': hostOrganization, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys,
+               'HostParts': { "hostRepositories": hostRepositories }};
+   }
 
    // No CEProject found.  return empty 
    factory CEProject.empty() {
@@ -67,6 +75,18 @@ class CEProject {
          );
    }
 
+   bool addRepo( String repoName, String repoId ) {
+      bool retVal = false;
+      if( repositories.contains( repoName ) || hostRepoId.contains( repoId )) {
+         print( "Repository already present in CEP.  Skipping." );
+      }
+      else {
+         repositories.add( repoName );
+         hostRepoId.add( repoId );
+         retVal = true;
+      }
+      return retVal; 
+   }
    
    String toString() {
       String res = "\n" + name + " (" + ceProjectId + ") " + description;

@@ -47,6 +47,8 @@ class _CEHomeState extends State<CEHomePage> {
 
    late List<String> ventIds;
    
+   List<TextEditingController> controllerPool = [];
+
    @override
    void initState() {
       super.initState();
@@ -57,6 +59,7 @@ class _CEHomeState extends State<CEHomePage> {
 
    @override
    void dispose() {
+      controllerPool.forEach( (c) => c.dispose() );
       super.dispose();
       ventIds = [];
    }
@@ -84,7 +87,43 @@ class _CEHomeState extends State<CEHomePage> {
          });
    }
 
+   void _addControllerPool( int ith ) {
+      assert( controllerPool.length >= ith );
+      if( controllerPool.length > ith ) { return; }
+      else {
+         controllerPool.add( new TextEditingController() );
+      }
+   }
 
+   void _cancel() {
+      Navigator.of( context ).pop( 'Cancel' );
+   }
+
+   Future<String> _chooseProject() async {
+      Future<String> _select( List<TextEditingController> cont ) async {
+         assert( cont.length == 1 );
+         String cep = cont[0].text;
+         final cepEntry = appState.ceProject.entries.where( ( entry ) => entry.value.name == cep ).toList();
+         assert( cepEntry.length <= 1 );
+         if( cepEntry.length < 1 ) {
+            showToast( "Project not found.  Please re-enter the name of the Project." );
+            return "";
+         }
+         String cepId = cepEntry[0].key;
+         assert( appState.ceProject[ cepId ] != null );
+         Navigator.of( context ).pop( cepId );
+         initRepos( context, container, appState.ceProject[ cepId ]! );
+         return "";
+      }
+      
+      String item = "Project name";
+      String hint = "Type \'Project name\' in the search bar if you need a hint";  // XXX
+      _addControllerPool( 0 );      
+      var retVal = await editList( context, appState, "Do it", [item], controllerPool.sublist(0, 1), [hint], () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
+      return retVal;
+   }
+
+   
    // If user clicks ceProject, we know ceVenture.
    // If user clicks ceVenture, we may know ceProject .. depends on if there are multiple.
    Widget _makeChunk( String itemName, String itemId, String partner, { ceVent = false, initialized = true } ) {
@@ -104,44 +143,50 @@ class _CEHomeState extends State<CEHomePage> {
       return GestureDetector(
          onTap: () async
          {
-            Map<String,int> screenArgs = {"initialPage": 0 };
-            if( ceVent ) {
-               appState.selectedCEVenture = itemId;
-               setState(() => ceProjectLoading = true );
-               
-               if( partner != "" ) {
-                  appState.selectedCEProject = partner;
-                  await reloadCEProject( context, container );
+            // XXX clean this
+            // Have futureCEProject.  want to pop an option to add to a CEP.  
+            if( itemId == "" && partner == "" ) {
+               await confirm( context, "Add repo to CE Project", "Would you like to add this repo to a CE Project?  Press confirm to do so.", _chooseProject, _cancel );
+            }
+            else {
+               Map<String,int> screenArgs = {"initialPage": 0 };
+               if( ceVent ) {
+                  appState.selectedCEVenture = itemId;
+                  setState(() => ceProjectLoading = true );
+                  
+                  if( partner != "" ) {
+                     appState.selectedCEProject = partner;
+                     await reloadCEProject( context, container );
+                  }
+                  else {
+                     await reloadCEVentureOnly( context, container );
+                  }
+                  ceProjectLoading = false;
+                  
+                  screenArgs["initialPage"] = 3;
                }
                else {
-                  await reloadCEVentureOnly( context, container );
+                  
+                  appState.selectedCEProject = itemId;
+                  assert( partner != "" ); 
+                  appState.selectedCEVenture = partner;
+                  
+                  setState(() => ceProjectLoading = true );
+                  await reloadCEProject( context, container );
+                  ceProjectLoading = false;
+                  screenArgs["initialPage"] = 1;
                }
-               ceProjectLoading = false;
                
-               screenArgs["initialPage"] = 3;
-            }
-            else {
-               
-               appState.selectedCEProject = itemId;
-               assert( partner != "" ); 
-               appState.selectedCEVenture = partner;
-               
-               setState(() => ceProjectLoading = true );
-               await reloadCEProject( context, container );
-               ceProjectLoading = false;
-               screenArgs["initialPage"] = 1;
-            }
-            
-            if( initialized ) {
-               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: screenArgs ));
-               confirmedNav( context, container, newPage );
-            }
-            else {
-               Map<String,String> screenArgs = {"id": itemId, "profType": "CEProject" };
-               if( ceVent ) { screenArgs["profType"] = "CEVenture"; }
-               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-               confirmedNav( context, container, newPage );
-            }},
+               if( initialized ) {
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: screenArgs ));
+                  confirmedNav( context, container, newPage );
+               }
+               else {
+                  Map<String,String> screenArgs = {"id": itemId, "profType": "CEProject" };
+                  if( ceVent ) { screenArgs["profType"] = "CEVenture"; }
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+                  confirmedNav( context, container, newPage );
+               }}},
          child: itemTxt
          );
    }

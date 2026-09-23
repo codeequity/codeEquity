@@ -246,6 +246,7 @@ Future<void> initMDState( context, container ) async {
       if( dt != DocType.end ) { agmtType.add( enumToStr( dt ) ); }
    }
 
+   // NOTE all fetching is from static methods that create on the heap.  references will persist
    // NOTE a founder approving an application must trigger a host account update
    // NOTE Could push fetchCEPeople to reloadCEProject.  But, dynamo table does not carry that info, and constructing a
    //      a list of cep-specific names then fetching that is likely to provide minimal gains, if any.  Leave it here.
@@ -309,6 +310,18 @@ Future<void> updateHostAccts( context, container ) async {
    appState.myHostAccounts = appState.ceHostAccounts[uid];
 }
 
+HostAccount? getPlatformAccount( List<HostAccount>? accts, HostPlatforms hplat ) {
+   HostAccount? platAcct = null;
+   if( accts != null ) {
+      for( HostAccount ha in accts! ) {
+         if( ha.hostUser.hostPlatform == hplat ) {
+            platAcct = ha;
+            break;
+         }
+      }
+   }
+   return platAcct;
+}
 
 // appState.selectedHostUIDs is ceUID + UNASSIGN_USER
 // the unassigned user tag is useful to grab PEQs that have yet to be ingested.
