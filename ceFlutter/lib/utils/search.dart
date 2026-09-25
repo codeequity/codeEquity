@@ -98,8 +98,8 @@ class _CESearchState extends State<CESearch> {
       }
       else if( obj is CEProject ) {
          CEProject p = obj as CEProject;
-         objName     = p.ceProjectId;
-         objDetail   = "a CodeEquity project on " + enumToStr( p.hostPlatform ) + ": " + p.description;
+         objName     = p.name;
+         objDetail   = "A CodeEquity Project hosted at " + enumToStr( p.hostPlatform ) + ": " + p.description;
       }
       else {
          print( "Error.  Search object is not recognized. " );
@@ -308,6 +308,7 @@ class _getPossibilities {
       List<CEProject>? filteredCEProjs = appState.ceProject.values.where( (CEProject p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
       List<CEVenture>? filteredCEVents = appState.ceVenture.values.where( (CEVenture v) => ( v.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
       List<CEVenture>? namedCEVents    = appState.ceVenture.values.where( (CEVenture v) => ( "venture names".contains( query.toLowerCase() ))).toList();
+      List<CEProject>? namedCEProjs    = appState.ceProject.values.where( (CEProject p) => ( "project names".contains( query.toLowerCase() ))).toList();
       
       List<PEQ> filteredPeqs = [];
       for( final ceUID in appState.cePeople.keys ) {
@@ -315,13 +316,14 @@ class _getPossibilities {
             filteredPeqs.addAll( appState.userPeqs[ ceUID ].where( (PEQ p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList() );
          }
       }                              
-
+      
       // Collate
       List<dynamic> res = [];
 
       // There are many many better ways to do this.  For now, prioritize people, then projects.
       // Alphabetical to support testing until a better preference metric is available.
       res.addAll( sortFilter( namedCEVents ?? [] ));
+      res.addAll( sortFilter( namedCEProjs ?? [] ));
       res.addAll( sortFilter( filteredCEPeeps ?? [] ) );
       res.addAll( sortFilter( filteredCEVents ?? []) );
       res.addAll( sortFilter( filteredCEProjs ?? []) );

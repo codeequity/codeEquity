@@ -467,7 +467,7 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    // then check which are associated with which ceProjects.  The rest are in futureProjects.
    // XXX do this on the server?  shipping all this data is not scalable
    final ceps = await fetchCEProjects( context, container );
-   print( ceps.toString() );
+   // print( ceps.toString() );
    
    List<String> futProjs = [];
    List<String> ceProjs  = [];
@@ -494,7 +494,7 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    HostAccount myHostAcct = new HostAccount( hostUser: hostUser, ceProjRepos: ceProjRepos );
    
    String newHostA = json.encode( myHostAcct );
-   print( newHostA );
+   // print( newHostA );
    // XXX update should not always be false.  False sez this is a new addition not an update, so check peqs.
    //     but this func is called when about to add futureRepos to a new CEP - there will not be peqs at this point.
    String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "false" }';
@@ -521,7 +521,7 @@ Future<void> updateGHRepos( context, container ) async {
          var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "$hp" } };
          final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
 
-         print( "UpdateGHRepo has PAT " + PAT.toString() );
+         // print( "UpdateGHRepo has PAT " + PAT.toString() );
          
          var github = await GitHub(auth: Authentication.withToken( PAT ));
          await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.hostUserName ); })

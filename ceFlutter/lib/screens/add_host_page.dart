@@ -17,7 +17,7 @@ import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
 
 
-void initRepos( context, container, CEProject cep ) async {
+void initRepos( context, container, CEProject cep, { reposLoadedCallback = null } ) async {
    final appState = container.state;
    assert( cep.hostPlatform == HostPlatforms.GitHub );
    final textWidth = appState.MIN_PANE_WIDTH * 0.6;
@@ -94,15 +94,18 @@ void initRepos( context, container, CEProject cep ) async {
    
    // XXX verify organization
    if( myAcct != null ) {
-      print( "Already have Host Account.  " + myAcct!.toString() );
+      // print( "Already have Host Account.  " + myAcct!.toString() );
+      print( "Already have Host Account.  " );
 
       // refresh - this will update futureCERepos - i.e. those not already part of a CEP
       await updateGHRepos( context, container );
+      if( reposLoadedCallback != null ) { reposLoadedCallback(); }
 
       // refresh myAcct since updateGHRepos created a new object
       myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
       assert( myAcct != null );
-      myAcct!.hostUser.ceProjectIds.add( cep.ceProjectId );
+      // May be simply adding a repo
+      if( !myAcct!.hostUser.ceProjectIds.contains( cep.ceProjectId )) { myAcct!.hostUser.ceProjectIds.add( cep.ceProjectId ); }
 
       for( String repo in myAcct!.hostUser.futureCEProjects ) {
          // makeToolTip "Repositories can only belong to one project.  Click to add it."
@@ -121,8 +124,6 @@ void initRepos( context, container, CEProject cep ) async {
             context: context,
             builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _save, cancelFunc: _cancelPop ));
       }
-      
-      // XXX update aws hostUser, ceProject .. note that some of these have already happened
    }
    else {
       print( "No host account yet.  add it" ); 

@@ -111,15 +111,16 @@ class _CEHomeState extends State<CEHomePage> {
          }
          String cepId = cepEntry[0].key;
          assert( appState.ceProject[ cepId ] != null );
-         Navigator.of( context ).pop( cepId );
+         Navigator.of( context ).pop( cepId ); // add? popup
+         Navigator.of( context ).pop( cepId ); // select popup
          initRepos( context, container, appState.ceProject[ cepId ]! );
          return "";
       }
       
       String item = "Project name";
       String hint = "Type \'Project name\' in the search bar if you need a hint";  // XXX
-      _addControllerPool( 0 );      
-      var retVal = await editList( context, appState, "Do it", [item], controllerPool.sublist(0, 1), [hint], () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
+      _addControllerPool( 0 );
+      var retVal = await editList( context, appState, "Select the CE Project", [item], controllerPool.sublist(0, 1), [hint], () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
       return retVal;
    }
 
@@ -146,6 +147,7 @@ class _CEHomeState extends State<CEHomePage> {
             // XXX clean this
             // Have futureCEProject.  want to pop an option to add to a CEP.  
             if( itemId == "" && partner == "" ) {
+               print( "XXX 1 or 2" );
                await confirm( context, "Add repo to CE Project", "Would you like to add this repo to a CE Project?  Press confirm to do so.", _chooseProject, _cancel );
             }
             else {

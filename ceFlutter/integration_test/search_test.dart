@@ -96,18 +96,14 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
      await pumpSettle( tester, 2, verbose: true );
      await pumpSettle( tester, 2, verbose: true );
    */
-   
+
+   // Project Names query contains 'c', so add projs at top
+   expect( find.text(BS_PROJ_NAME), findsOneWidget );
+   expect( find.text(CEAL_PROJ_NAME), findsNWidgets(2) );
+   expect( find.text(CEMD_PROJ_NAME), findsNWidgets(2) );
+   expect( find.text(CESE_PROJ_NAME), findsNWidgets(2) );
    expect( find.text('builderCE'), findsOneWidget );
    expect( find.text('ceServer'), findsOneWidget );
-   expect( find.text('connieTester'), findsOneWidget );
-   expect( find.text('rmusick2000'), findsOneWidget );
-   expect( find.text(BS_VENT_NAME), findsOneWidget );
-   expect( find.text(CEAL_VENT_NAME), findsNWidgets(2) );
-   expect( find.text(CEMD_VENT_NAME), findsNWidgets(2) );
-   expect( find.text(CESE_VENT_NAME), findsNWidgets(2) );
-   // Don't get here with detail
-   // expect( find.text(GB_PROJ_ID), findsOneWidget );
-   // expect( find.text(CE_PROJ_ID), findsNWidgets(1) );
 
    await dismiss( tester );
    return true;
@@ -140,10 +136,10 @@ Future<bool> validateCO( WidgetTester tester, Finder search ) async {
    // sometimes integration test gets 1, sometimes 2.. never 2 on screen
    // if findsatleast 1, then all were found given screen length limits
    expect( find.text('connieTester'), findsAtLeast(1) );  
-   expect( find.text(BS_PROJ_ID), findsOneWidget );
-   expect( find.text(CEAL_PROJ_ID), findsNWidgets(1) );
-   expect( find.text(CEMD_PROJ_ID), findsNWidgets(1) );
-   expect( find.text(CESE_PROJ_ID), findsNWidgets(1) );
+   expect( find.text(BS_VENT_NAME), findsNWidgets(2) );
+   expect( find.text(CEAL_VENT_NAME), findsAtLeast(1) );
+   expect( find.text(CEMD_VENT_NAME), findsAtLeast(1) );
+   expect( find.text(CESE_VENT_NAME), findsAtLeast(1) );
    expect( find.text(CE_VENT_NAME), findsAtLeast(1) );
    expect( find.text(GB_VENT_NAME), findsAtLeast(1) );
    // expect( find.text('CT Blast X'), findsAtLeast(1) );
@@ -161,8 +157,8 @@ Future<bool> validateCON( WidgetTester tester, Finder search ) async {
    await tester.pumpAndSettle();
 
    expect( find.text('connieTester'), findsAtLeast(1) );
-   expect( find.text(CEMD_PROJ_ID), findsAtLeast(1) );
-   expect( find.text(GB_PROJ_ID), findsAtLeast(1) );
+   expect( find.text(CEMD_PROJ_NAME), findsAtLeast(1) );
+   expect( find.text(GB_PROJ_NAME), findsAtLeast(1) );
 
    await dismiss( tester );
    return true;
@@ -180,14 +176,10 @@ Future<bool> validateCONT( WidgetTester tester, Finder search ) async {
    expect( find.text('connieTester'), findsNothing );
    expect( find.text('builderCE'), findsNothing );
    expect( find.text('rmusick2000'), findsNothing );
-   expect( find.text(CESE_PROJ_NAME), findsOneWidget );
-   expect( find.text(CEAL_PROJ_NAME), findsOneWidget );
-   expect( find.text(GB_PROJ_ID), findsNothing );
-   expect( find.text(CE_PROJ_NAME), findsNWidgets(1) ); // depending on what is 'seen', 1 or 3
-   expect( find.text(CEMD_PROJ_NAME), findsOneWidget );
-   expect( find.text(BS_PROJ_ID), findsNothing );
    expect( find.text('AssignTest'), findsNothing );
    expect( find.text('CT Blast X'), findsNothing );
+   expect( find.text(CEMD_PROJ_NAME), findsAtLeast(1) );  // LHS
+   expect( find.text(GB_PROJ_NAME), findsNothing );
 
    await dismiss( tester );
    return true;
@@ -330,10 +322,8 @@ Future<bool> validateProjGarlic( WidgetTester tester ) async {
    expect( txt, findsOneWidget );
    txt = find.text( 'Venture Equity Plan PEQs:' );
    expect( txt, findsOneWidget );
-   txt = find.text( '    Tasked out:' );
+   txt = find.byKey( Key( 'Build Initial Equity Plan' ));
    expect( txt, findsOneWidget );
-   txt = find.text( '0%' );
-   expect( txt, findsNWidgets(3) );
 
    txt = find.text( 'Host Platform: GitHub' );
    expect( txt, findsOneWidget );
@@ -429,7 +419,7 @@ Future<bool> validateCEP( WidgetTester tester ) async {
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
 
-   await tester.tap( find.text('GarlicBeer_38fl0hlsjs') );
+   await tester.tap( find.text('Garlic Beer') );
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
    await validateProjGarlic( tester );

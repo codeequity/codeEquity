@@ -84,6 +84,7 @@ class _CEProfileState extends State<CEProfilePage> {
    
    late bool loadingData;   
    late bool updatedPeqTable;
+   late bool loadingRepos;
 
    List<TextEditingController> controllerPool = [];
    
@@ -92,8 +93,9 @@ class _CEProfileState extends State<CEProfilePage> {
       super.initState();
       collabPeqTable    = [];
       displayedPeqTable = [];
-      loadingData      = true;
+      loadingData       = true;
       updatedPeqTable   = false;
+      loadingRepos      = false;
   }
 
 
@@ -1054,6 +1056,8 @@ class _CEProfileState extends State<CEProfilePage> {
      List<Widget> repoWid = [spacer];
 
      // print( "MPB " + loadingData.toString() + " " + (screenArgs["ventId"] ?? "noVent") );
+
+     _doneLoading() { setState(() => loadingRepos = false ); }
              
      if( !loadingData ) {
         assert( appState.ceProject != {} );
@@ -1067,8 +1071,19 @@ class _CEProfileState extends State<CEProfilePage> {
            else         { repoWid.add( makeTitleText( appState, "   " + cep.repositories[i] + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 )); }
         }
         if( cep.repositories.length == 0 ) {
-           repoWid = [ miniSpacer,
-                       Wrap( children: [spacer, makeActionButtonFixed( appState, "Add Code Repos", lhsFrameMaxWidth / 2.0, () => initRepos( context, container, cep )) ]) ];
+           if( loadingRepos ) {
+              double spinSize = appState.CELL_HEIGHT * .8;
+              repoWid = [ miniSpacer,
+                          Wrap( children: [ spacer, Container( width: spinSize, height: spinSize, child: CircularProgressIndicator() )] )];
+           }
+           else {
+              repoWid = [ miniSpacer,
+                          Wrap( children: [spacer, makeActionButtonFixed( appState, "Add Code Repos", lhsFrameMaxWidth / 2.0, () {
+                                      initRepos( context, container, cep, reposLoadedCallback: _doneLoading );
+                                      print( 'Loading repos true' );
+                                      setState(() => loadingRepos = true );
+                                   }) ]) ];
+           }
         }
 
         // CEProject Collabs
