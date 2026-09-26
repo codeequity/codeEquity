@@ -114,16 +114,6 @@ class _CEProfileState extends State<CEProfilePage> {
      return wrapper;
   }
 
-
-  // XXX dup activityPanel
-  void _addControllerPool( int ith ) {
-     assert( controllerPool.length >= ith );
-     if( controllerPool.length > ith ) { return; }
-     else {
-        controllerPool.add( new TextEditingController() );
-     }
-  }
-
   
   // if show/alert dialog needs dynamic updates, need to use statefulbuilder or statefulWidget
   void popMRScroll( BuildContext context, scrollHeader, ceUserId, ceps, cepIds, dismissFunc, textWidth ) {
@@ -786,7 +776,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
      items.add( "Name    " );
      hints.add( prime.name == "" ? "(No name yet)" : prime.name );
-     _addControllerPool(0);
+     addControllerPool( controllerPool, 0 );
 
      items.add( "Description" );
      if( prime is CEVenture ) {
@@ -797,13 +787,13 @@ class _CEProfileState extends State<CEProfilePage> {
         if( prime.description == null || prime.description == "" ) { hints.add( "Describe your project in one short sentence" ); }
         else { hints.add( prime.description! ); }
      }
-     _addControllerPool(1);
+     addControllerPool( controllerPool, 1 );
 
      if( prime is CEVenture ) {
         items.add( "Website" );
         if( prime.web == null || prime.web == "" ) { hints.add( "http://www.yourVenture.org" ); }
         else{ hints.add( prime.web! ); }
-        _addControllerPool(2);
+        addControllerPool( controllerPool, 2 );
      }
 
      editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), _cancel, null );
@@ -1079,7 +1069,7 @@ class _CEProfileState extends State<CEProfilePage> {
            else {
               repoWid = [ miniSpacer,
                           Wrap( children: [spacer, makeActionButtonFixed( appState, "Add Code Repos", lhsFrameMaxWidth / 2.0, () {
-                                      initRepos( context, container, cep, reposLoadedCallback: _doneLoading );
+                                      initCEPRepos( context, container, cep, reposLoadedCallback: _doneLoading );
                                       print( 'Loading repos true' );
                                       setState(() => loadingRepos = true );
                                    }) ]) ];
@@ -1119,12 +1109,14 @@ class _CEProfileState extends State<CEProfilePage> {
      List<Widget> platData = [];
      platData.add( makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ) );
      platData.add( makeTitleText( appState, "Host Platform: " + enumToStr( cep.hostPlatform ), textWidth, false, 1, fontSize: 18 ) );
+     addControllerPool( controllerPool, 0 );
      if( cep.hostPlatform == HostPlatforms.end ) {
         platData.add( miniSpacer );
-        platData.add( Wrap( children: [spacer, makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0, () => initProject( context, container, cep ))
+        platData.add( Wrap( children: [spacer, makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0, () => initProject( context, container, cep, controllerPool.sublist(0, 1)))
                                ]));
      }
      else {
+        platData.add( makeTitleText( appState, "Organization: " +  cep.hostOrganization, textWidth, false, 1 ) );
         platData.add( makeTitleText( appState, "Project management system:" , textWidth, false, 1 ) );
         platData.add( makeTitleText( appState, "   " + cep.projectMgmtSys , textWidth, false, 1 ) );
         platData.add( makeTitleText( appState, "Repositories:", textWidth, false, 1 ) );

@@ -411,14 +411,6 @@ class _CEActivityState extends State<CEActivityPanel> {
       return subTasks;
    }
 
-   void _addControllerPool( int ith ) {
-      assert( controllerPool.length >= ith );
-      if( controllerPool.length > ith ) { return; }
-      else {
-         controllerPool.add( new TextEditingController() );
-      }
-   }
-
    Future<String> _chooseVenture( String msg, { Person? cePeep = null, DocType docType = DocType.end }) async {
       String _select( List<TextEditingController> cont ) {
          assert( cont.length == 1 );
@@ -443,7 +435,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       
       String item = "Venture name";
       String hint = "Type \'Venture name\' in the search bar if you need a hint";
-      _addControllerPool( 0 );      
+      addControllerPool( controllerPool, 0 );      
       var retVal = await editList( context, appState, msg, [item], controllerPool.sublist(0, 1), [hint], () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
       return retVal;
    }
@@ -532,7 +524,7 @@ class _CEActivityState extends State<CEActivityPanel> {
          for( final entry in box.values.entries ) {
             item.add( entry.key );
             hint.add( entry.value );
-            _addControllerPool( ith );
+            addControllerPool( controllerPool, ith );
             ith++;
          }
          

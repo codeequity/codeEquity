@@ -2,8 +2,13 @@ import 'dart:convert';  // json encode/decode
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:collection/collection.dart';  // firstWhereOrNull
+
+import 'package:ceFlutter/screens/project_page.dart';
+import 'package:ceFlutter/screens/add_host_page.dart';
 
 // This package is currently used only for authorization.  Github has deprecated username/passwd auth, so
 // authentication is done by personal access token.  The user model and repo service in this package are too
@@ -443,7 +448,161 @@ Future<List<String>> getGHRepoIds( appState, repoNames ) async {
    return [];
 }
 
-// Called when click on assocGH, or refresh projects buttons.
+Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback ) async {
+   final appState = container.state;
+   assert( cep.hostPlatform == HostPlatforms.GitHub );
+   final textWidth = appState.MIN_PANE_WIDTH * 0.6;
+
+   List<String> candidate = [];
+
+   // NOTE: having local _cancel simplifies access to context, thus calling method in buttons
+   void _cancel() { Navigator.of( context ).pop( 'cancel'); }
+
+   print( "We have ce person " + appState.ceUserId );
+   HostAccount? myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
+
+   // NOTE CELinkage is under server control.
+   void _save( List<bool> on ) async {
+      assert( on.length == candidate.length );
+      List<String> repoNames = [];
+      for( int i = 0; i < on.length; i++ ) {
+         if( on[i] ) {
+            print( "Adding " + candidate[i] + " to project." );
+            repoNames.add( candidate[i] );
+         }
+      }
+      if( repoNames.length == 0 ) { return; }
+
+      // have name.. get id
+      List<String> repoIds = await getGHRepoIds( appState, repoNames );
+      assert( repoIds.length == repoNames.length );
+
+      // update CEP with new repo(s).  Don't wait.
+      bool added = false;
+      for( int i = 0; i < repoNames.length; i++ ) { added = cep.addRepo( repoNames[i], repoIds[i] ); }
+      if( added ) { writeCEProject( appState, context, container, cep ); } 
+
+      // update hostAccount
+      myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
+      assert( myAcct != null );
+      for( String rn in repoNames ) {
+         myAcct!.hostUser.futureCEProjects.remove( rn );
+         myAcct!.addRepo( cep, rn );
+      }
+      String newHostA = json.encode( myAcct!.hostUser );
+      String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
+      updateDynamo( context, container, postData, "PutHostA" ); // Don't wait
+      
+      // all objects created on the heap, even from within a class method
+      // update appState  myHostAcct is pointer, myAcct is pointer both acting on appState.ceHostAccounts object.  CEP may have been created.
+      assert( myAcct! == appState.ceHostAccounts[ appState.ceUserId ][0] );
+      assert( myAcct! == appState.myHostAccounts[0] );
+      appState.ceProject[ cep.ceProjectId ] = cep;
+      assert( appState.ceProject[ cep.ceProjectId ] == cep );
+
+      // Jump to equity page
+      Navigator.of( context ).pop();  // save dialog
+      appState.selectedCEVenture = cep.ceVentureId;
+      Map<String,int> sa = {"initialPage": 2};
+      MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
+      confirmedNav( context, container, newPage );
+
+      String msg  = "PEQs arrive with a host classification that is the host project name and column in which that issue is located.  ";
+      msg        += "For example, a PEQ issue in your new repository in the Planned column of the Operations project is classified as:  ";
+      msg        += "Operations:Planned:<issueName>.  You can connect host classifications to your Equity Plan by clicking on the Equity categories.";
+      msg        += "Doing so can make your stats in the Peq Summary tab more informative.";
+      Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH, true, 6 );
+      await justConfirm( context, "Connect the Equity Table and your Host Repository", msg, _cancel, body: body );
+   }
+
+   if( myAcct != null ) {
+      print( "Already have Host Account.  " );
+
+      // refresh - this will update futureCERepos - i.e. those not already part of a CEP.  
+      // NOTE initRepo is only called within the context of a given CEP.  So, orgs must match.
+      // NOTE GH repo names are <owner>/<name>, and organizations own repos.
+      await updateGHRepos( context, container );
+      if( reposLoadedCallback != null ) { reposLoadedCallback(); }
+
+      // refresh myAcct since updateGHRepos created a new object
+      myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
+      assert( myAcct != null );
+      // May be simply adding a repo
+      if( !myAcct!.hostUser.ceProjectIds.contains( cep.ceProjectId )) { myAcct!.hostUser.ceProjectIds.add( cep.ceProjectId ); }
+
+      for( String repo in myAcct!.hostUser.futureCEProjects ) {
+         List<String> parts = repo.split( '/' );
+         assert( parts.length == 2 );
+         if( parts[0] == cep.hostOrganization ) { candidate.add( repo ); }
+      }
+      
+      if( candidate.length == 0 ) {
+         String msg = "No candidate repositories were found.  Candidates must be in the " + cep.hostOrganization + " organization, ";
+         msg       += "and you must be a member of that organization with access to the candidate repository.";
+         Widget body = makeBodyText( appState, msg, textWidth * 3, true, 2 );
+         confirm( context, "No candidates found", msg, _cancel, _cancel, body: body );
+      }
+      else {
+         String header = "Check the repos to add";
+         await showDialog(
+            context: context,
+            builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _save, cancelFunc: _cancel ));
+      }
+   }
+   else {
+      print( "No host account yet.  add it" );
+      MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEAddHostPage(), settings: RouteSettings( arguments: { "hostPlat": cep.hostPlatform } ));
+      confirmedNav( context, container, newPage );
+   }
+   
+}
+
+
+Future<void> initGHProject( context, container, CEProject cep, TextEditingController cont ) async {
+   void _cancel() { Navigator.of( context ).pop(); }
+
+   List<TextEditingController?> controllers = [ null, null, null, cont ];
+
+   void _save( List<String> saveData ) async {
+      assert( controllers.length == 4 && controllers[3] != null );
+      print( "HO! " + saveData.toString() + " " + controllers[3]!.text );
+
+      // NOTE hostUser does not necessarily exist yet
+      cep.hostPlatform     = enumFromStr<HostPlatforms>( saveData[0], HostPlatforms.values );
+      cep.ownerCategory    = saveData[1];
+      cep.projectMgmtSys   = saveData[2];
+      cep.hostOrganization = controllers[3]!.text;
+
+      String cepS = json.encode( cep );
+      String postData = '{ "Endpoint": "UpdateCEP", "ceProject": $cepS }';
+      await updateDynamo( context, container, postData, "UpdateCEP" );
+      
+      Navigator.of( context ).pop();
+   }
+   
+   assert( cep.ceProjectId != "" );
+   assert( cep.ceVentureId != "" );
+   final appState = container.state;
+
+   // Note ghOptions plus controllers means every header will either be paired with a list of options, or a textEditingController
+   String       popupTitle       = "Describe where and how your code is hosted:";
+   List<String> header           = ["Host platform", "Owner category", "Host project management version", "Organization name on host"];
+   List<bool>   dropDown         = [ true,           true,             true,                              false ];
+   List<List<String>> ghOptions  = [["GitHub"],
+                                    ["Organization", "Individual"],
+                                    ["GH Version 2", "GH Classic" ],
+                                    []   ];
+   List<String> curVals          = ["", "", "", "<Elgoog Inc>"];
+   List<String> ghToolTips       = ["CodeEquity is working to expand to other hosting platforms",
+                                    "Individual owners are no longer fully supported on GitHub, nor on CodeEquity",
+                                    "GH Classic is legacy on GitHub, no longer supported on CodeEquity",
+                                    "Enter the name of the host organization that owns your code repositories" ];
+   
+   await showDropdownDialog( context, container, popupTitle, header, dropDown, ghOptions, curVals, ghToolTips, controllers, _save, _cancel );
+}
+
+
+// Called when click on assocGH, or refresh projects buttons.  Some calls require filtering repo by hostOrg
 // Build the association between ceProjects and github repos by finding all repos on github that user has auth on,
 // then associating those with known repos in aws:CEProjects.
 Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) async {
@@ -457,9 +616,9 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-organization-repositories
    // This gets all repos the user is a member of, even if not on top list.  
    List<String> repos = [];
+
    var repoStream =  await github.repositories.listRepositories( type: 'all' );
    await for (final r in repoStream) {
-      // print( 'Repo: ${r.fullName} ${r.nodeId}' );
       repos.add( r.fullName );
    }
    // print( "Found GitHub Repos " + repos.toString() );
@@ -505,8 +664,7 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
 }
 
 
-// Called upon refreshProjects button press.. maybe someday on signin (via app_state_container:finalizeUser)
-// XXX This needs to check if PAT is known, query.
+// Called upon refreshProjects button press, initRepos
 // XXX update docs, pat-related
 Future<void> updateGHRepos( context, container ) async {
    final appState  = container.state;
@@ -531,12 +689,10 @@ Future<void> updateGHRepos( context, container ) async {
                });
          
          await _buildCEProjectRepos( context, container, PAT, github, acct.hostUserName );
-
       }
    }
 
    await initMDState( context, container );
-   // appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.ceUserId}"  }' );
 }
 
 

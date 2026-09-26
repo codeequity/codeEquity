@@ -1,5 +1,6 @@
 import 'package:ceFlutter/utils/ceUtils.dart';
 
+// hmm... is this really the best spot?
 enum HostPlatforms { GitHub, end }
 
 class CEProject {

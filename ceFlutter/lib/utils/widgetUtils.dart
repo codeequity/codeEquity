@@ -111,7 +111,7 @@ class _CheckboxDialogState extends State<CheckboxDialog> {
      
      List<Widget> buttons = [];
      buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Save"), onPressed: () => Function.apply( widget.saveFunc, [_on] )));
-     buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: () => Function.apply( widget.cancelFunc, [context] )));
+     buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: widget.cancelFunc ));
      
      return AlertDialog(
         scrollable: true,
@@ -328,9 +328,11 @@ Future<void> showDropdownDialog(BuildContext context, container, String title, L
    for( int i = 0; i < header.length; i++ ) {
       if( isDD[i] ) {
          assert( ddOptions[i].length > 0 );
+         String initSel = ddOptions[i][0];
          List<DropdownMenuEntry<String>> entries = [];
          for( String option in ddOptions[i]) {
             entries.add( DropdownMenuEntry( value: option, label: option ) );
+            if( hints[i] == option ) { initSel = hints[i]; }
          }
          saveData.add( entries[0].value );
          rows.add(
@@ -348,9 +350,11 @@ Future<void> showDropdownDialog(BuildContext context, container, String title, L
       else {
          assert( controllers[i] != null );
          saveData.add( "" );
+         String hint = hints[i] == "" ? header[i] : hints[i];
+         bool   edit = hints[i] == "" ? false     : true;
          rows.add(
             Wrap( children: [ makeToolTip( makeTableText( appState, header[i], appState.MIN_PANE_WIDTH/1.3, appState.CELL_HEIGHT, false, 1 ), toolTips[i] ),
-                              Container( width: appState.MIN_PANE_WIDTH, child: makeInputField( appState, header[i], false, controllers[i]! ))
+                              Container( width: appState.MIN_PANE_WIDTH, child: makeInputField( appState, hint, false, controllers[i]!, edit: edit ))
                                 ])
                );
       }

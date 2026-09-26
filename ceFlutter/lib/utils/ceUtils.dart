@@ -145,6 +145,13 @@ void logout( context, appState ) async {
 }      
 */
 
+void addControllerPool( List<TextEditingController> controllerPool, int ith ) {
+   assert( controllerPool.length >= ith );
+   if( controllerPool.length > ith ) { return; }
+   else {
+      controllerPool.add( new TextEditingController() );
+   }
+}
 
 // Called with any ceProject, and if Venture clicked that has no project yet.
 Future<void> reloadCEVentureOnly( context, container ) async {
@@ -337,8 +344,40 @@ String ceUIDFromHost( appState, String hostUID ) {
    }
 }
 
+// handles all the wiring between host, aws, internal state
+Future<void> updateRepos( context, container, HostPlatforms hplat ) async {
+   if( hplat == HostPlatforms.GitHub ) {
+      await updateGHRepos( context, container );
+   }
+   else{
+      print( "Error.  Platform: " + enumToStr( hplat ) + " is not recognized." );
+      assert( false );
+   }
+}
 
+// relies on updateRepos, handles connection between CEP and repos
+void initCEPRepos( context, container, CEProject cep, { reposLoadedCallback = null } ) async {
+   if( cep.hostPlatform == HostPlatforms.GitHub ) {
+      await initGHRepos( context, container, cep, reposLoadedCallback );
+   }
+   else{
+      print( "Error.  Platform: " + enumToStr( cep.hostPlatform ) + " is not recognized." );
+      assert( false );
+   }
+}
 
+void initProject( context, container, CEProject cep, List<TextEditingController> cont ) async {
+   if( cep.hostPlatform == HostPlatforms.GitHub ) {
+      assert( cont.length == 1 );
+      await initGHProject( context, container, cep, cont[0] );
+   }
+   else{
+      print( "Error.  Platform: " + enumToStr( cep.hostPlatform ) + " is not recognized." );
+      assert( false );
+   }
+
+}
+   
 void editProfile( context, container, Person cePeep, {void Function()? updateCallback} ) async {
 
    void _cancelEdit( context ) {

@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
-import 'package:ceFlutter/utils/ghUtils.dart';     // updateGHRepos
 import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
 
@@ -87,17 +86,7 @@ class _CEHomeState extends State<CEHomePage> {
          });
    }
 
-   void _addControllerPool( int ith ) {
-      assert( controllerPool.length >= ith );
-      if( controllerPool.length > ith ) { return; }
-      else {
-         controllerPool.add( new TextEditingController() );
-      }
-   }
-
-   void _cancel() {
-      Navigator.of( context ).pop( 'Cancel' );
-   }
+   void _cancel() { Navigator.of( context ).pop( 'Cancel' ); }
 
    Future<String> _chooseProject() async {
       Future<String> _select( List<TextEditingController> cont ) async {
@@ -111,16 +100,17 @@ class _CEHomeState extends State<CEHomePage> {
          }
          String cepId = cepEntry[0].key;
          assert( appState.ceProject[ cepId ] != null );
-         Navigator.of( context ).pop( cepId ); // add? popup
          Navigator.of( context ).pop( cepId ); // select popup
-         initRepos( context, container, appState.ceProject[ cepId ]! );
+         initCEPRepos( context, container, appState.ceProject[ cepId ]! );
          return "";
       }
-      
+
+      _cancel(); // Add Host popup               
       String item = "Project name";
-      String hint = "Type \'Project name\' in the search bar if you need a hint";  // XXX
-      _addControllerPool( 0 );
-      var retVal = await editList( context, appState, "Select the CE Project", [item], controllerPool.sublist(0, 1), [hint], () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
+      String hint = "Type \'Project name\' in the search bar if you need a hint";
+      addControllerPool( controllerPool, 0 );
+      var retVal = await editList( context, appState, "Select the CE Project", [item], controllerPool.sublist(0, 1), [hint],
+                                   () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
       return retVal;
    }
 
@@ -144,11 +134,10 @@ class _CEHomeState extends State<CEHomePage> {
       return GestureDetector(
          onTap: () async
          {
-            // XXX clean this
             // Have futureCEProject.  want to pop an option to add to a CEP.  
             if( itemId == "" && partner == "" ) {
-               print( "XXX 1 or 2" );
-               await confirm( context, "Add repo to CE Project", "Would you like to add this repo to a CE Project?  Press confirm to do so.", _chooseProject, _cancel );
+               String msg = "Would you like to add this repo (or others) to a CodeEquity Project?  Press continue to do so.";
+               await confirm( context, "Add Host Repository to CE Project", msg, _chooseProject, _cancel );
             }
             else {
                Map<String,int> screenArgs = {"initialPage": 0 };
@@ -180,10 +169,12 @@ class _CEHomeState extends State<CEHomePage> {
                }
                
                if( initialized ) {
+                  // initialized CEVs go to equity page, CEPs go to peq summary
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: screenArgs ));
                   confirmedNav( context, container, newPage );
                }
                else {
+                  // uninitialized go to profile to add encourage completion
                   Map<String,String> screenArgs = {"id": itemId, "profType": "CEProject" };
                   if( ceVent ) { screenArgs["profType"] = "CEVenture"; }
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
@@ -249,7 +240,7 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
    
-   List<Widget> _makeRefresh() {
+   List<Widget> _makeRefresh( HostPlatforms hplat ) {
       List<Widget> refresh = [];
 
       final textWidth = min( lhsFrameMaxWidth - (2*appState.FAT_PAD + appState.TINY_PAD), appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
@@ -259,7 +250,7 @@ class _CEHomeState extends State<CEHomePage> {
          textWidth,
          () async
          {
-            await updateGHRepos( context, container );
+            await updateRepos( context, container, hplat );
             _updateHost();
          }); 
       
@@ -370,7 +361,11 @@ class _CEHomeState extends State<CEHomePage> {
             acctList.addAll( _makeCEVs( null, "footer" ));            
             for( final hosta in appState.myHostAccounts ) {
                acctList.addAll( _makeRepos( hosta ));
-               acctList.addAll( _makeRefresh() );
+               for( HostPlatforms hplat in HostPlatforms.values ) {
+                  if( hplat != HostPlatforms.end ) {
+                     acctList.addAll( _makeRefresh( hplat ) );
+                  }
+               }
             }
             
          }
