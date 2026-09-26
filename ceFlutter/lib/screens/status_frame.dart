@@ -204,7 +204,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       String cePeqs       = peqs.length.toString() + " PEQs: " + cePeqDetail;
       String ceStorage    = "CodeEquity Data (AWS)";
       
-      String hostStorage   = "Host Data (" + cep.hostPlatform + ")";
+      String hostStorage   = "Host Data (" + enumToStr( cep.hostPlatform ) + ")";
       String hostPeqDetail = planHPeqs.length.toString() + " planned, " + pendHPeqs.length.toString() + " pending, " + accrHPeqs.length.toString() + " granted.";
       String hostPeqs      = hPeqs.length.toString() + " PEQs: " + hostPeqDetail; 
       
@@ -313,8 +313,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<String> hostProjectIds = activeLocs.map( (l) => l.hostProjectId ).toSet().toList();
 
       var getHostLocs = null;
-      if( cep!.hostPlatform == "GitHub" ) { getHostLocs = getGHLocs; }                                       // XXX formalize
-      else                                { print( "Host organization not recognized." ); return false; }
+      if( cep!.hostPlatform == HostPlatforms.GitHub ) { getHostLocs = getGHLocs; }
+      else                                            { print( "Host organization not recognized." ); return false; }
       
       hostProjectIds.forEach( (hpid) => futs.add( getHostLocs( container, cep!, hpid )) );
       final res = await Future.wait( futs );
@@ -349,8 +349,8 @@ class _CEStatusState extends State<CEStatusFrame> {
       assert( cep != null );
 
       var getHostAssignees = null;
-      if( cep!.hostPlatform == "GitHub" ) { getHostAssignees = getGHAssignees; }                                       // XXX formalize
-      else                                { print( "Host organization not recognized." ); return false; }
+      if( cep!.hostPlatform == HostPlatforms.GitHub ) { getHostAssignees = getGHAssignees; }
+      else                                            { print( "Host organization not recognized." ); return false; }
       
       List<String> hostAssignees = [];
       for( String repoId in activeRepos ) {
@@ -380,7 +380,7 @@ class _CEStatusState extends State<CEStatusFrame> {
 
       var getHostLabels    = null;
       var createHostLabel = null;
-      if( cep!.hostPlatform == "GitHub" ) {  // XXX formalize
+      if( cep!.hostPlatform == HostPlatforms.GitHub ) {
          getHostLabels   = getGHLabels;
          createHostLabel = createGHLabel;
       }                                      

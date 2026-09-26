@@ -219,7 +219,7 @@ Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) asyn
 Future<dynamic> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
-   print( "updateDynamo " + shortName + ": " + postData );
+   // print( "updateDynamo " + shortName + ": " + postData );
    
    final response = await awsPost( shortName, postData, container );
    bool  res      = false;
@@ -414,11 +414,12 @@ Future<Person?> fetchAPerson( context, container, ceUserId ) async {
 }
 
 // Populates idHostMap
-Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, Map<String, Person> cePeople ) async {
+Future<Map<String, Map<String,String>>> fetchHostMap( context, container, HostPlatforms hostPlatform, Map<String, Person> cePeople ) async {
    String shortName = "fetchHostMap";
-   if( hostPlatform != enumToStr( HostPlatforms.GitHub ) ) { print( "Host organization not recognized." ); return {}; }
-   
-   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
+   if( hostPlatform != HostPlatforms.GitHub ) { print( "Host organization not recognized." + enumToStr( hostPlatform)); return {}; }
+
+   String hp = enumToStr( hostPlatform );
+   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hp" }}';
    final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
@@ -588,6 +589,7 @@ Future<void> writeCEPerson( appState, context, container, cePeep ) async {
       updateDynamo( context, container, postData, "PutPerson" );
    }
 }
+
 
 Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) async {
    DateTime            now  = DateTime.now();

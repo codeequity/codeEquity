@@ -145,6 +145,13 @@ void logout( context, appState ) async {
 }      
 */
 
+void addControllerPool( List<TextEditingController> controllerPool, int ith ) {
+   assert( controllerPool.length >= ith );
+   if( controllerPool.length > ith ) { return; }
+   else {
+      controllerPool.add( new TextEditingController() );
+   }
+}
 
 // Called with any ceProject, and if Venture clicked that has no project yet.
 Future<void> reloadCEVentureOnly( context, container ) async {
@@ -246,6 +253,7 @@ Future<void> initMDState( context, container ) async {
       if( dt != DocType.end ) { agmtType.add( enumToStr( dt ) ); }
    }
 
+   // NOTE all fetching is from static methods that create on the heap.  references will persist
    // NOTE a founder approving an application must trigger a host account update
    // NOTE Could push fetchCEPeople to reloadCEProject.  But, dynamo table does not carry that info, and constructing a
    //      a list of cep-specific names then fetching that is likely to provide minimal gains, if any.  Leave it here.
@@ -285,12 +293,42 @@ Future<void> initMDState( context, container ) async {
    // XXX Scales poorly.  This could move to reloadCEProject, since idMapHost usage is by cep.
    //     Would be work to get cep, then hostRepo, which is stored in hostUser table, no real gains for a long time here.
    for( var hostPlat in HostPlatforms.values ) {
-      appState.idMapHost = await fetchHostMap( context, container, enumToStr( hostPlat ), appState.cePeople ); 
+      if( hostPlat != HostPlatforms.end ) {
+         appState.idMapHost = await fetchHostMap( context, container, hostPlat, appState.cePeople );
+      }
    }
-   
 }
 
+// Called on refreshProjects
+Future<void> updateHostAccts( context, container ) async {
+   print( "updateHostAccts" );
+   final appState  = container.state;
 
+   appState.ceUserId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" );
+   String uid = appState.ceUserId;
+   assert( uid != "" );
+   print( "UID: " + uid );
+
+   var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostAccounts.ceProjs
+
+   await Future.wait([
+                        fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ),
+                        ]);
+   appState.myHostAccounts = appState.ceHostAccounts[uid];
+}
+
+HostAccount? getPlatformAccount( List<HostAccount>? accts, HostPlatforms hplat ) {
+   HostAccount? platAcct = null;
+   if( accts != null ) {
+      for( HostAccount ha in accts! ) {
+         if( ha.hostUser.hostPlatform == hplat ) {
+            platAcct = ha;
+            break;
+         }
+      }
+   }
+   return platAcct;
+}
 
 // appState.selectedHostUIDs is ceUID + UNASSIGN_USER
 // the unassigned user tag is useful to grab PEQs that have yet to be ingested.
@@ -306,8 +344,40 @@ String ceUIDFromHost( appState, String hostUID ) {
    }
 }
 
+// handles all the wiring between host, aws, internal state
+Future<void> updateRepos( context, container, HostPlatforms hplat ) async {
+   if( hplat == HostPlatforms.GitHub ) {
+      await updateGHRepos( context, container );
+   }
+   else{
+      print( "Error.  Platform: " + enumToStr( hplat ) + " is not recognized." );
+      assert( false );
+   }
+}
 
+// relies on updateRepos, handles connection between CEP and repos
+void initCEPRepos( context, container, CEProject cep, { reposLoadedCallback = null } ) async {
+   if( cep.hostPlatform == HostPlatforms.GitHub ) {
+      await initGHRepos( context, container, cep, reposLoadedCallback );
+   }
+   else{
+      print( "Error.  Platform: " + enumToStr( cep.hostPlatform ) + " is not recognized." );
+      assert( false );
+   }
+}
 
+void initProject( context, container, CEProject cep, List<TextEditingController> cont ) async {
+   if( cep.hostPlatform == HostPlatforms.GitHub ) {
+      assert( cont.length == 1 );
+      await initGHProject( context, container, cep, cont[0] );
+   }
+   else{
+      print( "Error.  Platform: " + enumToStr( cep.hostPlatform ) + " is not recognized." );
+      assert( false );
+   }
+
+}
+   
 void editProfile( context, container, Person cePeep, {void Function()? updateCallback} ) async {
 
    void _cancelEdit( context ) {
@@ -485,7 +555,7 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
       // XXX Consider making this standalone
       String hostUserId = "";
       for( HostAccount ha in appState.myHostAccounts ) {
-         if( ha.hostPlatform == "GitHub" && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
+         if( ha.hostPlatform == HostPlatforms.GitHub && ha.ceUserId == appState.ceUserId ) {
             hostUserId = ha.hostUserId;
             break;
          }
@@ -517,7 +587,7 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
 }
 
 // This only sends notices
-Future<bool> sendPAct( context, container, String cepId, String subject, String hostPlatform, String note ) async {
+Future<bool> sendPAct( context, container, String cepId, String subject, HostPlatforms hostPlatform, String note ) async {
    final appState  = container.state;
 
    // send PAct as a notice.
@@ -577,7 +647,7 @@ Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, 
       
       // send PAct 
       String note  = setInStone ? '{"note": "Remove granted attempted via CEMD"}' : '{"note": "Remove peq via CEMD, no raw body present"}';
-      await sendPAct( context, container, p.ceProjectId, p.id, "GitHub", note );
+      await sendPAct( context, container, p.ceProjectId, p.id, HostPlatforms.GitHub, note );
    }
 
    return !setInStone;
@@ -620,7 +690,7 @@ Future<void> updateCEPeqs( container, context, {cepId = ""} ) async {
 Future<void> updateHostPeqs( container, CEProject cep ) async {
    final appState  = container.state;
 
-   if( cep.hostPlatform == "GitHub" ) {
+   if( cep.hostPlatform == HostPlatforms.GitHub ) {
       print( "building host peq data for " + cep.ceProjectId );
       appState.hostPeqs[ cep.ceProjectId ] = await updateGHPeqs( container, cep );
    }

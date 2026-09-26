@@ -65,6 +65,63 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, buttons ) {
               });
 }
 
+class CheckboxDialog extends StatefulWidget {
+   final appState;
+   final header;
+   final choices;
+   final saveFunc;
+   final cancelFunc;
+   CheckboxDialog({super.key, this.appState, this.header, this.choices, this.saveFunc, this.cancelFunc });
+
+   @override
+   State<CheckboxDialog> createState() => _CheckboxDialogState();
+}
+
+class _CheckboxDialogState extends State<CheckboxDialog> {
+   List<bool> _on = [];
+
+   @override
+   void initState() {
+      super.initState();
+      _on = List.filled( widget.choices.length, false );
+   }
+   
+  @override
+     Widget build(BuildContext context) {
+
+     double height = widget.appState.CELL_HEIGHT - widget.appState.GAP_PAD - widget.appState.TINY_PAD;
+     List<Widget> tiles = [];
+     for( int i = 0; i < widget.choices.length; i++ ) {
+        tiles.add(  CheckboxListTile(
+                       value: _on[i],
+                       onChanged: (bool? newValue) => setState(() { _on[i] = newValue ?? false; } ),
+                       title: makeText( widget.appState, widget.choices[i], widget.appState.MIN_PANE_WIDTH * .7, height, true, 1, tgap: 0),
+                       tileColor: widget.appState.BACKGROUND,
+                       selectedTileColor: Colors.white
+                       ));
+     }
+
+     Widget body = Material( 
+        child: Column(
+           mainAxisSize: MainAxisSize.max,
+           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: tiles )
+        );
+     
+     List<Widget> buttons = [];
+     buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Save"), onPressed: () => Function.apply( widget.saveFunc, [_on] )));
+     buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: widget.cancelFunc ));
+     
+     return AlertDialog(
+        scrollable: true,
+        title: new Text( widget.header ),
+        content: body,
+        actions: buttons);
+  }
+}
+
+
 class EditForm extends StatefulWidget {
 
    final scrollHeader;
@@ -271,9 +328,11 @@ Future<void> showDropdownDialog(BuildContext context, container, String title, L
    for( int i = 0; i < header.length; i++ ) {
       if( isDD[i] ) {
          assert( ddOptions[i].length > 0 );
+         String initSel = ddOptions[i][0];
          List<DropdownMenuEntry<String>> entries = [];
          for( String option in ddOptions[i]) {
             entries.add( DropdownMenuEntry( value: option, label: option ) );
+            if( hints[i] == option ) { initSel = hints[i]; }
          }
          saveData.add( entries[0].value );
          rows.add(
@@ -291,9 +350,11 @@ Future<void> showDropdownDialog(BuildContext context, container, String title, L
       else {
          assert( controllers[i] != null );
          saveData.add( "" );
+         String hint = hints[i] == "" ? header[i] : hints[i];
+         bool   edit = hints[i] == "" ? false     : true;
          rows.add(
             Wrap( children: [ makeToolTip( makeTableText( appState, header[i], appState.MIN_PANE_WIDTH/1.3, appState.CELL_HEIGHT, false, 1 ), toolTips[i] ),
-                              Container( width: appState.MIN_PANE_WIDTH, child: makeInputField( appState, header[i], false, controllers[i]! ))
+                              Container( width: appState.MIN_PANE_WIDTH, child: makeInputField( appState, hint, false, controllers[i]!, edit: edit ))
                                 ])
                );
       }
@@ -316,13 +377,13 @@ Future<void> showDropdownDialog(BuildContext context, container, String title, L
 }
 
 // okFunc and cancelFunc need to return strings.  See home_screen:confirm
-Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) async {
+Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc, { Widget? body = null } ) async {
    return await showDialog(
       context: context,
       builder: (BuildContext context) {
                  return AlertDialog(
                     title: new Text( confirmHeader ),
-                    content: new Text( confirmBody ),
+                    content: body == null ? new Text( confirmBody ) : body!,
                     actions: <Widget>[
                        new TextButton(
                           key: Key( 'confirmContinue' ),
@@ -332,6 +393,22 @@ Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc
                           key: Key( 'cancelContinue' ),
                           child: new Text("Cancel"),
                           onPressed: cancelFunc )
+                       ]);
+              });
+}
+
+Future<String> justConfirm( BuildContext context, confirmHeader, confirmBody, okFunc, { Widget? body = null } ) async {
+   return await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+                 return AlertDialog(
+                    title: new Text( confirmHeader ),
+                    content: body == null ? new Text( confirmBody ) : body!,
+                    actions: <Widget>[
+                       new TextButton(
+                          key: Key( 'confirmContinue' ),
+                          child: new Text("Continue"),
+                          onPressed: okFunc ),
                        ]);
               });
 }
@@ -551,7 +628,7 @@ Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight
    return makeText( appState, title, null, null, wrap, lines, keyTxt: keyName, fontSize: fontSize, color: color, iw: true, sw: sw );
 }
 
-Widget makeTitleText( appState, title, width, wrap, lines, { lgap = 0.0, bgap = 0.0, fontSize = 14, highlight = false, keyTxt = "", color = Colors.black } ) {
+Widget makeTitleText( appState, title, width, wrap, lines, { lgap = 0.0, bgap = 0.0, fontSize = 14, highlight = false, keyTxt = "", italic = false, color = Colors.black } ) {
    // Add as encountered.
    var hmux = 1.0;
    if     ( fontSize == 18 ) { hmux = 24.0 / appState.BASE_TXT_HEIGHT; }
@@ -563,7 +640,7 @@ Widget makeTitleText( appState, title, width, wrap, lines, { lgap = 0.0, bgap = 
    String keyName = keyTxt == "" ? title : keyTxt;
    Color c = highlight ? appState.BUTTON_COLOR : color;
 
-   return makeText( appState, title, width, height, wrap, lines, lgap: lgap, bgap: bgap, keyTxt: keyName, fontSize: fontSize, color: c );
+   return makeText( appState, title, width, height, wrap, lines, lgap: lgap, bgap: bgap, keyTxt: keyName, fontSize: fontSize, italic: italic, color: c );
 }
 
 Widget makeIWTableText( appState, title, width, height, wrap, lines, { fontSize = 14, mux = 1.0, sw = null } ) {
@@ -580,17 +657,18 @@ Widget makeBodyText( appState, title, width, wrap, lines, { bgap = 0.0, keyTxt =
 }
 
 Widget makeText( appState, title, width, height, wrap, lines,
-                 { lgap = 0, bgap = 0.0, keyTxt = null, fontSize = 14, mux = 1.0, bold = true, iw = false, sw = null, color = Colors.black } ) {
-   if( lgap == 0 ) { lgap = mux * appState.GAP_PAD; }
+                 { tgap = -1, lgap = 0, bgap = 0.0, keyTxt = null, fontSize = 14, mux = 1.0, bold = true, iw = false, sw = null, color = Colors.black, italic = false } ) {
+   if( lgap == 0 )  { lgap = mux * appState.GAP_PAD; }
+   if( tgap == -1 ) { tgap = appState.TINY_PAD; }
    
    if( iw ) {
       return Padding(
-         padding: EdgeInsets.fromLTRB( lgap, appState.TINY_PAD, appState.TINY_PAD, bgap),
+         padding: EdgeInsets.fromLTRB( lgap, tgap, appState.TINY_PAD, bgap),
          child: IntrinsicWidth(
             stepWidth: sw,
             key: keyTxt == null ? null : Key( keyTxt ),
             child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                       style: TextStyle(fontSize: fontSize, fontWeight: bold ? FontWeight.bold : null))));
+                        style: TextStyle(fontSize: fontSize, fontStyle: italic ? FontStyle.italic : null, fontWeight: bold ? FontWeight.bold : null))));
    }
    else {
       return Padding(
@@ -599,7 +677,7 @@ Widget makeText( appState, title, width, height, wrap, lines,
                            key: keyTxt == null ? null : Key( keyTxt ),
                            height: height,
                            child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                       style: TextStyle(color: color, fontSize: fontSize, fontWeight: bold ? FontWeight.bold : null))));
+                                       style: TextStyle(color: color, fontSize: fontSize, fontStyle: italic ? FontStyle.italic : null, fontWeight: bold ? FontWeight.bold : null))));
    }
 }
 

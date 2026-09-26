@@ -21,8 +21,6 @@ import 'package:ceFlutter/models/Agreement.dart';
 import 'package:ceFlutter/components/node.dart';
 import 'package:ceFlutter/components/equityNode.dart';
 
-enum HostPlatforms { GitHub }
-
 class AppState {
 
    // Credentials
@@ -58,7 +56,7 @@ class AppState {
    late String                          selectedHostUID;    // Looking at details for this host user, currently
 
    late Map< String, Map<String, String >> idMapHost;       //  {hostUid: {ceUID: , ceUserName: , hostUserName: }}
-   late List< String>                      hostPlatformsLoaded;  // Which platform's users have already been bulk-loaded
+   late List< HostPlatforms>             hostPlatformsLoaded;  // Which platform's users have already been bulk-loaded
 
    // Core data, fetched as needed
    late Map< String, CEVenture >         ceVenture;       // all ceVentures, cev id to venture

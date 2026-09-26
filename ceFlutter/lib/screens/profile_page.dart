@@ -84,6 +84,7 @@ class _CEProfileState extends State<CEProfilePage> {
    
    late bool loadingData;   
    late bool updatedPeqTable;
+   late bool loadingRepos;
 
    List<TextEditingController> controllerPool = [];
    
@@ -92,8 +93,9 @@ class _CEProfileState extends State<CEProfilePage> {
       super.initState();
       collabPeqTable    = [];
       displayedPeqTable = [];
-      loadingData      = true;
+      loadingData       = true;
       updatedPeqTable   = false;
+      loadingRepos      = false;
   }
 
 
@@ -110,16 +112,6 @@ class _CEProfileState extends State<CEProfilePage> {
         logout( context, appState );
      }
      return wrapper;
-  }
-
-
-  // XXX dup activityPanel
-  void _addControllerPool( int ith ) {
-     assert( controllerPool.length >= ith );
-     if( controllerPool.length > ith ) { return; }
-     else {
-        controllerPool.add( new TextEditingController() );
-     }
   }
 
   
@@ -254,7 +246,7 @@ class _CEProfileState extends State<CEProfilePage> {
         List<HostAccount>   haccts     = [];
 
         await Future.wait([
-                             (!appState.hostPlatformsLoaded.contains( enumToStr( hostPlat ) ) ? 
+                             (!appState.hostPlatformsLoaded.contains( hostPlat ) ? 
                               fetchHostAcct( context, container, pdpa ).then(                 (p) => haccts = p ) : 
                               new Future<bool>.value(true) ),
                              
@@ -275,7 +267,7 @@ class _CEProfileState extends State<CEProfilePage> {
         equityPlan = appState.ceEquityPlans[vid];
         print( "Set equity plan to " + vid );
 
-        if( !appState.hostPlatformsLoaded.contains(  enumToStr( hostPlat ) ) ) { appState.hostPlatformsLoaded.add(  enumToStr( hostPlat ) ); }
+        if( !appState.hostPlatformsLoaded.contains( hostPlat ) ) { appState.hostPlatformsLoaded.add( hostPlat ); }
         // One ha per platform, list length is 1
         for( HostAccount ha in haccts ) { appState.ceHostAccounts[ha.ceUserId] = [ha]; }
            
@@ -312,6 +304,8 @@ class _CEProfileState extends State<CEProfilePage> {
      Widget cepLink =
         cepId == "-1" ?
         makeTitleText( appState, "No CE Project yet", textWidth, false, 1, fontSize: 14 ) : 
+        // makeTitleText( appState, "<Not finalized - connect host repos>", textWidth, false, 1, fontSize: 14 ) : 
+        // makeTitleText( appState, "<this project needs your host repos>", textWidth, false, 1, fontSize: 14 ) : 
         GestureDetector(
            onTap: () async
            {
@@ -437,8 +431,16 @@ class _CEProfileState extends State<CEProfilePage> {
      // Start a new row for empty ventures.. should resolve quickly (pro user), or be unnoticeable (first timer)
      for( int i = 0; i < emptyVent.length; i += 2 ) {
         List<Widget> row = [];
-        row.add( _makeProjCard( context, "-1", textWidth, ventId: emptyVent[i] ) );
-        if( emptyVent.length > i+1 ) { row.add( _makeProjCard( context, "-1", textWidth, ventId: emptyVent[i+1] )); }
+
+        // is there a CEP without connected repositories here?
+        // XXX doesn't scale well see homePage
+        CEVenture? cev = appState.ceVenture[ emptyVent[i] ];
+        assert( cev != null );
+        CEProject? cep = appState.ceProject.values.firstWhere( (cep) => cep.ceVentureId == cev!.ceVentureId );
+        String cepId = cep != null ? cep.ceProjectId : "-1";
+        row.add( _makeProjCard( context, cepId, textWidth, ventId: emptyVent[i] ) );
+        if( emptyVent.length > i+1 ) { row.add( _makeProjCard( context, cepId, textWidth, ventId: emptyVent[i+1] )); }
+
         ceps.add( Wrap( spacing: appState.MID_PAD, children: row ) );
         ceps.add( spacer );
      }
@@ -587,6 +589,12 @@ class _CEProfileState extends State<CEProfilePage> {
         mainAxisAlignment: MainAxisAlignment.start,
         children: ceps
         );
+
+     if( ceps.length == 0 ) {
+        String msg = "<Adding repositories connects the CodeEquity Project to the platform hosting your code, and connects your host account to ";
+        msg       += "this project as well. Once the project has been initialized, please add your code repositories.>";
+        frame = makeTitleText( appState, msg, textWidth*2.0, false, 3, italic: true );
+     }
      
      return frame;
   }
@@ -768,7 +776,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
      items.add( "Name    " );
      hints.add( prime.name == "" ? "(No name yet)" : prime.name );
-     _addControllerPool(0);
+     addControllerPool( controllerPool, 0 );
 
      items.add( "Description" );
      if( prime is CEVenture ) {
@@ -779,13 +787,13 @@ class _CEProfileState extends State<CEProfilePage> {
         if( prime.description == null || prime.description == "" ) { hints.add( "Describe your project in one short sentence" ); }
         else { hints.add( prime.description! ); }
      }
-     _addControllerPool(1);
+     addControllerPool( controllerPool, 1 );
 
      if( prime is CEVenture ) {
         items.add( "Website" );
         if( prime.web == null || prime.web == "" ) { hints.add( "http://www.yourVenture.org" ); }
         else{ hints.add( prime.web! ); }
-        _addControllerPool(2);
+        addControllerPool( controllerPool, 2 );
      }
 
      editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), _cancel, null );
@@ -818,10 +826,10 @@ class _CEProfileState extends State<CEProfilePage> {
 
         // send PActs 1 per each of venture and project
         String note          = '{"note": "Remove Venture"}';
-        await sendPAct( context, container, "-1", prime.ceVentureId, "GitHub", note );
+        await sendPAct( context, container, "-1", prime.ceVentureId, HostPlatforms.GitHub, note );
         for( String id in cepIds ) {
            note  = '{"note": "Remove CEProject"}';
-           await sendPAct( context, container, id, id, "GitHub", note );
+           await sendPAct( context, container, id, id, HostPlatforms.GitHub, note );
         }
 
         // Reload everything - cached venture data should no longer be available
@@ -1038,6 +1046,8 @@ class _CEProfileState extends State<CEProfilePage> {
      List<Widget> repoWid = [spacer];
 
      // print( "MPB " + loadingData.toString() + " " + (screenArgs["ventId"] ?? "noVent") );
+
+     _doneLoading() { setState(() => loadingRepos = false ); }
              
      if( !loadingData ) {
         assert( appState.ceProject != {} );
@@ -1051,8 +1061,19 @@ class _CEProfileState extends State<CEProfilePage> {
            else         { repoWid.add( makeTitleText( appState, "   " + cep.repositories[i] + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 )); }
         }
         if( cep.repositories.length == 0 ) {
-           repoWid = [ miniSpacer,
-                       Wrap( children: [spacer, makeActionButtonFixed( appState, "Add Code Repos", lhsFrameMaxWidth / 2.0, () => initRepos( context, container, cep )) ]) ];
+           if( loadingRepos ) {
+              double spinSize = appState.CELL_HEIGHT * .8;
+              repoWid = [ miniSpacer,
+                          Wrap( children: [ spacer, Container( width: spinSize, height: spinSize, child: CircularProgressIndicator() )] )];
+           }
+           else {
+              repoWid = [ miniSpacer,
+                          Wrap( children: [spacer, makeActionButtonFixed( appState, "Add Code Repos", lhsFrameMaxWidth / 2.0, () {
+                                      initCEPRepos( context, container, cep, reposLoadedCallback: _doneLoading );
+                                      print( 'Loading repos true' );
+                                      setState(() => loadingRepos = true );
+                                   }) ]) ];
+           }
         }
 
         // CEProject Collabs
@@ -1066,7 +1087,7 @@ class _CEProfileState extends State<CEProfilePage> {
               }
            }
         }
-
+        
         if( cepId == "-1" ) {
            print( "Creating a project" );
            String intro = "Welcome to your new Project's profile!  \n";
@@ -1087,13 +1108,15 @@ class _CEProfileState extends State<CEProfilePage> {
 
      List<Widget> platData = [];
      platData.add( makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ) );
-     platData.add( makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ) );
-     if( cep.hostPlatform == "" ) {
+     platData.add( makeTitleText( appState, "Host Platform: " + enumToStr( cep.hostPlatform ), textWidth, false, 1, fontSize: 18 ) );
+     addControllerPool( controllerPool, 0 );
+     if( cep.hostPlatform == HostPlatforms.end ) {
         platData.add( miniSpacer );
-        platData.add( Wrap( children: [spacer, makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0, () => initProject( context, container, cep ))
+        platData.add( Wrap( children: [spacer, makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0, () => initProject( context, container, cep, controllerPool.sublist(0, 1)))
                                ]));
      }
      else {
+        platData.add( makeTitleText( appState, "Organization: " +  cep.hostOrganization, textWidth, false, 1 ) );
         platData.add( makeTitleText( appState, "Project management system:" , textWidth, false, 1 ) );
         platData.add( makeTitleText( appState, "   " + cep.projectMgmtSys , textWidth, false, 1 ) );
         platData.add( makeTitleText( appState, "Repositories:", textWidth, false, 1 ) );
@@ -1311,7 +1334,7 @@ class _CEProfileState extends State<CEProfilePage> {
         List<String> ventIds   = [];
         List<String> emptyVent = [];
         for( var ha in hostAccs ) {
-           if( ha.hostPlatform == enumToStr( HostPlatforms.GitHub ) ) {
+           if( ha.hostPlatform == HostPlatforms.GitHub ) {
               if( ha.ceUserId == cePeep.id ) {
                  for( int i = 0; i < ha.ceProjectIds.length; i++ ) {
                     CEProject? cep = appState.ceProject[ ha.ceProjectIds[i] ];
@@ -1328,7 +1351,7 @@ class _CEProfileState extends State<CEProfilePage> {
         
         // CE Host User
         for( var ha in hostAccs ) {
-           if( ha.hostPlatform == enumToStr( HostPlatforms.GitHub ) ) {
+           if( ha.hostPlatform == HostPlatforms.GitHub ) {
               if( ha.ceUserId == cePeep.id ) {
                  hostPeep["userName"] = ha.hostUserName;
                  hostPeep["id"]       = ha.hostUserId;
