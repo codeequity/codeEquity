@@ -26,6 +26,29 @@ import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
 
+
+class GHVals {
+   // project profile related data
+   static const List<String> _profHeader        = ["Host platform", "Owner category", "Host project management version", "Organization name on host"];
+   static const List<bool>   _profDD            = [ true,           true,             true,                              false ];
+   static const List<List<String>> _profOptions = [["GitHub"],
+                                                   ["Organization", "Individual"],
+                                                   ["GH Version 2", "GH Classic" ],
+                                                   [ ] ];
+   static const List<String> _profCurVals       = ["", "", "", ""];
+   static const List<String> _profToolTips      = ["CodeEquity is working to expand to other hosting platforms",
+                                                   "Individual owners are no longer fully supported on GitHub, nor on CodeEquity",
+                                                   "GH Classic is legacy on GitHub, no longer supported on CodeEquity",
+                                                   "Enter the name of the host organization that owns your code repositories" ];
+
+   static List<String>       get profHeader   => _profHeader;
+   static List<bool>         get profDD       => _profDD;
+   static List<List<String>> get profOptions  => _profOptions;
+   static List<String>       get profCurVals  => _profCurVals;
+   static List<String>       get profToolTips => _profToolTips;
+}                                  
+
+
 // Post request to GitHub
 Future<http.Response> _postGH( PAT, postData, name ) async {
    // print( "Warning.  postGH fired. " + postData + " " + name );
@@ -565,9 +588,7 @@ Future<void> initGHProject( context, container, CEProject cep, TextEditingContro
 
    void _save( List<String> saveData ) async {
       assert( controllers.length == 4 && controllers[3] != null );
-      print( "HO! " + saveData.toString() + " " + controllers[3]!.text );
 
-      // NOTE hostUser does not necessarily exist yet
       cep.hostPlatform     = enumFromStr<HostPlatforms>( saveData[0], HostPlatforms.values );
       cep.ownerCategory    = saveData[1];
       cep.projectMgmtSys   = saveData[2];
@@ -584,21 +605,10 @@ Future<void> initGHProject( context, container, CEProject cep, TextEditingContro
    assert( cep.ceVentureId != "" );
    final appState = container.state;
 
-   // Note ghOptions plus controllers means every header will either be paired with a list of options, or a textEditingController
-   String       popupTitle       = "Describe where and how your code is hosted:";
-   List<String> header           = ["Host platform", "Owner category", "Host project management version", "Organization name on host"];
-   List<bool>   dropDown         = [ true,           true,             true,                              false ];
-   List<List<String>> ghOptions  = [["GitHub"],
-                                    ["Organization", "Individual"],
-                                    ["GH Version 2", "GH Classic" ],
-                                    []   ];
-   List<String> curVals          = ["", "", "", "<Elgoog Inc>"];
-   List<String> ghToolTips       = ["CodeEquity is working to expand to other hosting platforms",
-                                    "Individual owners are no longer fully supported on GitHub, nor on CodeEquity",
-                                    "GH Classic is legacy on GitHub, no longer supported on CodeEquity",
-                                    "Enter the name of the host organization that owns your code repositories" ];
-   
-   await showDropdownDialog( context, container, popupTitle, header, dropDown, ghOptions, curVals, ghToolTips, controllers, _save, _cancel );
+   // Note profOptions plus controllers means every header will either be paired with a list of options, or a textEditingController
+   String popupTitle = "Describe where and how your code is hosted:";
+   await showDropdownDialog( context, container, popupTitle,
+                             GHVals.profHeader, GHVals.profDD, GHVals.profOptions, GHVals.profCurVals, GHVals.profToolTips, controllers, _save, _cancel );   
 }
 
 

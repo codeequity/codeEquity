@@ -377,7 +377,17 @@ void initProject( context, container, CEProject cep, List<TextEditingController>
    }
 
 }
-   
+
+class HostVals {
+   // CEP host profile related data
+   static List<String>       profHeader( HostPlatforms hplat )   => hplat == HostPlatforms.GitHub ? GHVals.profHeader   : [""];
+   static List<bool>         profDD( HostPlatforms hplat )       => hplat == HostPlatforms.GitHub ? GHVals.profDD       : [false];
+   static List<List<String>> profOptions( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profOptions  : [ [""] ];
+   static List<String>       profCurVals( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profCurVals  : [""];
+   static List<String>       profToolTips( HostPlatforms hplat ) => hplat == HostPlatforms.GitHub ? GHVals.profToolTips : [""];
+}                                  
+
+
 void editProfile( context, container, Person cePeep, {void Function()? updateCallback} ) async {
 
    void _cancelEdit( context ) {

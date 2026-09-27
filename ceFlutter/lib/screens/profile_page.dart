@@ -577,6 +577,7 @@ class _CEProfileState extends State<CEProfilePage> {
      List<Widget> ceps = [];
 
      int maxProjCount = hostAccs.fold( 0, ( res, elt ) => max( res, elt.ceProjectIds.length ) );
+
      for( int i = 0; i < hostAccs.length; i += 2 ) {
         List<Widget> row = [];
         row.add( _makeCollabCard( context, hostAccs[i], textWidth, maxProjCount ) );
@@ -740,6 +741,68 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
 
+  void _editProjectProfile( CEProject cep ) async {
+
+     List<TextEditingController?> controllers = [];
+
+     void _save( List<String> saveData ) async {
+        assert( controllers.length == 6 && controllers[0] != null && controllers[1] != null && controllers[5] != null );
+
+        cep.name             = controllers[0]!.text;
+        cep.description      = controllers[1]!.text;
+        cep.hostPlatform     = enumFromStr<HostPlatforms>( saveData[2], HostPlatforms.values );
+        cep.ownerCategory    = saveData[3];
+        cep.projectMgmtSys   = saveData[4];
+        cep.hostOrganization = controllers[5]!.text;
+        
+        String cepS = json.encode( cep );
+        String postData = '{ "Endpoint": "UpdateCEP", "ceProject": $cepS }';
+        await updateDynamo( context, container, postData, "UpdateCEP" );
+        
+        Navigator.of( context ).pop();
+     }
+     
+     String title       = "Update Project Profile";
+
+     List<String> header = ["Name    ", "Description"];
+     header.addAll( HostVals.profHeader( cep.hostPlatform ));
+          
+     List<bool> dropDown = [ false, false ];
+     dropDown.addAll( HostVals.profDD( cep.hostPlatform ));
+
+     List<List<String>> options = [ [], [] ];
+     options.addAll( HostVals.profOptions( cep.hostPlatform ));
+
+     List<String> curVals = [];
+     curVals.add( cep.name == "" ? "(No name yet)" : cep.name );
+     if( cep.description == null || cep.description == "" ) { curVals.add( "Describe your project in one short sentence" ); }
+     else                                                   { curVals.add( cep.description! ); }
+     curVals.addAll( HostVals.profCurVals( cep.hostPlatform ));  // if hostPlatform is incorrect, will fail here
+     if( options[3].contains( cep.ownerCategory ))  { curVals[3] = cep.ownerCategory; }
+     if( options[4].contains( cep.projectMgmtSys )) { curVals[4] = cep.projectMgmtSys; }
+     
+     for( int i = 0; i < header.length; i++ ) {
+        if( header[i] == "Organization name on host" ) { curVals[i] = cep.hostOrganization; }
+     }
+
+     List<String> toolTips = ["", "" ];
+     toolTips.addAll( HostVals.profToolTips( cep.hostPlatform ));
+
+     int count = 0;
+     for( bool dd in dropDown ) {
+        if( dd ) { controllers.add( null ); }
+        else {
+           addControllerPool( controllerPool, count );
+           controllers.add( controllerPool[ count ] );
+           count++;
+        }
+     }
+
+     await showDropdownDialog( context, container, title,
+                               header, dropDown, options, curVals, toolTips, controllers, _save, _cancel );   
+     
+  }
+
   void _updateProfile( dynamic prime ) {
      final textWidth = lhsFrameMaxWidth + rhsFrameMaxWidth - 10 * appState.GAP_PAD;
      void _set( List<TextEditingController> cont ) {
@@ -799,11 +862,40 @@ class _CEProfileState extends State<CEProfilePage> {
      editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), _cancel, null );
   }
 
+  void _dissolveChoice( String choice ) async {
+     _cancel();
+     if( choice == "Remove a repo" ) {
+
+        // XXX check role == executive
+        
+        String msg = "All PEQ issues in the host repo will still be valid and will persist in CodeEquity, but will lose their grounding in the host.  ";
+        msg       += "With no host repository, CodeEquity background sanity checks and status repairs will fail.  This may be OK if work on these ";
+        msg       += "issues is complete.  Be sure you know what you are doing, this action can not be undone.  Would you like to continue?";
+        Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );        
+        await confirm( context, "Are you sure you want to remove repos?", msg, _cancel, _cancel, body: body );
+        /*
+        String header = "Check the repos to add";
+        await showDialog(
+           context: context,
+           builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _save, cancelFunc: _cancel ));
+        */
+     }
+     else if( choice == "Delete this project" ) {
+        print( "Delete??  Are you sure?" );
+     }
+  }
+  
+  void _dissolveProject() async {
+     List<String> choices = [ "Remove a repo", "Delete this project" ]; // XXX formalize
+     await radioDialog( context, "Are you removing a repo, or deleting this project?", choices, choices[0], _dissolveChoice, _cancel );
+  }
   
   void _deletePrime( dynamic prime ) async {
      List<PEQ> peqs = [];
      List<CEProject> ceps = [];
 
+     if( prime is CEProject ) { return _dissolveProject(); }
+     
      _removeVenture() async {
         // remove peqs
         if( peqs.length > 0 ) {
@@ -844,7 +936,7 @@ class _CEProfileState extends State<CEProfilePage> {
         confirm( context, "Delete Venture", "There is no going back.  Are you certain you wish to delete this Venture?", _removeVenture, _cancel );
      }
      
-     if( prime is CEProject ) { print( "XXX NYI" ); }
+     if( prime is CEProject ) { print( "XXX NYI" ); return; }
      
      assert( appState.ceVenture[ prime.ceVentureId ] != null );
      CEVenture cev = appState.ceVenture[ prime.ceVentureId ] ?? prime;
@@ -856,7 +948,6 @@ class _CEProfileState extends State<CEProfilePage> {
         await updateCEPeqs( container, context, cepId: cep.ceProjectId );
      }
 
-     
      // Get all peqs for all ceps in cev
      for( CEProject cep in ceps ) {
         print( "attempting to add peqs from " + cep.name + " " + (appState.cePeqs[ cep.ceProjectId ] ?? [] ).length.toString() );
@@ -947,7 +1038,7 @@ class _CEProfileState extends State<CEProfilePage> {
      dynamic prime  = screenArgs["profType"] == "CEProject" ? cep   : cev;
      String primeId = screenArgs["profType"] == "CEProject" ? cepId : cevId;
      String desc    = screenArgs["profType"] == "CEProject" ? prime.description : prime.web ?? "";
-     String deltxt  = prime is CEVenture ? "Delete Venture" : "Delete Project";
+     String deltxt  = "Dissolve";
 
      if( prime.name == "" ) { prime.name = "(No name yet)"; }
      if( screenArgs["profType"] == "CEVenture" && ( prime.web == null || prime.web == "" )) { desc = "(Click \'Edit Profile\' to add a website)"; }
@@ -978,7 +1069,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  Wrap( children: [ Container( width: appState.GAP_PAD ),
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 3.0,
                                                           () async {
-                                                             _updateProfile( prime ); 
+                                                             prime is CEVenture ? _updateProfile( prime ) : _editProjectProfile( prime ); 
                                                           }),
                                    makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 3.0,
                                                           () async {
@@ -1116,7 +1207,7 @@ class _CEProfileState extends State<CEProfilePage> {
                                ]));
      }
      else {
-        platData.add( makeTitleText( appState, "Organization: " +  cep.hostOrganization, textWidth, false, 1 ) );
+        platData.add( makeTitleText( appState, cep.ownerCategory + ": " +  cep.hostOrganization, textWidth, false, 1 ) );
         platData.add( makeTitleText( appState, "Project management system:" , textWidth, false, 1 ) );
         platData.add( makeTitleText( appState, "   " + cep.projectMgmtSys , textWidth, false, 1 ) );
         platData.add( makeTitleText( appState, "Repositories:", textWidth, false, 1 ) );

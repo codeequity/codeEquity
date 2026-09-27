@@ -338,7 +338,7 @@ Future<void> showDropdownDialog(BuildContext context, container, String title, L
          rows.add(
             Wrap( children: [ makeToolTip( makeTableText( appState, header[i], appState.MIN_PANE_WIDTH/1.3, appState.CELL_HEIGHT, false, 1 ), toolTips[i] ),
                               DropdownMenu<String>(
-                                 initialSelection: ddOptions[i][0],
+                                 initialSelection: initSel,
                                  enableSearch: true, // Allows typing to find items
                                  enableFilter: true, // Filters items as you type
                                  dropdownMenuEntries: entries, 
