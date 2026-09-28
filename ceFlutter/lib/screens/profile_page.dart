@@ -20,7 +20,7 @@ import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
-import 'package:ceFlutter/models/HostAccount.dart';
+import 'package:ceFlutter/models/HostUser.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/PEQ.dart';
@@ -175,7 +175,7 @@ class _CEProfileState extends State<CEProfilePage> {
                                          new Future<bool>.value(true) ),
                                         
                                         (appState.ceHostAccounts[profId] == null ? 
-                                         fetchHostAcct( context, container, query ).then( (p) => appState.ceHostAccounts[profId] = p ) :
+                                         fetchHostUsers( context, container, query ).then( (p) => appState.ceHostAccounts[profId] = p ) :
                                          new Future<bool>.value(true) ),
 
                                         (appState.ceImages[profId] == null ? 
@@ -243,11 +243,11 @@ class _CEProfileState extends State<CEProfilePage> {
         final pdpa = '{ "Endpoint": "GetHostA", "HostPlatform": "$hostName" }'; 
         
         Map<String,dynamic> rawPITable = {};
-        List<HostAccount>   haccts     = [];
+        List<HostUser>      haccts     = [];
 
         await Future.wait([
                              (!appState.hostPlatformsLoaded.contains( hostPlat ) ? 
-                              fetchHostAcct( context, container, pdpa ).then(                 (p) => haccts = p ) : 
+                              fetchHostUsers( context, container, pdpa ).then(                 (p) => haccts = p ) : 
                               new Future<bool>.value(true) ),
                              
                              (appState.cePEQSummaries[pid] == null ?
@@ -269,7 +269,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
         if( !appState.hostPlatformsLoaded.contains( hostPlat ) ) { appState.hostPlatformsLoaded.add( hostPlat ); }
         // One ha per platform, list length is 1
-        for( HostAccount ha in haccts ) { appState.ceHostAccounts[ha.ceUserId] = [ha]; }
+        for( HostUser ha in haccts ) { appState.ceHostAccounts[ha.ceUserId] = [ha]; }
            
         if( rawPITable.keys.length > 0 ) {
            print( rawPITable.keys.toString() );
@@ -359,7 +359,7 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
   
-  Widget _makeCollabCard( context, HostAccount ha, textWidth, maxProjCount ) {
+  Widget _makeCollabCard( context, HostUser ha, textWidth, maxProjCount ) {
      String ceUserId = ha.ceUserId;
      // print( ceUserId + " " + appState.cePeople.toString() );
      assert( appState.cePeople[ ceUserId ] != null );
@@ -417,7 +417,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return card;
   }
   
-  Widget _makeCEPs( context, HostAccount ha, List<String> emptyVent, textWidth ) {
+  Widget _makeCEPs( context, HostUser ha, List<String> emptyVent, textWidth ) {
      List<Widget> ceps = [];
      
      // print( "Making " + ha.ceProjectIds.toString() );
@@ -573,7 +573,7 @@ class _CEProfileState extends State<CEProfilePage> {
   //        shared across every CEP in CEV
   // NOTE: there must be at least 1 executive per CEV, minimum.  So, by default, project creator is the executive.
   // Every role can remove/add peer, and below.   
-  Widget _makeCollabs( context, List<HostAccount> hostAccs, textWidth ) {
+  Widget _makeCollabs( context, List<HostUser> hostAccs, textWidth ) {
      List<Widget> ceps = [];
 
      int maxProjCount = hostAccs.fold( 0, ( res, elt ) => max( res, elt.ceProjectIds.length ) );
@@ -861,40 +861,90 @@ class _CEProfileState extends State<CEProfilePage> {
 
      editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), _cancel, null );
   }
+  
+  void _dissolveChoice( CEProject cep, String choice ) async {
+     bool proceed = false;
+     List<String> candidate = [];
+     
+     void _proceed() {
+        _cancel();
+        proceed = true;
+     }
 
-  void _dissolveChoice( String choice ) async {
+     void _remove( List<bool> on ) {
+        assert( on.length == candidate.length );
+        for( int i = 0; i < on.length; i++ ) {
+           if( on[i] ) {
+              cep.removeRepo( candidate[i] );
+              writeCEProject( appState, context, container, cep );  // don't wait
+           
+              /*
+              // update CEP with new repo(s).  Don't wait.
+              bool added = false;
+              for( int i = 0; i < repoNames.length; i++ ) { added = cep.addRepo( repoNames[i], repoIds[i] ); }
+              if( added ) { writeCEProject( appState, context, container, cep ); } 
+              
+              // update hostUser
+              myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
+              assert( myAcct != null );
+              for( String rn in repoNames ) {
+              myAcct!.futureCEProjects.remove( rn );
+              myAcct!.addRepo( cep, rn );
+              }
+              String newHostA = json.encode( myAcct!.hostUser );
+              String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
+              updateDynamo( context, container, postData, "PutHostA" ); // Don't wait
+              */
+              // update (all) hostAccount(s).. hmmm.
+              // update peqs on aws, reload
+              // send pact
+              // save cep
+           }
+        }
+     }
+        
      _cancel();
+
+     // are you exec?
+     assert( appState.ceVenture[ cep.ceVentureId ] != null );
+     CEVenture cev = appState.ceVenture[ cep.ceVentureId ]!;
+     if( cev.roles[ appState.ceUserId ] != MemberRole.Executive ) {
+        String msg = "Only an Executive can delete a Venture.";
+        showToast( msg );
+        return;
+     }
+
      if( choice == "Remove a repo" ) {
 
-        // XXX check role == executive
-        
         String msg = "All PEQ issues in the host repo will still be valid and will persist in CodeEquity, but will lose their grounding in the host.  ";
         msg       += "With no host repository, CodeEquity background sanity checks and status repairs will fail.  This may be OK if work on these ";
         msg       += "issues is complete.  Be sure you know what you are doing, this action can not be undone.  Would you like to continue?";
-        Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );        
-        await confirm( context, "Are you sure you want to remove repos?", msg, _cancel, _cancel, body: body );
-        /*
-        String header = "Check the repos to add";
-        await showDialog(
-           context: context,
-           builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _save, cancelFunc: _cancel ));
-        */
+        Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );
+        await confirm( context, "Are you sure you want to remove repos?", msg, _proceed, _cancel, body: body );
+        if( proceed ) {
+           String header = "Check the repos to remove";
+           candidate = cep.repositories;
+           await showDialog(
+              context: context,
+              builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _remove, cancelFunc: _cancel ));
+        }
+
      }
      else if( choice == "Delete this project" ) {
         print( "Delete??  Are you sure?" );
      }
   }
   
-  void _dissolveProject() async {
+  void _dissolveProject( CEProject cep ) async {
      List<String> choices = [ "Remove a repo", "Delete this project" ]; // XXX formalize
-     await radioDialog( context, "Are you removing a repo, or deleting this project?", choices, choices[0], _dissolveChoice, _cancel );
+     await radioDialog( context, "Are you removing a repo, or deleting this project?", choices, choices[0], _dissolveChoice, _cancel, execArgs: [ cep ] );
   }
   
   void _deletePrime( dynamic prime ) async {
      List<PEQ> peqs = [];
      List<CEProject> ceps = [];
 
-     if( prime is CEProject ) { return _dissolveProject(); }
+     if( prime is CEProject ) { return _dissolveProject( prime ); }
      
      _removeVenture() async {
         // remove peqs
@@ -1168,11 +1218,11 @@ class _CEProfileState extends State<CEProfilePage> {
         }
 
         // CEProject Collabs
-        List<HostAccount> collabs = [];
+        List<HostUser> collabs = [];
         for( String ceuid in appState.ceHostAccounts.keys ) {
            assert( appState.ceHostAccounts[ceuid] != null );
-           List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
-           for( HostAccount ha in has ) {
+           List<HostUser> has = appState.ceHostAccounts[ceuid]!;
+           for( HostUser ha in has ) {
               if( ha.hostPlatform == cep.hostPlatform && ha.ceProjectIds.contains( cepId ) ) {
                  collabs.add( ha );
               }
@@ -1407,7 +1457,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
      Person              cePeep     = Person.empty();
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
-     List<HostAccount>   hostAccs   = [];
+     List<HostUser>      hostAccs   = [];
      Widget              cepWid     = spacer;
      Widget              ppWid      = spacer;
      Widget              peqTable   = spacer;
@@ -1547,7 +1597,6 @@ class _CEProfileState extends State<CEProfilePage> {
       empty            = Container( width: 1, height: 1 );
 
       // print( "PP build " + screenArgs.toString() );
-      // print( "PP build " + screenArgs.toString() + appState.ceHostAccounts[ appState.ceUserId ]![0].hostUser.toString() );      
 
       updatePerson( context, container );
       updateProjects( context, container, HostPlatforms.GitHub );

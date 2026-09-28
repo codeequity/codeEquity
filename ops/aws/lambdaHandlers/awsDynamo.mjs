@@ -101,7 +101,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "SetTestLock")    { resultPromise = setTestLock( rb.ceProjId, rb.val ); }
     else if( endPoint == "PutEqPlan")      { resultPromise = putEqPlan( rb.NewPlan ); }
     else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
-    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId, rb.HostPlatform, rb.UserOnly ); }
+    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId, rb.HostPlatform ); }
     else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
@@ -1501,6 +1501,7 @@ async function putHostA( newHostAcct, update ) {
    return success( updated );
 }
 
+/*
 async function getProjectStatus( cepIds ) {
     console.log( "Which HostAs are CEPs?", cepIds );
 
@@ -1533,10 +1534,10 @@ async function getProjectStatus( cepIds ) {
 	    else                 { return []; }
 	});
 }
+*/
 
 // This gets CEHostUser only if userOnly is true.  Otherwise gets full HostAccount (i.e. populates ceProjects)
-async function getHostA( uid, plat, userOnly ) {
-    var getRepos = ( typeof userOnly === 'undefined' || !userOnly );
+async function getHostA( uid, plat ) {
     var paramsP = typeof uid !== 'undefined' ? 
     {
         TableName: 'CEHostUser',
@@ -1552,24 +1553,12 @@ async function getHostA( uid, plat, userOnly ) {
     };
     
     
-    console.log( "Get Host Account for ", uid, plat, userOnly, getRepos );
+    console.log( "Get Host Account for ", uid, plat );
     let hostAccPromise = paginatedScan( paramsP );
 
     let hostAccs = await hostAccPromise;
     if( ! Array.isArray(hostAccs) || !hostAccs.length ) { return NO_CONTENT; }
 
-    if( getRepos ) {
-       for( const hostAcc of hostAccs ) {
-   	   console.log( "Found Host account ", hostAcc );
-
-	   // FutureCEProjects are repos, currently, no need to check
-	   // let ceps = await getProjectStatus( hostAcc.CEProjectIds.concat( hostAcc.FutureCEProjects ) );
-	   // hostAcc.ceProjs = ceps.map( cep => cep == -1 ? "false" : "true" );
-
-	   hostAcc.ceProjects = await getProjectStatus( hostAcc.CEProjectIds );
-	   console.log( "...working with ", hostAcc.ceProjects );
-        }
-    }
     console.log( "Returning ", hostAccs );
     return success( hostAccs );
 }

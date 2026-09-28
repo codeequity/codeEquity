@@ -88,6 +88,14 @@ class CEProject {
       }
       return retVal; 
    }
+
+   void removeRepo( String repoName ) {
+      int idx = repositories.indexOf( repoName );
+      assert( idx < repositories.length );
+      assert( idx < hostRepoId.length );
+      repositories.removeAt( idx );
+      hostRepoId.removeAt( idx );
+   }
    
    String toString() {
       String res = "\n" + name + " (" + ceProjectId + ") " + description;

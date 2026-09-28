@@ -20,7 +20,6 @@ import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';    // fetchPAT
 import 'package:ceFlutter/utils/ceUtils.dart';
 
-import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/HostUser.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
@@ -444,12 +443,12 @@ Future<String> _getOwnerId( PAT, owner ) async {
 Future<List<String>> getGHRepoIds( appState, repoNames ) async {
 
    // Iterate over all known HostAccounts.  One per host.
-   for( HostAccount acct in appState.myHostAccounts ) {
+   for( HostUser acct in appState.myHostAccounts ) {
 
       if( acct.hostPlatform == HostPlatforms.GitHub ) {
 
-         assert( acct.hostUser.hostPAT != null );
-         final PAT = acct.hostUser.hostPAT!;
+         assert( acct.hostPAT != null );
+         final PAT = acct.hostPAT!;
          
          var github = await GitHub(auth: Authentication.withToken( PAT ));
          await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.hostUserName ); })
@@ -482,7 +481,7 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
    void _cancel() { Navigator.of( context ).pop( 'cancel'); }
 
    print( "We have ce person " + appState.ceUserId );
-   HostAccount? myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
+   HostUser? myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
 
    // NOTE CELinkage is under server control.
    void _save( List<bool> on ) async {
@@ -509,10 +508,9 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
       myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
       assert( myAcct != null );
       for( String rn in repoNames ) {
-         myAcct!.hostUser.futureCEProjects.remove( rn );
-         myAcct!.addRepo( cep, rn );
+         myAcct!.futureCEProjects.remove( rn );
       }
-      String newHostA = json.encode( myAcct!.hostUser );
+      String newHostA = json.encode( myAcct! );
       String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
       updateDynamo( context, container, postData, "PutHostA" ); // Don't wait
       
@@ -551,9 +549,9 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
       myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
       assert( myAcct != null );
       // May be simply adding a repo
-      if( !myAcct!.hostUser.ceProjectIds.contains( cep.ceProjectId )) { myAcct!.hostUser.ceProjectIds.add( cep.ceProjectId ); }
+      if( !myAcct!.ceProjectIds.contains( cep.ceProjectId )) { myAcct!.ceProjectIds.add( cep.ceProjectId ); }
 
-      for( String repo in myAcct!.hostUser.futureCEProjects ) {
+      for( String repo in myAcct!.futureCEProjects ) {
          List<String> parts = repo.split( '/' );
          assert( parts.length == 2 );
          if( parts[0] == cep.hostOrganization ) { candidate.add( repo ); }
@@ -660,9 +658,8 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    assert( huid != "-1" );
    HostUser hostUser      = new HostUser( hostPlatform: HostPlatforms.GitHub, hostUserName: hostLogin, ceUserId: appState.ceUserId, hostUserId: huid, 
                                           hostPAT: PAT, ceProjectIds: ceProjs, futureCEProjects: futProjs );
-   HostAccount myHostAcct = new HostAccount( hostUser: hostUser, ceProjRepos: ceProjRepos );
    
-   String newHostA = json.encode( myHostAcct );
+   String newHostA = json.encode( hostUser );
    // print( newHostA );
    // XXX update should not always be false.  False sez this is a new addition not an update, so check peqs.
    //     but this func is called when about to add futureRepos to a new CEP - there will not be peqs at this point.
@@ -680,7 +677,7 @@ Future<void> updateGHRepos( context, container ) async {
    final appState  = container.state;
    
    // Iterate over all known HostAccounts.  One per host.
-   for( HostAccount acct in appState.myHostAccounts ) {
+   for( HostUser acct in appState.myHostAccounts ) {
 
       if( acct.hostPlatform == HostPlatforms.GitHub ) {
 

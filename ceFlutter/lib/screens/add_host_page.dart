@@ -11,7 +11,6 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEProject.dart';
-import 'package:ceFlutter/models/HostAccount.dart';
 
 import 'package:ceFlutter/screens/home_page.dart';
 
@@ -30,7 +29,6 @@ class _CEAddHostState extends State<CEAddHostPage> {
    
    late var      container;
    late AppState appState;
-   late bool     addHostAcct;
 
    late TextEditingController pat;
 
@@ -39,8 +37,6 @@ class _CEAddHostState extends State<CEAddHostPage> {
    @override
    void initState() {
       super.initState();
-
-      addHostAcct = false;
    }
 
    @override

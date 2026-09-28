@@ -14,7 +14,7 @@ import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/Person.dart';
-import 'package:ceFlutter/models/HostAccount.dart';
+import 'package:ceFlutter/models/HostUser.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 
@@ -67,7 +67,7 @@ class AppState {
    late Map< String, List<PEQ> >         hostPeqs;        // cep id    : all host peqs for a given CEP.  
    late Map< String, List<PEQ> >         userPeqs;        // ceUser    : some or all peqs for all CEPS that user is part of
                                                           //             accessed by CEUID for the pact actor, plus unassign_user for uningested
-   late Map< String, List<HostAccount> > ceHostAccounts;  // ceUser    : HostAccount (list with 1 HA per platform)
+   late Map< String, List<HostUser> >    ceHostAccounts;  // ceUser    : HostUser (list with 1 HU per platform)
    late Map< String, PEQSummary? >       cePEQSummaries;  // ceProject : PEQSummary
    late Map< String, Linkage? >          ceHostLinks;     // ceProject : Linkage
    late Map< String, EquityPlan? >       ceEquityPlans;   // ceVenture : EquityPlan
@@ -78,7 +78,7 @@ class AppState {
    late PEQSummary?       myPEQSummary;          // Summary info for the selectedCEProject
    late Linkage?          myHostLinks;           // Current project/column disposition for the selectedCEProject
    late EquityPlan?       myEquityPlan;          // Equity plan for the selectedCEProject
-   late List<HostAccount> myHostAccounts;        // all host accounts for current ceUser.
+   late List<HostUser>    myHostAccounts;        // all host user (accounts) for current ceUser.
    late String            myGHPAT;               // GH personal access token for builder, keep for session only.
    
    late String funny;                 // placeholder in activity zone.
@@ -160,7 +160,7 @@ class AppState {
       userPeqs        = new Map<String, List<PEQ>>();
       cePeqs          = new Map<String, List<PEQ>>();
       hostPeqs        = new Map<String, List<PEQ>>();
-      ceHostAccounts  = new Map<String, List<HostAccount>>();
+      ceHostAccounts  = new Map<String, List<HostUser>>();
       cePEQSummaries  = new Map<String, PEQSummary?>();
       ceHostLinks     = new Map<String, Linkage?>();
       ceEquityPlans   = new Map<String, EquityPlan?>();
@@ -169,7 +169,7 @@ class AppState {
       
       myPEQSummary   = null;
       myEquityPlan   = null;
-      myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user
+      myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProjIds for current logged in user
       myHostLinks    = null;
       myGHPAT        = "";
       
