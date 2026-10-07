@@ -624,6 +624,38 @@ Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) asyn
       });
 }
 
+Future<void> writeRemoveRepoPAct( context, container, CEProject cep, String repoId ) async {
+   final appState  = container.state;
+   
+   DateTime            now  = DateTime.now();
+   String              note = '{"note": "Remove Repo"}';
+   Map<String,dynamic> pact = {};
+   
+   pact["CEUID"]       = appState.ceUserId;
+   pact["Verb"]        = "confirm";                // XXX formalize
+   pact["Action"]      = "notice";                 // XXX formalize
+   pact["Note"]        = note;
+   pact["Date"]        = getToday();
+   pact["Ingested"]    = "false";
+   pact["Locked"]      = "false";
+   pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
+   pact["RawBody"]     = note;
+
+   List<HostUser>? ha  = appState.ceHostAccounts[ appState.ceUserId ];
+   assert( ha != null );
+   for( var host in ha! ) {
+      if( host.hostPlatform == cep.hostPlatform ) {
+         pact["HostUserId"]  = host.hostUserId;
+         pact["CEProjectId"] = cep.ceProjectId;
+         pact["Subject"]     = [ cep.ceProjectId, repoId ];
+         
+         String pacte = json.encode( pact );
+         String postData = '{ "Endpoint": "RecordPEQAction", "newPAction": $pacte}';
+         updateDynamo( context, container, postData, "RecordPEQAction" );
+      }
+   }
+}
+
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
    String shortName = "fetchHostLinkage";
    print( "FETCH HOSTLINK" );

@@ -110,7 +110,8 @@ export function handler( event, context, callback) {
     else if( endPoint == "UpdateCEV")      { resultPromise = putCEV( rb.ceVenture ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
     else if( endPoint == "CheckDup")       { resultPromise = checkDuplicates( rb.CEProjectId, rb.HostIssueId ); }
-    else if( endPoint == "KillVenture")    { resultPromise = killVenture( rb.id ); }
+    else if( endPoint == "RemoveRepo")     { resultPromise = removeRepo( rb.cepId, rb.repoId ); }
+    else if( endPoint == "KillVenture")    { resultPromise = killVenture( rb.id, rb.isProject ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
@@ -1625,18 +1626,60 @@ async function checkDuplicates( ceProjId, issueId ) {
     return success( true );			
 }
 
-// Do NOT kill equity doc - this was signed and remains valid
-async function killVenture( ceVentId ) {
-   // CEV
-   let items = [];
-   items.push( { Delete: { TableName: "CEVentures",   Key: { "CEVentureId": ceVentId }}} );
-   items.push( { Delete: { TableName: "CEEquityPlan", Key: { "EquityPlanId": ceVentId }}} );
+// Remove hostRepoId. No updatewhere.
+async function removeRepo( cepId, repoId ) {
+   // Get all active peqs in cepId with repoId
+   const query = { CEProjectId: cepId, HostRepoId: repoId, Active: "true" };
+   var peqsWrap = await getEntries( "CEPEQs", query );
+   if( peqsWrap.statusCode != 201 && peqsWrap.statusCode != 204 ) {
+      console.log( peqsWrap );
+      assert( false );
+   }
+   if( peqsWrap.statusCode == 204 ) { return success( true ); }
+   
+   const peqs = JSON.parse( peqsWrap.body );
 
-   // CEPs
-   var query = { CEVentureId: ceVentId };
-   var cepsWrap = await getEntries( "CEProjects", query );
-   const ceps = JSON.parse( cepsWrap.body );
-   if( cepsWrap.statusCode == 201 ) {
+   let promises = [];
+   for( const peq of peqs ) {
+      const params = {
+      TableName: 'CEPEQs',
+         Key: {"PEQId": peq.PEQId},
+	    UpdateExpression: 'set HostRepoId = :empty',
+      	    ExpressionAttributeValues: { ':empty': "" }};
+      
+      const updateCmd = new UpdateCommand( params );
+      promises.push( bsdb.send( updateCmd ));
+   }
+
+   return await Promise.all( promises )
+      .then((results) => {
+	    console.log( '...promises done' );
+	    return success( true );
+         });
+}
+
+// Do NOT kill equity doc - this was signed and remains valid
+async function killVenture( ceVentId, isProject ) {
+   let ceps    = [];
+   let items   = [];
+   let gotCEPs = true;
+   
+   if( isProject == "false" ) {
+      // CEV
+      items.push( { Delete: { TableName: "CEVentures",   Key: { "CEVentureId": ceVentId }}} );
+      items.push( { Delete: { TableName: "CEEquityPlan", Key: { "EquityPlanId": ceVentId }}} );
+
+      // CEPs
+      var query = { CEVentureId: ceVentId };
+      var cepsWrap = await getEntries( "CEProjects", query );
+      ceps = JSON.parse( cepsWrap.body );
+      gotCEPs = cepsWrap.statusCode == 201;
+   }
+   else {
+      ceps = [ { "CEProjectId": ceVentId } ];
+   }
+   
+   if( gotCEPs ) {
       for( const cep of ceps ) {
          console.log( "Working on", cep.Name );
          items.push( { Delete: { TableName: "CEProjects",     Key: { "CEProjectId":  cep.CEProjectId }}} );
@@ -1669,7 +1712,7 @@ async function killVenture( ceVentId ) {
          }
       }
    }
-   console.log( "Attempting Venture kill" );
+   console.log( "Attempting Venture or Project kill" );
    for( const i of items ) {
       if( typeof i.Delete !== 'undefined' ) { console.log( i.Delete, i.Delete.TableName, i.Delete.Key ); }
       if( typeof i.Put !== 'undefined' )    { console.log( i.Put, i.Put.TableName, i.Put.Item.toString() );}
@@ -1691,9 +1734,3 @@ function errorResponse(status, errorMessage, awsRequestId) {
 	headers: { 'Access-Control-Allow-Origin': '*' }
     };
 }
-
-
-
-
-
-

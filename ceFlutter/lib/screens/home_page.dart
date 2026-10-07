@@ -2,6 +2,7 @@ import 'dart:convert';                   // json encode/decode, b64 coding
 import 'dart:math';               
 import 'package:flutter/services.dart';  // orientation
 import 'package:flutter/material.dart';
+import 'package:collection/collection.dart';  // firstwhereornull
 
 import 'package:ceFlutter/app_state_container.dart';
 
@@ -294,7 +295,7 @@ class _CEHomeState extends State<CEHomePage> {
          // triggers when ventures are found but CEP is either uncreated, or not yet connected to repos for the current user
          if( cev != null ) {
             // XXX doesn't scale well, see profilePage
-            CEProject? cep = appState.ceProject.values.firstWhere( (cep) => cep.ceVentureId == cev.ceVentureId );
+            CEProject? cep = appState.ceProject.values.firstWhereOrNull( (cep) => cep.ceVentureId == cev.ceVentureId );
             String cepId = cep != null ? cep.ceProjectId : "";
 
             chunks.add( _makeChunk( cev.name, cev.ceVentureId, cepId, ceVent:true, ));

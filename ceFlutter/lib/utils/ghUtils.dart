@@ -530,7 +530,7 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
 
       String msg  = "PEQs arrive with a host classification that is the host project name and column in which that issue is located.  ";
       msg        += "For example, a PEQ issue in your new repository in the Planned column of the Operations project is classified as:  ";
-      msg        += "Operations:Planned:<issueName>.  You can connect host classifications to your Equity Plan by clicking on the Equity categories.";
+      msg        += "Operations:Planned:<issueName>.  You can connect host classifications to your Equity Plan by clicking on the Equity categories.  ";
       msg        += "Doing so can make your stats in the Peq Summary tab more informative.";
       Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH, true, 6 );
       await justConfirm( context, "Connect the Equity Table and your Host Repository", msg, _cancel, body: body );

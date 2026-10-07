@@ -2,7 +2,7 @@ import 'dart:ui';       // pointerKinds
 import 'dart:math';
 import 'dart:convert';  // json encode/decode
 import 'package:flutter/material.dart';
-
+import 'package:collection/collection.dart';  // firstwhereornull
 import 'package:flutter/services.dart';                 // byte data
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
@@ -436,7 +436,7 @@ class _CEProfileState extends State<CEProfilePage> {
         // XXX doesn't scale well see homePage
         CEVenture? cev = appState.ceVenture[ emptyVent[i] ];
         assert( cev != null );
-        CEProject? cep = appState.ceProject.values.firstWhere( (cep) => cep.ceVentureId == cev!.ceVentureId );
+        CEProject? cep = appState.ceProject.values.firstWhereOrNull( (cep) => cep.ceVentureId == cev!.ceVentureId );
         String cepId = cep != null ? cep.ceProjectId : "-1";
         row.add( _makeProjCard( context, cepId, textWidth, ventId: emptyVent[i] ) );
         if( emptyVent.length > i+1 ) { row.add( _makeProjCard( context, cepId, textWidth, ventId: emptyVent[i+1] )); }
@@ -871,36 +871,67 @@ class _CEProfileState extends State<CEProfilePage> {
         proceed = true;
      }
 
-     void _remove( List<bool> on ) {
+     void _removeProject() async {
+        // remove CEP from all hostusers
+        // remove all non-ACCR peqs with cepId (delVen already does .. most of this?)
+
+        // Make sure peqs are updated first, then delete all non-ACCR
+        List<PEQ> peqs = [];
+        await updateCEPeqs( container, context, cepId: cep.ceProjectId );
+        peqs.addAll( appState.cePeqs[ cep.ceProjectId ] ?? [] );        
+        if( peqs.length > 0 ) {
+           List<String> peqIds = peqs
+                                 .where( (p) => p.peqType != PeqType.grant )
+                                 .map( (p) => p.id )
+                                 .toList();
+           print( "Deleting peqs " + peqIds.toString() );
+           
+           String shortName = "RemoveEntries";
+           String pids = json.encode( [ peqIds ] );  // list of lists in case pkey is not singular
+           String postData = '{ "Endpoint": "$shortName", "tableName": "CEPEQs", "ids": $pids }';
+           bool res = await updateDynamo( context, container, postData, shortName );
+        }
+
+        // remove cep, peqSummary, image, linkage, remove cepId from any hostUser. 
+        String shortName  = "KillVenture";
+        String cepid = cep.ceProjectId;
+        String postData = '{ "Endpoint": "$shortName", "id": "$cepid", "isProject": "true" }';
+        bool res = await updateDynamo( context, container, postData, shortName );
+
+        // tell ingest
+        sendPAct( context, container, cep.ceProjectId, cep.ceProjectId, HostPlatforms.GitHub, '{"note": "Remove CEProject"}' );
+
+        // XXX copy from _removeVenture
+        // Reload everything - cached venture data should no longer be available
+        screenArgs["profType"] = "---";  // Cancel briefly pops back to prof page before navigating.  without this, a new venture is created in makeVenBod
+        _cancel();
+        await flushAppState( context, container );
+        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
+        confirmedNav( context, container, newPage );
+     }
+        
+     void _removeRepo( List<bool> on ) {
         assert( on.length == candidate.length );
         for( int i = 0; i < on.length; i++ ) {
            if( on[i] ) {
-              cep.removeRepo( candidate[i] );
+              String repoId = cep.removeRepo( candidate[i] );
               writeCEProject( appState, context, container, cep );  // don't wait
-           
-              /*
-              // update CEP with new repo(s).  Don't wait.
-              bool added = false;
-              for( int i = 0; i < repoNames.length; i++ ) { added = cep.addRepo( repoNames[i], repoIds[i] ); }
-              if( added ) { writeCEProject( appState, context, container, cep ); } 
-              
-              // update hostUser
-              myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
-              assert( myAcct != null );
-              for( String rn in repoNames ) {
-              myAcct!.futureCEProjects.remove( rn );
-              myAcct!.addRepo( cep, rn );
-              }
-              String newHostA = json.encode( myAcct!.hostUser );
-              String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
-              updateDynamo( context, container, postData, "PutHostA" ); // Don't wait
-              */
-              // update (all) hostAccount(s).. hmmm.
-              // update peqs on aws, reload
-              // send pact
-              // save cep
+
+              // do not add this back to hostUser futureCEProject page - homepage refresh button does the trick
+
+              // send pact.  This is a no-op for ingest
+              writeRemoveRepoPAct( context, container, cep, repoId );
+
+              // have dynamo remove hostRepoId for all hostRepoId/cepId peqs..  don't wait.
+              // This is carried out here instead of during ingest since it does not impact peqSummary, allocs, or anything else.  Also,
+              // would be two possibly overlapping subsets of updated peqs at the end of ingest - complication without reason.
+              String cepId = cep.ceProjectId;
+              String shortName = "RemoveRepo";
+              String postData = '{ "Endpoint": "$shortName", "cepId": "$cepId", "repoId": "$repoId" }';
+              updateDynamo( context, container, postData, shortName );
            }
         }
+        _cancel();
      }
         
      _cancel();
@@ -909,14 +940,14 @@ class _CEProfileState extends State<CEProfilePage> {
      assert( appState.ceVenture[ cep.ceVentureId ] != null );
      CEVenture cev = appState.ceVenture[ cep.ceVentureId ]!;
      if( cev.roles[ appState.ceUserId ] != MemberRole.Executive ) {
-        String msg = "Only an Executive can delete a Venture.";
+        String msg = "Only an Executive can carry out this operation.";
         showToast( msg );
         return;
      }
 
      if( choice == "Remove a repo" ) {
 
-        String msg = "All PEQ issues in the host repo will still be valid and will persist in CodeEquity, but will lose their grounding in the host.  ";
+        String msg = "All PEQ issues connected to the host repo will still be valid and will persist in CodeEquity, but will lose their grounding in the host.  ";
         msg       += "With no host repository, CodeEquity background sanity checks and status repairs will fail.  This may be OK if work on these ";
         msg       += "issues is complete.  Be sure you know what you are doing, this action can not be undone.  Would you like to continue?";
         Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );
@@ -926,12 +957,17 @@ class _CEProfileState extends State<CEProfilePage> {
            candidate = cep.repositories;
            await showDialog(
               context: context,
-              builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _remove, cancelFunc: _cancel ));
+              builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _removeRepo, cancelFunc: _cancel ));
         }
 
      }
      else if( choice == "Delete this project" ) {
-        print( "Delete??  Are you sure?" );
+
+        String msg = "Any granted PEQ issues connected to this CodeEquity Project will remain unchanged in the Venture.  All other PEQ issues will be removed ";
+        msg       += "from the Venture including those that have already had work carried out on them.  There is no going back.  ";
+        msg       += "Are you certain you wish to delete " + cep.name + "?" ;
+        Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );
+        await confirm( context, "Are you sure you want to remove " + cep.name + "?", msg, _removeProject, _cancel, body: body );
      }
   }
   
@@ -963,15 +999,15 @@ class _CEProfileState extends State<CEProfilePage> {
         // remove CEV, peqSummary, CEP, image, linkage, hostUserId, equityPlan 
         String shortName  = "KillVenture";
         String vid = prime.ceVentureId;
-        String postData = '{ "Endpoint": "$shortName", "id": "$vid" }';
+        String postData = '{ "Endpoint": "$shortName", "id": "$vid", "isProject": "false" }';
         bool res = await updateDynamo( context, container, postData, shortName );
 
         // send PActs 1 per each of venture and project
         String note          = '{"note": "Remove Venture"}';
-        await sendPAct( context, container, "-1", prime.ceVentureId, HostPlatforms.GitHub, note );
+        sendPAct( context, container, "-1", prime.ceVentureId, HostPlatforms.GitHub, note );
         for( String id in cepIds ) {
            note  = '{"note": "Remove CEProject"}';
-           await sendPAct( context, container, id, id, HostPlatforms.GitHub, note );
+           sendPAct( context, container, id, id, HostPlatforms.GitHub, note );
         }
 
         // Reload everything - cached venture data should no longer be available
