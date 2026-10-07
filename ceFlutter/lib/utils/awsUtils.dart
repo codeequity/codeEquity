@@ -20,7 +20,6 @@ import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/PEQRaw.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/Agreement.dart';
-import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/HostUser.dart';
 import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/Linkage.dart';
@@ -609,13 +608,13 @@ Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) asyn
    // get all ceps in cev.  for each, get the huid and send the pact.  include the huname since withdraw impacts host user data
    List<CEProject> ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev.ceVentureId ).toList();
    ceps.forEach( (p) {
-         List<HostAccount>? ha  = appState.ceHostAccounts[ cePeep.id ];
+         List<HostUser>? ha  = appState.ceHostAccounts[ cePeep.id ];
          assert( ha != null );
          for( var host in ha! ) {
-            if( host.hostUser.hostPlatform == p.hostPlatform ) {
-               pact["HostUserId"]  = host.hostUser.hostUserId;
+            if( host.hostPlatform == p.hostPlatform ) {
+               pact["HostUserId"]  = host.hostUserId;
                pact["CEProjectId"] = p.ceProjectId;
-               pact["Subject"]     = [ cev.ceVentureId, host.hostUser.hostUserName ];
+               pact["Subject"]     = [ cev.ceVentureId, host.hostUserName ];
                
                String pacte = json.encode( pact );
                String postData = '{ "Endpoint": "RecordPEQAction", "newPAction": $pacte}';
@@ -623,6 +622,38 @@ Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) asyn
             }
          }
       });
+}
+
+Future<void> writeRemoveRepoPAct( context, container, CEProject cep, String repoId ) async {
+   final appState  = container.state;
+   
+   DateTime            now  = DateTime.now();
+   String              note = '{"note": "Remove Repo"}';
+   Map<String,dynamic> pact = {};
+   
+   pact["CEUID"]       = appState.ceUserId;
+   pact["Verb"]        = "confirm";                // XXX formalize
+   pact["Action"]      = "notice";                 // XXX formalize
+   pact["Note"]        = note;
+   pact["Date"]        = getToday();
+   pact["Ingested"]    = "false";
+   pact["Locked"]      = "false";
+   pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
+   pact["RawBody"]     = note;
+
+   List<HostUser>? ha  = appState.ceHostAccounts[ appState.ceUserId ];
+   assert( ha != null );
+   for( var host in ha! ) {
+      if( host.hostPlatform == cep.hostPlatform ) {
+         pact["HostUserId"]  = host.hostUserId;
+         pact["CEProjectId"] = cep.ceProjectId;
+         pact["Subject"]     = [ cep.ceProjectId, repoId ];
+         
+         String pacte = json.encode( pact );
+         String postData = '{ "Endpoint": "RecordPEQAction", "newPAction": $pacte}';
+         updateDynamo( context, container, postData, "RecordPEQAction" );
+      }
+   }
 }
 
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
@@ -661,15 +692,16 @@ Future<PEQRaw?> fetchPEQRaw( context, container, postData ) async {
    }
 }
 
+
 // Associates hostrepos with CEP.  single uid, or all for given platform
-Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
+Future<List<HostUser>> fetchHostUsers( context, container, postData ) async {
    String shortName = "GetHostA";
    final response = await awsPost( shortName, postData, container );
    // print( "FETCH HOSTACC " + postData );
    
    if (response.statusCode == 201) {
       Iterable ha = json.decode(utf8.decode(response.bodyBytes));
-      List<HostAccount> hostAccounts = ha.map((acct) => HostAccount.fromJson(acct)).toList();
+      List<HostUser> hostAccounts = ha.map((acct) => HostUser.fromJson(acct)).toList();
       assert( hostAccounts.length > 0);
       return hostAccounts;
    } else if( response.statusCode == 204) {
@@ -679,26 +711,8 @@ Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
       return [];
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchHostAcct( context, container, postData ); }
+      if( didReauth ) { return await fetchHostUsers( context, container, postData ); }
       else{ return []; }
-   }
-}
-
-Future<HostUser?> fetchHostUser( context, container, postData ) async {
-   String shortName = "GetHostA";
-   final response = await awsPost( shortName, postData, container );
-   
-   if (response.statusCode == 201) {
-      final hu = json.decode( utf8.decode( response.bodyBytes ));
-      HostUser hostUser = HostUser.fromJson( hu );
-      return hostUser;
-   } else if( response.statusCode == 204) {
-      print( "Fetch: no associated users found" );
-      return null;
-   } else {
-      bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchHostUser( context, container, postData ); }
-      else{ return null; }
    }
 }
 

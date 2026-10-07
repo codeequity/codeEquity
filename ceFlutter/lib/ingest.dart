@@ -1127,7 +1127,7 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
 }
 
 void _notice( appState ) {
-   _vPrint( appState, 1, "Notice actions are no-ops" );
+   _vPrint( appState, 1, "Notice actions are no-ops" );  // with 1 exception - withdraw
 }
 
 

@@ -19,7 +19,7 @@ import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/CEProject.dart';
-import 'package:ceFlutter/models/HostAccount.dart';
+import 'package:ceFlutter/models/HostUser.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/UserDoc.dart';
 import 'package:ceFlutter/models/Agreement.dart';
@@ -138,13 +138,13 @@ class _CEActivityState extends State<CEActivityPanel> {
          }
       }
       
-      // delete CEHostUser entry - cePeep may have multiple hostAccounts (i.e. have hostUIDs on multiple platforms)
+      // delete CEHostUser entry - cePeep may have multiple hostUser accounts (i.e. have hostUIDs on multiple platforms)
       List<String> huids = [];
       for( var host in appState.myHostAccounts ) {
          print( "Clearing all CEPs, CEVs from host UID: " + host.hostUserId );
-         host.hostUser.ceProjectIds = [];
-         host.hostUser.futureCEProjects = [];
-         String newHostA = json.encode( host.hostUser );
+         host.ceProjectIds = [];
+         host.futureCEProjects = [];
+         String newHostA = json.encode( host );
          String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
          updateDynamo( context, container, postData, "PutHostA" );
       }
@@ -178,7 +178,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       
       // remove 1 CEV from CEHostUser
       List<CEProject>   ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev!.ceVentureId ).toList();
-      List<HostAccount>? ha  = appState.ceHostAccounts[ cePeep.id ];
+      List<HostUser>? ha  = appState.ceHostAccounts[ cePeep.id ];
       assert( ha != null );
       for( var host in ha! ) {
          bool mod = false;
@@ -190,7 +190,7 @@ class _CEActivityState extends State<CEActivityPanel> {
             });
          if( mod ) {
             print( "HostUser mods made" );
-            String newHostA = json.encode( host.hostUser );
+            String newHostA = json.encode( host );
             String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
             await updateDynamo( context, container, postData, "PutHostA" );
          }
@@ -247,7 +247,7 @@ class _CEActivityState extends State<CEActivityPanel> {
                      showToast( cePeep.goesBy + " has not registered any host platform " + enumToStr( cep.hostPlatform ) + " with CodeEquity yet.  Please address this on the home page. ");
                   }
                   else {
-                     List<HostAccount> hosts = appState.ceHostAccounts[cePeep.id]!.where( (h) => h.hostUserId == huid && h.hostPlatform == cep.hostPlatform ).toList();
+                     List<HostUser> hosts = appState.ceHostAccounts[cePeep.id]!.where( (h) => h.hostUserId == huid && h.hostPlatform == cep.hostPlatform ).toList();
                      // If cePeep doesn't have hostUID for the platform related to this CEP, warn and skip
                      if( hosts.length == 0 ) {
                         showToast( cePeep.goesBy + " has not registered the host platform " + enumToStr( cep.hostPlatform ) + " with CodeEquity yet.  Please address this on the home page. ");
@@ -265,9 +265,9 @@ class _CEActivityState extends State<CEActivityPanel> {
                });
             // Update CEHostUser for each platform where CEPs were added
             platforms.forEach( (p) {
-                  List<HostAccount> hosts = appState.ceHostAccounts[cePeep.id]!.where( (h) => h.hostUserId == huid && h.hostPlatform == p ).toList();
+                  List<HostUser> hosts = appState.ceHostAccounts[cePeep.id]!.where( (h) => h.hostUserId == huid && h.hostPlatform == p ).toList();
                   assert( hosts.length == 1 );
-                  String newHostA = json.encode( hosts[0].hostUser );
+                  String newHostA = json.encode( hosts[0] );
                   String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
                   // Don't wait
                   updateDynamo( context, container, postData, "PutHostA" );

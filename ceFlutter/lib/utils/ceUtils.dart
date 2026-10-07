@@ -19,7 +19,7 @@ import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
-import 'package:ceFlutter/models/HostAccount.dart';
+import 'package:ceFlutter/models/HostUser.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 
@@ -242,7 +242,7 @@ Future<void> initMDState( context, container ) async {
    assert( uid != "" );
    print( "UID: " + uid );
 
-   var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostAccounts.ceProjs
+   var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostUsers.ceProjs
 
    List<CEProject> ceps  = [];
    List<CEVenture> cevs  = [];
@@ -258,7 +258,7 @@ Future<void> initMDState( context, container ) async {
    // NOTE Could push fetchCEPeople to reloadCEProject.  But, dynamo table does not carry that info, and constructing a
    //      a list of cep-specific names then fetching that is likely to provide minimal gains, if any.  Leave it here.
    await Future.wait([
-                        fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ),
+                        fetchHostUsers( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ),
                         
                         fetchCEPeople( context, container ).then(       (p) => peeps = p ),
                         
@@ -283,7 +283,7 @@ Future<void> initMDState( context, container ) async {
       pdHA = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$newuid"  } );
       await Future.wait([
                            (appState.ceHostAccounts[newuid] == null ? 
-                            fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[newuid] = p ) :
+                            fetchHostUsers( context, container, pdHA ).then( (p) => appState.ceHostAccounts[newuid] = p ) :
                             new Future<bool>.value(true) ),
                            ]);
       
@@ -309,19 +309,19 @@ Future<void> updateHostAccts( context, container ) async {
    assert( uid != "" );
    print( "UID: " + uid );
 
-   var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostAccounts.ceProjs
+   var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );
 
    await Future.wait([
-                        fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ),
+                        fetchHostUsers( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ),
                         ]);
    appState.myHostAccounts = appState.ceHostAccounts[uid];
 }
 
-HostAccount? getPlatformAccount( List<HostAccount>? accts, HostPlatforms hplat ) {
-   HostAccount? platAcct = null;
+HostUser? getPlatformAccount( List<HostUser>? accts, HostPlatforms hplat ) {
+   HostUser? platAcct = null;
    if( accts != null ) {
-      for( HostAccount ha in accts! ) {
-         if( ha.hostUser.hostPlatform == hplat ) {
+      for( HostUser ha in accts! ) {
+         if( ha.hostPlatform == hplat ) {
             platAcct = ha;
             break;
          }
@@ -377,7 +377,17 @@ void initProject( context, container, CEProject cep, List<TextEditingController>
    }
 
 }
-   
+
+class HostVals {
+   // CEP host profile related data
+   static List<String>       profHeader( HostPlatforms hplat )   => hplat == HostPlatforms.GitHub ? GHVals.profHeader   : [""];
+   static List<bool>         profDD( HostPlatforms hplat )       => hplat == HostPlatforms.GitHub ? GHVals.profDD       : [false];
+   static List<List<String>> profOptions( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profOptions  : [ [""] ];
+   static List<String>       profCurVals( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profCurVals  : [""];
+   static List<String>       profToolTips( HostPlatforms hplat ) => hplat == HostPlatforms.GitHub ? GHVals.profToolTips : [""];
+}                                  
+
+
 void editProfile( context, container, Person cePeep, {void Function()? updateCallback} ) async {
 
    void _cancelEdit( context ) {
@@ -473,7 +483,7 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
    else {
       // Collect CEPs by host
       List<String> myCEPs = [];
-      List<HostAccount> myHA = appState.ceHostAccounts[ appState.ceUserId ];
+      List<HostUser> myHA = appState.ceHostAccounts[ appState.ceUserId ];
       for( final host in myHA ) { myCEPs.addAll( host.ceProjectIds );  }
 
       // Collect all peqs by cep
@@ -554,7 +564,7 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
       
       // XXX Consider making this standalone
       String hostUserId = "";
-      for( HostAccount ha in appState.myHostAccounts ) {
+      for( HostUser ha in appState.myHostAccounts ) {
          if( ha.hostPlatform == HostPlatforms.GitHub && ha.ceUserId == appState.ceUserId ) {
             hostUserId = ha.hostUserId;
             break;
@@ -594,7 +604,7 @@ Future<bool> sendPAct( context, container, String cepId, String subject, HostPla
    print( "Adding PAct" );
    
    String hostUserId = "";
-   for( HostAccount ha in appState.myHostAccounts ) {
+   for( HostUser ha in appState.myHostAccounts ) {
       if( ha.hostPlatform == hostPlatform && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
          hostUserId = ha.hostUserId;
          break;

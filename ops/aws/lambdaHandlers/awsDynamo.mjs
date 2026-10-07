@@ -101,7 +101,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "SetTestLock")    { resultPromise = setTestLock( rb.ceProjId, rb.val ); }
     else if( endPoint == "PutEqPlan")      { resultPromise = putEqPlan( rb.NewPlan ); }
     else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
-    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId, rb.HostPlatform, rb.UserOnly ); }
+    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId, rb.HostPlatform ); }
     else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
@@ -110,7 +110,8 @@ export function handler( event, context, callback) {
     else if( endPoint == "UpdateCEV")      { resultPromise = putCEV( rb.ceVenture ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
     else if( endPoint == "CheckDup")       { resultPromise = checkDuplicates( rb.CEProjectId, rb.HostIssueId ); }
-    else if( endPoint == "KillVenture")    { resultPromise = killVenture( rb.id ); }
+    else if( endPoint == "RemoveRepo")     { resultPromise = removeRepo( rb.cepId, rb.repoId ); }
+    else if( endPoint == "KillVenture")    { resultPromise = killVenture( rb.id, rb.isProject ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
@@ -1501,6 +1502,7 @@ async function putHostA( newHostAcct, update ) {
    return success( updated );
 }
 
+/*
 async function getProjectStatus( cepIds ) {
     console.log( "Which HostAs are CEPs?", cepIds );
 
@@ -1533,10 +1535,10 @@ async function getProjectStatus( cepIds ) {
 	    else                 { return []; }
 	});
 }
+*/
 
 // This gets CEHostUser only if userOnly is true.  Otherwise gets full HostAccount (i.e. populates ceProjects)
-async function getHostA( uid, plat, userOnly ) {
-    var getRepos = ( typeof userOnly === 'undefined' || !userOnly );
+async function getHostA( uid, plat ) {
     var paramsP = typeof uid !== 'undefined' ? 
     {
         TableName: 'CEHostUser',
@@ -1552,24 +1554,12 @@ async function getHostA( uid, plat, userOnly ) {
     };
     
     
-    console.log( "Get Host Account for ", uid, plat, userOnly, getRepos );
+    console.log( "Get Host Account for ", uid, plat );
     let hostAccPromise = paginatedScan( paramsP );
 
     let hostAccs = await hostAccPromise;
     if( ! Array.isArray(hostAccs) || !hostAccs.length ) { return NO_CONTENT; }
 
-    if( getRepos ) {
-       for( const hostAcc of hostAccs ) {
-   	   console.log( "Found Host account ", hostAcc );
-
-	   // FutureCEProjects are repos, currently, no need to check
-	   // let ceps = await getProjectStatus( hostAcc.CEProjectIds.concat( hostAcc.FutureCEProjects ) );
-	   // hostAcc.ceProjs = ceps.map( cep => cep == -1 ? "false" : "true" );
-
-	   hostAcc.ceProjects = await getProjectStatus( hostAcc.CEProjectIds );
-	   console.log( "...working with ", hostAcc.ceProjects );
-        }
-    }
     console.log( "Returning ", hostAccs );
     return success( hostAccs );
 }
@@ -1636,18 +1626,60 @@ async function checkDuplicates( ceProjId, issueId ) {
     return success( true );			
 }
 
-// Do NOT kill equity doc - this was signed and remains valid
-async function killVenture( ceVentId ) {
-   // CEV
-   let items = [];
-   items.push( { Delete: { TableName: "CEVentures",   Key: { "CEVentureId": ceVentId }}} );
-   items.push( { Delete: { TableName: "CEEquityPlan", Key: { "EquityPlanId": ceVentId }}} );
+// Remove hostRepoId. No updatewhere.
+async function removeRepo( cepId, repoId ) {
+   // Get all active peqs in cepId with repoId
+   const query = { CEProjectId: cepId, HostRepoId: repoId, Active: "true" };
+   var peqsWrap = await getEntries( "CEPEQs", query );
+   if( peqsWrap.statusCode != 201 && peqsWrap.statusCode != 204 ) {
+      console.log( peqsWrap );
+      assert( false );
+   }
+   if( peqsWrap.statusCode == 204 ) { return success( true ); }
+   
+   const peqs = JSON.parse( peqsWrap.body );
 
-   // CEPs
-   var query = { CEVentureId: ceVentId };
-   var cepsWrap = await getEntries( "CEProjects", query );
-   const ceps = JSON.parse( cepsWrap.body );
-   if( cepsWrap.statusCode == 201 ) {
+   let promises = [];
+   for( const peq of peqs ) {
+      const params = {
+      TableName: 'CEPEQs',
+         Key: {"PEQId": peq.PEQId},
+	    UpdateExpression: 'set HostRepoId = :empty',
+      	    ExpressionAttributeValues: { ':empty': "" }};
+      
+      const updateCmd = new UpdateCommand( params );
+      promises.push( bsdb.send( updateCmd ));
+   }
+
+   return await Promise.all( promises )
+      .then((results) => {
+	    console.log( '...promises done' );
+	    return success( true );
+         });
+}
+
+// Do NOT kill equity doc - this was signed and remains valid
+async function killVenture( ceVentId, isProject ) {
+   let ceps    = [];
+   let items   = [];
+   let gotCEPs = true;
+   
+   if( isProject == "false" ) {
+      // CEV
+      items.push( { Delete: { TableName: "CEVentures",   Key: { "CEVentureId": ceVentId }}} );
+      items.push( { Delete: { TableName: "CEEquityPlan", Key: { "EquityPlanId": ceVentId }}} );
+
+      // CEPs
+      var query = { CEVentureId: ceVentId };
+      var cepsWrap = await getEntries( "CEProjects", query );
+      ceps = JSON.parse( cepsWrap.body );
+      gotCEPs = cepsWrap.statusCode == 201;
+   }
+   else {
+      ceps = [ { "CEProjectId": ceVentId } ];
+   }
+   
+   if( gotCEPs ) {
       for( const cep of ceps ) {
          console.log( "Working on", cep.Name );
          items.push( { Delete: { TableName: "CEProjects",     Key: { "CEProjectId":  cep.CEProjectId }}} );
@@ -1680,7 +1712,7 @@ async function killVenture( ceVentId ) {
          }
       }
    }
-   console.log( "Attempting Venture kill" );
+   console.log( "Attempting Venture or Project kill" );
    for( const i of items ) {
       if( typeof i.Delete !== 'undefined' ) { console.log( i.Delete, i.Delete.TableName, i.Delete.Key ); }
       if( typeof i.Put !== 'undefined' )    { console.log( i.Put, i.Put.TableName, i.Put.Item.toString() );}
@@ -1702,9 +1734,3 @@ function errorResponse(status, errorMessage, awsRequestId) {
 	headers: { 'Access-Control-Allow-Origin': '*' }
     };
 }
-
-
-
-
-
-

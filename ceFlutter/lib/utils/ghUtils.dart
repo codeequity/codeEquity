@@ -20,11 +20,33 @@ import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';    // fetchPAT
 import 'package:ceFlutter/utils/ceUtils.dart';
 
-import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/HostUser.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
+
+
+class GHVals {
+   // project profile related data
+   static const List<String> _profHeader        = ["Host platform", "Owner category", "Host project management version", "Organization name on host"];
+   static const List<bool>   _profDD            = [ true,           true,             true,                              false ];
+   static const List<List<String>> _profOptions = [["GitHub"],
+                                                   ["Organization", "Individual"],
+                                                   ["GH Version 2", "GH Classic" ],
+                                                   [ ] ];
+   static const List<String> _profCurVals       = ["", "", "", ""];
+   static const List<String> _profToolTips      = ["CodeEquity is working to expand to other hosting platforms",
+                                                   "Individual owners are no longer fully supported on GitHub, nor on CodeEquity",
+                                                   "GH Classic is legacy on GitHub, no longer supported on CodeEquity",
+                                                   "Enter the name of the host organization that owns your code repositories" ];
+
+   static List<String>       get profHeader   => _profHeader;
+   static List<bool>         get profDD       => _profDD;
+   static List<List<String>> get profOptions  => _profOptions;
+   static List<String>       get profCurVals  => _profCurVals;
+   static List<String>       get profToolTips => _profToolTips;
+}                                  
+
 
 // Post request to GitHub
 Future<http.Response> _postGH( PAT, postData, name ) async {
@@ -421,12 +443,12 @@ Future<String> _getOwnerId( PAT, owner ) async {
 Future<List<String>> getGHRepoIds( appState, repoNames ) async {
 
    // Iterate over all known HostAccounts.  One per host.
-   for( HostAccount acct in appState.myHostAccounts ) {
+   for( HostUser acct in appState.myHostAccounts ) {
 
       if( acct.hostPlatform == HostPlatforms.GitHub ) {
 
-         assert( acct.hostUser.hostPAT != null );
-         final PAT = acct.hostUser.hostPAT!;
+         assert( acct.hostPAT != null );
+         final PAT = acct.hostPAT!;
          
          var github = await GitHub(auth: Authentication.withToken( PAT ));
          await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.hostUserName ); })
@@ -459,7 +481,7 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
    void _cancel() { Navigator.of( context ).pop( 'cancel'); }
 
    print( "We have ce person " + appState.ceUserId );
-   HostAccount? myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
+   HostUser? myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
 
    // NOTE CELinkage is under server control.
    void _save( List<bool> on ) async {
@@ -486,10 +508,9 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
       myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
       assert( myAcct != null );
       for( String rn in repoNames ) {
-         myAcct!.hostUser.futureCEProjects.remove( rn );
-         myAcct!.addRepo( cep, rn );
+         myAcct!.futureCEProjects.remove( rn );
       }
-      String newHostA = json.encode( myAcct!.hostUser );
+      String newHostA = json.encode( myAcct! );
       String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
       updateDynamo( context, container, postData, "PutHostA" ); // Don't wait
       
@@ -509,7 +530,7 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
 
       String msg  = "PEQs arrive with a host classification that is the host project name and column in which that issue is located.  ";
       msg        += "For example, a PEQ issue in your new repository in the Planned column of the Operations project is classified as:  ";
-      msg        += "Operations:Planned:<issueName>.  You can connect host classifications to your Equity Plan by clicking on the Equity categories.";
+      msg        += "Operations:Planned:<issueName>.  You can connect host classifications to your Equity Plan by clicking on the Equity categories.  ";
       msg        += "Doing so can make your stats in the Peq Summary tab more informative.";
       Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH, true, 6 );
       await justConfirm( context, "Connect the Equity Table and your Host Repository", msg, _cancel, body: body );
@@ -528,9 +549,9 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
       myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
       assert( myAcct != null );
       // May be simply adding a repo
-      if( !myAcct!.hostUser.ceProjectIds.contains( cep.ceProjectId )) { myAcct!.hostUser.ceProjectIds.add( cep.ceProjectId ); }
+      if( !myAcct!.ceProjectIds.contains( cep.ceProjectId )) { myAcct!.ceProjectIds.add( cep.ceProjectId ); }
 
-      for( String repo in myAcct!.hostUser.futureCEProjects ) {
+      for( String repo in myAcct!.futureCEProjects ) {
          List<String> parts = repo.split( '/' );
          assert( parts.length == 2 );
          if( parts[0] == cep.hostOrganization ) { candidate.add( repo ); }
@@ -565,9 +586,7 @@ Future<void> initGHProject( context, container, CEProject cep, TextEditingContro
 
    void _save( List<String> saveData ) async {
       assert( controllers.length == 4 && controllers[3] != null );
-      print( "HO! " + saveData.toString() + " " + controllers[3]!.text );
 
-      // NOTE hostUser does not necessarily exist yet
       cep.hostPlatform     = enumFromStr<HostPlatforms>( saveData[0], HostPlatforms.values );
       cep.ownerCategory    = saveData[1];
       cep.projectMgmtSys   = saveData[2];
@@ -584,21 +603,10 @@ Future<void> initGHProject( context, container, CEProject cep, TextEditingContro
    assert( cep.ceVentureId != "" );
    final appState = container.state;
 
-   // Note ghOptions plus controllers means every header will either be paired with a list of options, or a textEditingController
-   String       popupTitle       = "Describe where and how your code is hosted:";
-   List<String> header           = ["Host platform", "Owner category", "Host project management version", "Organization name on host"];
-   List<bool>   dropDown         = [ true,           true,             true,                              false ];
-   List<List<String>> ghOptions  = [["GitHub"],
-                                    ["Organization", "Individual"],
-                                    ["GH Version 2", "GH Classic" ],
-                                    []   ];
-   List<String> curVals          = ["", "", "", "<Elgoog Inc>"];
-   List<String> ghToolTips       = ["CodeEquity is working to expand to other hosting platforms",
-                                    "Individual owners are no longer fully supported on GitHub, nor on CodeEquity",
-                                    "GH Classic is legacy on GitHub, no longer supported on CodeEquity",
-                                    "Enter the name of the host organization that owns your code repositories" ];
-   
-   await showDropdownDialog( context, container, popupTitle, header, dropDown, ghOptions, curVals, ghToolTips, controllers, _save, _cancel );
+   // Note profOptions plus controllers means every header will either be paired with a list of options, or a textEditingController
+   String popupTitle = "Describe where and how your code is hosted:";
+   await showDropdownDialog( context, container, popupTitle,
+                             GHVals.profHeader, GHVals.profDD, GHVals.profOptions, GHVals.profCurVals, GHVals.profToolTips, controllers, _save, _cancel );   
 }
 
 
@@ -650,9 +658,8 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    assert( huid != "-1" );
    HostUser hostUser      = new HostUser( hostPlatform: HostPlatforms.GitHub, hostUserName: hostLogin, ceUserId: appState.ceUserId, hostUserId: huid, 
                                           hostPAT: PAT, ceProjectIds: ceProjs, futureCEProjects: futProjs );
-   HostAccount myHostAcct = new HostAccount( hostUser: hostUser, ceProjRepos: ceProjRepos );
    
-   String newHostA = json.encode( myHostAcct );
+   String newHostA = json.encode( hostUser );
    // print( newHostA );
    // XXX update should not always be false.  False sez this is a new addition not an update, so check peqs.
    //     but this func is called when about to add futureRepos to a new CEP - there will not be peqs at this point.
@@ -670,7 +677,7 @@ Future<void> updateGHRepos( context, container ) async {
    final appState  = container.state;
    
    // Iterate over all known HostAccounts.  One per host.
-   for( HostAccount acct in appState.myHostAccounts ) {
+   for( HostUser acct in appState.myHostAccounts ) {
 
       if( acct.hostPlatform == HostPlatforms.GitHub ) {
 
