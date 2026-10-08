@@ -18,17 +18,6 @@ import 'package:ceFlutter/components/equityTree.dart';
 import 'package:ceFlutter/components/equityNode.dart';
 import 'package:ceFlutter/components/equityLeaf.dart';
 
-// Workaround breaking change 5/2021
-// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
-class MyCustomScrollBehavior extends MaterialScrollBehavior {
-  // Override behavior methods and getters like dragDevices
-  @override
-  Set<PointerDeviceKind> get dragDevices => { 
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-  };
-}
-
 
 class CEEquityFrame extends StatefulWidget {
    final frameHeightUsed;

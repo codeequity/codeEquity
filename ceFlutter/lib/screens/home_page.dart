@@ -64,6 +64,8 @@ class _CEHomeState extends State<CEHomePage> {
       ventIds = [];
    }
 
+   void _pop() { Navigator.of( context ).pop( 'Cancel' ); }
+
    Widget _newCEProjButton() {
       return makeActionButtonFixed(
          appState,
@@ -87,8 +89,6 @@ class _CEHomeState extends State<CEHomePage> {
          });
    }
 
-   void _cancel() { Navigator.of( context ).pop( 'Cancel' ); }
-
    Future<String> _chooseProject() async {
       Future<String> _select( List<TextEditingController> cont ) async {
          assert( cont.length == 1 );
@@ -106,12 +106,12 @@ class _CEHomeState extends State<CEHomePage> {
          return "";
       }
 
-      _cancel(); // Add Host popup               
+      _pop(); // Add Host popup               
       String item = "Project name";
       String hint = "Type \'Project name\' in the search bar if you need a hint";
       addControllerPool( controllerPool, 0 );
       var retVal = await editList( context, appState, "Select the CE Project", [item], controllerPool.sublist(0, 1), [hint],
-                                   () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
+                                   () => _select( controllerPool.sublist(0, 1) ), _pop, null, saveName: "Select" );
       return retVal;
    }
 
@@ -138,7 +138,7 @@ class _CEHomeState extends State<CEHomePage> {
             // Have futureCEProject.  want to pop an option to add to a CEP.  
             if( itemId == "" && partner == "" ) {
                String msg = "Would you like to add this repo (or others) to a CodeEquity Project?  Press continue to do so.";
-               await confirm( context, "Add Host Repository to CE Project", msg, _chooseProject, _cancel );
+               await confirm( context, "Add Host Repository to CE Project", msg, _chooseProject, _pop );
             }
             else {
                Map<String,int> screenArgs = {"initialPage": 0 };

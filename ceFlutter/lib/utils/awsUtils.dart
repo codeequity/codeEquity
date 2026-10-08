@@ -589,22 +589,9 @@ Future<void> writeCEPerson( appState, context, container, cePeep ) async {
    }
 }
 
-
 Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) async {
-   DateTime            now  = DateTime.now();
    String              note = "withdraw";
-   Map<String,dynamic> pact = {};
    
-   pact["CEUID"]       = cePeep.id;
-   pact["Verb"]        = "confirm";                // XXX formalize
-   pact["Action"]      = "notice";                 // XXX formalize
-   pact["Note"]        = note;
-   pact["Date"]        = getToday();
-   pact["Ingested"]    = "false";
-   pact["Locked"]      = "false";
-   pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
-   pact["RawBody"]     = note;
-
    // get all ceps in cev.  for each, get the huid and send the pact.  include the huname since withdraw impacts host user data
    List<CEProject> ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev.ceVentureId ).toList();
    ceps.forEach( (p) {
@@ -612,13 +599,8 @@ Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) asyn
          assert( ha != null );
          for( var host in ha! ) {
             if( host.hostPlatform == p.hostPlatform ) {
-               pact["HostUserId"]  = host.hostUserId;
-               pact["CEProjectId"] = p.ceProjectId;
-               pact["Subject"]     = [ cev.ceVentureId, host.hostUserName ];
-               
-               String pacte = json.encode( pact );
-               String postData = '{ "Endpoint": "RecordPEQAction", "newPAction": $pacte}';
-               updateDynamo( context, container, postData, "RecordPEQAction" );
+               sendPAct( context, container, p.ceProjectId, [ cev.ceVentureId, host.hostUserName ], p.hostPlatform, note,
+                         ingested: "false", ceuid: cePeep.id, hostUserId: host.hostUserId  );
             }
          }
       });
@@ -626,32 +608,14 @@ Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) asyn
 
 Future<void> writeRemoveRepoPAct( context, container, CEProject cep, String repoId ) async {
    final appState  = container.state;
+   String     note = "Remove Repo";
    
-   DateTime            now  = DateTime.now();
-   String              note = '{"note": "Remove Repo"}';
-   Map<String,dynamic> pact = {};
-   
-   pact["CEUID"]       = appState.ceUserId;
-   pact["Verb"]        = "confirm";                // XXX formalize
-   pact["Action"]      = "notice";                 // XXX formalize
-   pact["Note"]        = note;
-   pact["Date"]        = getToday();
-   pact["Ingested"]    = "false";
-   pact["Locked"]      = "false";
-   pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
-   pact["RawBody"]     = note;
-
    List<HostUser>? ha  = appState.ceHostAccounts[ appState.ceUserId ];
    assert( ha != null );
    for( var host in ha! ) {
       if( host.hostPlatform == cep.hostPlatform ) {
-         pact["HostUserId"]  = host.hostUserId;
-         pact["CEProjectId"] = cep.ceProjectId;
-         pact["Subject"]     = [ cep.ceProjectId, repoId ];
-         
-         String pacte = json.encode( pact );
-         String postData = '{ "Endpoint": "RecordPEQAction", "newPAction": $pacte}';
-         updateDynamo( context, container, postData, "RecordPEQAction" );
+         sendPAct( context, container, cep.ceProjectId, [ cep.ceProjectId, repoId ], cep.hostPlatform, note,
+                   ingested: "false", hostUserId: host.hostUserId  );
       }
    }
 }

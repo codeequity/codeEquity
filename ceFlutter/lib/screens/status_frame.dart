@@ -20,19 +20,6 @@ import 'package:ceFlutter/models/HostLoc.dart';
 Function eq    = const ListEquality().equals;
 
 
-// XXX move to WidgetUtils?
-// Workaround breaking change 5/2021
-// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
-class MyCustomScrollBehavior extends MaterialScrollBehavior {
-  // Override behavior methods and getters like dragDevices
-  @override
-  Set<PointerDeviceKind> get dragDevices => { 
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-  };
-}
-
-
 class CEStatusFrame extends StatefulWidget {
    final frameHeightUsed;
    var   appContainer;

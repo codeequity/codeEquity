@@ -16,6 +16,16 @@ import 'package:ceFlutter/screens/settings_page.dart';
 
 import 'package:ceFlutter/customIcons.dart';
 
+// Workaround breaking change 5/2021
+// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  // Override behavior methods and getters like dragDevices
+  @override
+  Set<PointerDeviceKind> get dragDevices => { 
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+  };
+}
 
 // XXX after update from 3.X to 7.X, move to web, background color is wrong
 void notYetImplemented(BuildContext context) {
@@ -792,3 +802,4 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                ),
             ]));
 }
+

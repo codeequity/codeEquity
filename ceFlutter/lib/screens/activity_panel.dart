@@ -78,8 +78,6 @@ class _CEActivityState extends State<CEActivityPanel> {
       if( appState.verbose >= 2 ) { print( "HP dispose" ); }
    }
 
-
-
    void _noop() {
       Navigator.of( context ).pop( 'noop' );
    }

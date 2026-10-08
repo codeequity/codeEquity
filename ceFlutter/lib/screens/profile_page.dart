@@ -2,12 +2,13 @@ import 'dart:ui';       // pointerKinds
 import 'dart:math';
 import 'dart:convert';  // json encode/decode
 import 'package:flutter/material.dart';
-import 'package:collection/collection.dart';  // firstwhereornull
-import 'package:flutter/services.dart';                 // byte data
+import 'package:collection/collection.dart';        // firstwhereornull
+import 'package:flutter/services.dart';             // byte data
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
+import 'package:ceFlutter/utils/profileService.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 
@@ -27,22 +28,6 @@ import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/Allocation.dart';
 
 import 'package:ceFlutter/customLetters.dart';
-
-
-
-// XXX copy!
-// XXX move to WidgetUtils?
-// Workaround breaking change 5/2021
-// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
-class MyCustomScrollBehavior2 extends MaterialScrollBehavior {
-  // Override behavior methods and getters like dragDevices
-  @override
-  Set<PointerDeviceKind> get dragDevices => { 
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-  };
-}
-
 
 class CEProfilePage extends StatefulWidget {
   CEProfilePage({Key? key}) : super(key: key);
@@ -106,6 +91,9 @@ class _CEProfileState extends State<CEProfilePage> {
     super.dispose();
   }
 
+  void _pop() {
+     Navigator.of( context ).pop( 'Cancel' );
+  }
   
   Function _logout( context, appState) {
      wrapper() async {
@@ -309,7 +297,7 @@ class _CEProfileState extends State<CEProfilePage> {
         GestureDetector(
            onTap: () async
            {
-              _cancel();
+              _pop();
               Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
               confirmedNav( context, container, newPage );
@@ -346,7 +334,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return GestureDetector(
         onTap: () async
         {
-           _cancel();
+           _pop();
            Map<String,String> screenArgs = {"id": ceUserId, "profType": "Person" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            confirmedNav( context, container, newPage );
@@ -699,7 +687,7 @@ class _CEProfileState extends State<CEProfilePage> {
      final svWidth  = rhsFrameMinWidth * 2.0;             // XXX oi
      
      return ScrollConfiguration(
-        behavior: MyCustomScrollBehavior2(),
+        behavior: MyCustomScrollBehavior(),
         child: SingleChildScrollView(
            scrollDirection: Axis.horizontal,
            child: SizedBox(
@@ -736,9 +724,6 @@ class _CEProfileState extends State<CEProfilePage> {
      return pi;
   }
 
-  void _cancel() {
-     Navigator.of( context ).pop( 'Cancel' );
-  }
 
 
   void _editProjectProfile( CEProject cep ) async {
@@ -799,10 +784,11 @@ class _CEProfileState extends State<CEProfilePage> {
      }
 
      await showDropdownDialog( context, container, title,
-                               header, dropDown, options, curVals, toolTips, controllers, _save, _cancel );   
+                               header, dropDown, options, curVals, toolTips, controllers, _save, _pop );   
      
   }
 
+  
   void _updateProfile( dynamic prime ) {
      final textWidth = lhsFrameMaxWidth + rhsFrameMaxWidth - 10 * appState.GAP_PAD;
      void _set( List<TextEditingController> cont ) {
@@ -859,232 +845,7 @@ class _CEProfileState extends State<CEProfilePage> {
         addControllerPool( controllerPool, 2 );
      }
 
-     editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), _cancel, null );
-  }
-  
-  void _dissolveChoice( CEProject cep, String choice ) async {
-     bool proceed = false;
-     List<String> candidate = [];
-     
-     void _proceed() {
-        _cancel();
-        proceed = true;
-     }
-
-     void _removeProject() async {
-        // remove CEP from all hostusers
-        // remove all non-ACCR peqs with cepId (delVen already does .. most of this?)
-
-        // Make sure peqs are updated first, then delete all non-ACCR
-        List<PEQ> peqs = [];
-        await updateCEPeqs( container, context, cepId: cep.ceProjectId );
-        peqs.addAll( appState.cePeqs[ cep.ceProjectId ] ?? [] );        
-        if( peqs.length > 0 ) {
-           List<String> peqIds = peqs
-                                 .where( (p) => p.peqType != PeqType.grant )
-                                 .map( (p) => p.id )
-                                 .toList();
-           print( "Deleting peqs " + peqIds.toString() );
-           
-           String shortName = "RemoveEntries";
-           String pids = json.encode( [ peqIds ] );  // list of lists in case pkey is not singular
-           String postData = '{ "Endpoint": "$shortName", "tableName": "CEPEQs", "ids": $pids }';
-           bool res = await updateDynamo( context, container, postData, shortName );
-        }
-
-        // remove cep, peqSummary, image, linkage, remove cepId from any hostUser. 
-        String shortName  = "KillVenture";
-        String cepid = cep.ceProjectId;
-        String postData = '{ "Endpoint": "$shortName", "id": "$cepid", "isProject": "true" }';
-        bool res = await updateDynamo( context, container, postData, shortName );
-
-        // tell ingest
-        sendPAct( context, container, cep.ceProjectId, cep.ceProjectId, HostPlatforms.GitHub, '{"note": "Remove CEProject"}' );
-
-        // XXX copy from _removeVenture
-        // Reload everything - cached venture data should no longer be available
-        screenArgs["profType"] = "---";  // Cancel briefly pops back to prof page before navigating.  without this, a new venture is created in makeVenBod
-        _cancel();
-        await flushAppState( context, container );
-        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
-        confirmedNav( context, container, newPage );
-     }
-        
-     void _removeRepo( List<bool> on ) {
-        assert( on.length == candidate.length );
-        for( int i = 0; i < on.length; i++ ) {
-           if( on[i] ) {
-              String repoId = cep.removeRepo( candidate[i] );
-              writeCEProject( appState, context, container, cep );  // don't wait
-
-              // do not add this back to hostUser futureCEProject page - homepage refresh button does the trick
-
-              // send pact.  This is a no-op for ingest
-              writeRemoveRepoPAct( context, container, cep, repoId );
-
-              // have dynamo remove hostRepoId for all hostRepoId/cepId peqs..  don't wait.
-              // This is carried out here instead of during ingest since it does not impact peqSummary, allocs, or anything else.  Also,
-              // would be two possibly overlapping subsets of updated peqs at the end of ingest - complication without reason.
-              String cepId = cep.ceProjectId;
-              String shortName = "RemoveRepo";
-              String postData = '{ "Endpoint": "$shortName", "cepId": "$cepId", "repoId": "$repoId" }';
-              updateDynamo( context, container, postData, shortName );
-           }
-        }
-        _cancel();
-     }
-        
-     _cancel();
-
-     // are you exec?
-     assert( appState.ceVenture[ cep.ceVentureId ] != null );
-     CEVenture cev = appState.ceVenture[ cep.ceVentureId ]!;
-     if( cev.roles[ appState.ceUserId ] != MemberRole.Executive ) {
-        String msg = "Only an Executive can carry out this operation.";
-        showToast( msg );
-        return;
-     }
-
-     if( choice == "Remove a repo" ) {
-
-        String msg = "All PEQ issues connected to the host repo will still be valid and will persist in CodeEquity, but will lose their grounding in the host.  ";
-        msg       += "With no host repository, CodeEquity background sanity checks and status repairs will fail.  This may be OK if work on these ";
-        msg       += "issues is complete.  Be sure you know what you are doing, this action can not be undone.  Would you like to continue?";
-        Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );
-        await confirm( context, "Are you sure you want to remove repos?", msg, _proceed, _cancel, body: body );
-        if( proceed ) {
-           String header = "Check the repos to remove";
-           candidate = cep.repositories;
-           await showDialog(
-              context: context,
-              builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _removeRepo, cancelFunc: _cancel ));
-        }
-
-     }
-     else if( choice == "Delete this project" ) {
-
-        String msg = "Any granted PEQ issues connected to this CodeEquity Project will remain unchanged in the Venture.  All other PEQ issues will be removed ";
-        msg       += "from the Venture including those that have already had work carried out on them.  There is no going back.  ";
-        msg       += "Are you certain you wish to delete " + cep.name + "?" ;
-        Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );
-        await confirm( context, "Are you sure you want to remove " + cep.name + "?", msg, _removeProject, _cancel, body: body );
-     }
-  }
-  
-  void _dissolveProject( CEProject cep ) async {
-     List<String> choices = [ "Remove a repo", "Delete this project" ]; // XXX formalize
-     await radioDialog( context, "Are you removing a repo, or deleting this project?", choices, choices[0], _dissolveChoice, _cancel, execArgs: [ cep ] );
-  }
-  
-  void _deletePrime( dynamic prime ) async {
-     List<PEQ> peqs = [];
-     List<CEProject> ceps = [];
-
-     if( prime is CEProject ) { return _dissolveProject( prime ); }
-     
-     _removeVenture() async {
-        // remove peqs
-        if( peqs.length > 0 ) {
-           List<String> peqIds = peqs.map( (p) => p.id ).toList();
-           print( "Deleting peqs " + peqIds.toString() );
-           
-           String shortName = "RemoveEntries";
-           String pids = json.encode( [ peqIds ] );  // list of lists in case pkey is not singular
-           String postData = '{ "Endpoint": "$shortName", "tableName": "CEPEQs", "ids": $pids }';
-           bool res = await updateDynamo( context, container, postData, shortName );
-        }
-
-        List<String> cepIds = ceps.map( (p) => p.ceProjectId ).toList();
-        
-        // remove CEV, peqSummary, CEP, image, linkage, hostUserId, equityPlan 
-        String shortName  = "KillVenture";
-        String vid = prime.ceVentureId;
-        String postData = '{ "Endpoint": "$shortName", "id": "$vid", "isProject": "false" }';
-        bool res = await updateDynamo( context, container, postData, shortName );
-
-        // send PActs 1 per each of venture and project
-        String note          = '{"note": "Remove Venture"}';
-        sendPAct( context, container, "-1", prime.ceVentureId, HostPlatforms.GitHub, note );
-        for( String id in cepIds ) {
-           note  = '{"note": "Remove CEProject"}';
-           sendPAct( context, container, id, id, HostPlatforms.GitHub, note );
-        }
-
-        // Reload everything - cached venture data should no longer be available
-        screenArgs["profType"] = "---";  // Cancel briefly pops back to prof page before navigating.  without this, a new venture is created in makeVenBod
-        _cancel();
-        await flushAppState( context, container );
-        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
-        confirmedNav( context, container, newPage );
-     }
-     
-     _doubleConfirm() {
-        confirm( context, "Delete Venture", "There is no going back.  Are you certain you wish to delete this Venture?", _removeVenture, _cancel );
-     }
-     
-     if( prime is CEProject ) { print( "XXX NYI" ); return; }
-     
-     assert( appState.ceVenture[ prime.ceVentureId ] != null );
-     CEVenture cev = appState.ceVenture[ prime.ceVentureId ] ?? prime;
-
-     // Get all ceps for cev. Typically 1.
-     for( CEProject cep in appState.ceProject.values ) {
-        if( cep.ceVentureId == cev.ceVentureId ) { ceps.add( cep ); }
-        // Make sure peqs are updated first
-        await updateCEPeqs( container, context, cepId: cep.ceProjectId );
-     }
-
-     // Get all peqs for all ceps in cev
-     for( CEProject cep in ceps ) {
-        print( "attempting to add peqs from " + cep.name + " " + (appState.cePeqs[ cep.ceProjectId ] ?? [] ).length.toString() );
-        
-        peqs.addAll( appState.cePeqs[ cep.ceProjectId ] ?? [] );
-     }
-
-     // XXX factor out the messaging
-     print( "Attempting to delete Venture.  It has " + ceps.length.toString() + " CEProjects with a total of " + peqs.length.toString() + " PEQs." );
-     int accr = 0;
-     int accrPeqs = 0;
-     int pend = 0;
-     int plan = 0;
-     for( PEQ peq in peqs ) {
-        if( peq.peqType == PeqType.grant )   { accr += 1; accrPeqs += peq.amount;}
-        if( peq.peqType == PeqType.pending ) { pend += 1; }
-        if( peq.peqType == PeqType.plan )    { plan += 1; }
-     }
-
-     // are you exec? 
-     if( prime.roles[ appState.ceUserId ] != MemberRole.Executive ) {
-        String msg = "Only an Executive can delete a Venture.";
-        showToast( msg );
-        return;
-     }
-     // are there granted peqs?
-     if( accr > 0 ) {
-        String msg = "CodeEquity guantees that once a PEQ has been granted, it can no longer be modified.  Your Venture\n";
-        msg       += " has " + accr.toString() + " individual PEQ grants for total of " + accrPeqs.toString() + " options.\n";
-        msg       += " This Venture can not be deleted.";
-        showToast( msg );
-        return;
-     }
-     // are you sure?
-     else if( pend > 0 ) {
-        String msg = "There are " + pend.toString() + " pending PEQs, which means work has already been carried out on this Venture.\n";
-        msg       += " If you delete the Venture, these pending PEQs will be removed as well, and will no longer be valid.\n";
-        msg       += " Are you sure you want to delete this Venture?  There is no going back.";
-        confirm( context, "Delete Venture", msg, _doubleConfirm, _cancel );
-     }
-     // never got past planning stage
-     else if( plan > 0 ) {
-        String msg = "There are " + plan.toString() + " planned PEQs already.\n";
-        msg       += " If you delete the Venture, these PEQs will be removed as well.\n";
-        msg       += " Are you sure you want to delete this Venture?  There is no going back.";
-        confirm( context, "Delete Venture", msg, _doubleConfirm, _cancel );
-     }
-     // Empty venture
-     else {
-        _doubleConfirm();
-     }
+     editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), _pop, null );
   }
 
   Widget _makeCEBody( context, Widget botLeft, Widget rhs, List<String> cepIds ) {
@@ -1164,7 +925,7 @@ class _CEProfileState extends State<CEProfilePage> {
                                                           }),
                                    makeActionButtonFixed( appState, deltxt, lhsFrameMaxWidth / 3.0,
                                                           () async {
-                                                             _deletePrime( prime ); 
+                                                             dissolve( context, container, prime, screenArgs ); 
                                                           }),
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
@@ -1175,7 +936,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  Wrap( children: [spacer,
                                   makeActionButtonFixed( appState, "Build Initial Equity Plan", lhsFrameMaxWidth / 2.0,
                                                          () async {
-                                                            _cancel();
+                                                            _pop();
                                                             appState.selectedCEVenture = primeId;
                                                             Map<String,int> sa = {"initialPage": 2};
                                                             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
@@ -1347,7 +1108,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return GestureDetector( 
         onTap: () async
         {
-           _cancel();
+           _pop();
            Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            confirmedNav( context, container, newPage );
@@ -1370,7 +1131,7 @@ class _CEProfileState extends State<CEProfilePage> {
                      GestureDetector( 
                         onTap: () async
                         {
-                           _cancel();
+                           _pop();
                            Map<String,String> screenArgs = {"id": cevId, "profType": "CEVenture" };
                            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                            confirmedNav( context, container, newPage );
@@ -1412,7 +1173,7 @@ class _CEProfileState extends State<CEProfilePage> {
                              makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0,
                                                     () async
                                                     {
-                                                       _cancel();
+                                                       _pop();
                                                        Map<String,String> screenArgs = {"id": "-1", "profType": "CEProject", "ventId": cev.ceVentureId };
                                                        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                                                        confirmedNav( context, container, newPage );

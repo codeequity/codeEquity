@@ -11,6 +11,7 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ghUtils.dart';      // host-specific Utils
 
+import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/screens/edit_page.dart';
 import 'package:ceFlutter/screens/launch_page.dart';
 
@@ -230,6 +231,14 @@ Future<void> flushAppState( context, container ) async {
    appState.updateEquityPlan = true;                
    appState.updateEquityView = true;
    appState.loaded           = true;
+}
+
+// flush everything, and reload back to homepage.  pop off the last screen.
+Future<void> reload( context, container ) async {
+   Navigator.of( context ).pop( 'Cancel' );
+   await flushAppState( context, container );
+   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
+   confirmedNav( context, container, newPage );
 }
 
 // Called on login, signup, refreshProjects, delete venture
@@ -565,65 +574,49 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
       // XXX Consider making this standalone
       String hostUserId = "";
       for( HostUser ha in appState.myHostAccounts ) {
-         if( ha.hostPlatform == HostPlatforms.GitHub && ha.ceUserId == appState.ceUserId ) {
+         if( ha.hostPlatform == cep.hostPlatform && ha.ceUserId == appState.ceUserId ) {
             hostUserId = ha.hostUserId;
             break;
          }
       }
       
-      DateTime now = DateTime.now();
-      String note  = setInStone ? '{"note": "Bad peq repair attempted via CEMD"}' : '{"note": "Repaired peq via CEMD, no raw body present"}';
-      
-      Map<String, dynamic> pact  = { };
-      pact["CEUID"]       = appState.ceUserId; 
-      pact["HostUserId"]  = hostUserId;
-      pact["CEProjectId"] = p.ceProjectId;
-      pact["Verb"]        = "confirm";               // XXX formalize
-      pact["Action"]      = "notice";                // XXX formalize
-      pact["Subject"]     = [p.id];
-      pact["Note"]        = note;
-      pact["Date"]        = getToday();
-      pact["RawBody"]     = note;
-      pact["Ingested"]    = "true";
-      pact["Locked"]      = "false";
-      pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
-      
-      shortName       = "RecordPEQAction";
-      String newPAct  = json.encode( pact );
-      postData        = '{ "Endpoint": "$shortName", "newPAction": $newPAct }';
-      await updateDynamo( context, container, postData, shortName );
+      String note  = setInStone ? "Bad peq repair attempted via CEMD" : "Repaired peq via CEMD, no raw body present";
+      await sendPAct( context, container, p.ceProjectId, [p.id], cep.hostPlatform, note, hostUserId: hostUserId );
    }
    return !setInStone;
 }
 
 // This only sends notices
-Future<bool> sendPAct( context, container, String cepId, String subject, HostPlatforms hostPlatform, String note ) async {
+Future<bool> sendPAct( context, container, String cepId, List<String> subject, HostPlatforms hostPlatform, String note, 
+                       { String ingested = "true", String ceuid = "-1", String hostUserId = "" }) async {
    final appState  = container.state;
+   ceuid = ceuid == "-1" ? appState.ceUserId : ceuid;
 
    // send PAct as a notice.
    print( "Adding PAct" );
-   
-   String hostUserId = "";
-   for( HostUser ha in appState.myHostAccounts ) {
-      if( ha.hostPlatform == hostPlatform && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
-         hostUserId = ha.hostUserId;
-         break;
+
+   if( hostUserId == "" ) {
+      for( HostUser ha in appState.myHostAccounts ) {
+         if( ha.hostPlatform == hostPlatform && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
+            hostUserId = ha.hostUserId;
+            break;
+         }
       }
    }
    
    DateTime now = DateTime.now();
    
    Map<String, dynamic> pact  = { };
-   pact["CEUID"]       = appState.ceUserId; 
+   pact["CEUID"]       = ceuid;
    pact["HostUserId"]  = hostUserId;
    pact["CEProjectId"] = cepId;
    pact["Verb"]        = "confirm";               // XXX formalize
    pact["Action"]      = "notice";                // XXX formalize
-   pact["Subject"]     = [subject];
+   pact["Subject"]     = subject;
    pact["Note"]        = note;
    pact["Date"]        = getToday();
-   pact["RawBody"]     = note;
-   pact["Ingested"]    = "true";                  // there is no ingest work to do.  additionally, don't want to retrigger ingest notice for status frame.
+   pact["RawBody"]     = '{"notice": "$note"}';
+   pact["Ingested"]    = ingested;                // there is no ingest work to do.  additionally, don't want to retrigger ingest notice for status frame.
    pact["Locked"]      = "false";
    pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
    
@@ -656,8 +649,8 @@ Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, 
       bool res = await updateDynamo( context, container, postData, shortName );
       
       // send PAct 
-      String note  = setInStone ? '{"note": "Remove granted attempted via CEMD"}' : '{"note": "Remove peq via CEMD, no raw body present"}';
-      await sendPAct( context, container, p.ceProjectId, p.id, HostPlatforms.GitHub, note );
+      String note  = setInStone ? "Remove granted attempted via CEMD" : "Remove peq via CEMD, no raw body present";
+      await sendPAct( context, container, p.ceProjectId, [p.id], HostPlatforms.GitHub, note );
    }
 
    return !setInStone;
