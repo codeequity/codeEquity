@@ -1,5 +1,6 @@
 import 'dart:convert';                              // json encode/decode
 import 'package:flutter/material.dart';             // nav
+import 'package:flutter/services.dart';             // byte data
 
 import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
@@ -12,7 +13,7 @@ import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/HostUser.dart';
 import 'package:ceFlutter/models/PEQ.dart';
-
+import 'package:ceFlutter/models/Person.dart';
 
 
 void dissolve( context, container, dynamic prime, Map<String, String> screenArgs ) async {
@@ -97,7 +98,11 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
    }
    
    _removeVenture() async {
-      // Peqs were handled earlier, in order to check if could proceed
+      if( peqs.length > 0 ) {
+         List<String> peqIds = peqs.map( (p) => p.id ).toList();
+         _deletePeqs( peqIds );
+      }
+
       List<String> cepIds = ceps.map( (p) => p.ceProjectId ).toList();
 
       _cleanDynamo( prime.ceVentureId, "false", cepIds );
@@ -171,10 +176,6 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
       for( CEProject cep in ceps ) {
          peqs.addAll( appState.cePeqs[ cep.ceProjectId ] ?? [] );
       }
-      if( peqs.length > 0 ) {
-         List<String> peqIds = peqs.map( (p) => p.id ).toList();
-         _deletePeqs( peqIds );
-      }
 
       print( "Attempting to delete Venture.  It has " + ceps.length.toString() + " CEProjects with a total of " + peqs.length.toString() + " PEQs." );
       int accr = 0;
@@ -214,4 +215,102 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
          _doubleConfirm();
       }
    }
+}
+
+Future<void> updatePersonData( context, container, String profId ) async {
+   final appState  = container.state;
+   final lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;  // XXX appstate?
+   Person? myself = null;
+   
+   // print( "Getting stuff (maybe) for " + profId );
+   String query = '{ "Endpoint": "GetHostA", "CEUserId": "$profId" }';
+   String pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$profId" }}';
+   
+   Map<String,dynamic> rawPITable = {};
+   var futs = await Future.wait([
+                                   (appState.cePeople[profId] == null ? 
+                                    fetchAPerson( context, container, profId ).then( (p) => p != null ? appState.cePeople[profId] = p : true ) :
+                                    new Future<bool>.value(true) ),
+                                   
+                                   (appState.ceHostAccounts[profId] == null ? 
+                                    fetchHostUsers( context, container, query ).then( (p) => appState.ceHostAccounts[profId] = p ) :
+                                    new Future<bool>.value(true) ),
+                                   
+                                   (appState.ceImages[profId] == null ? 
+                                    fetchProfileImage( context, container, pdpi ).then(            (p) => rawPITable = p ) :
+                                    new Future<bool>.value(true) ),
+                                   
+                                   ]);
+   
+   myself = appState.cePeople[profId]!;
+   assert( myself != null );
+   
+   assert( appState.ceHostAccounts[profId] != null );
+   
+   assert( appState.cogUser != null );
+   if( myself!.userName != appState.cogUser!.preferredUserName ) { print( "Checking out a different profile: " + myself!.userName ); }
+   
+   if( rawPITable.keys.length > 0 ) {
+      print( rawPITable["CEProfileId"] + " " + rawPITable["ByteData"].length.toString() );
+      Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
+      appState.ceImages[profId] = Image.memory( bytes, key: Key( profId + "Image" ), width: lhsFrameMaxWidth );
+      assert( appState.ceImages[profId] != null );
+   }
+}
+
+// XXX there is no need to get all this data - can reduce amount xferred
+Future<void> updateProjectData( context, container, String vid, String pid, String primeId, HostPlatforms hostPlat ) async {
+   final appState  = container.state;
+   final lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;  // XXX appstate?
+
+   var postDataPS = {};
+   postDataPS['EquityPlanId'] = vid;
+   final pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
+   
+   postDataPS = {};
+   postDataPS['PEQSummaryId'] = pid;
+   final pdps = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
+   
+   final pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$primeId" }}';
+   
+   final hostName = enumToStr( hostPlat );
+   final pdpa = '{ "Endpoint": "GetHostA", "HostPlatform": "$hostName" }'; 
+   
+   Map<String,dynamic> rawPITable = {};
+   List<HostUser>      haccts     = [];
+   
+   await Future.wait([
+                        (!appState.hostPlatformsLoaded.contains( hostPlat ) ? 
+                         fetchHostUsers( context, container, pdpa ).then(                 (p) => haccts = p ) : 
+                         new Future<bool>.value(true) ),
+                        
+                        (appState.cePEQSummaries[pid] == null ?
+                         fetchPEQSummary( context, container, json.encode( pdps )).then((p) => appState.cePEQSummaries[pid] = p ) :
+                         new Future<bool>.value(true) ),
+                        
+                        (appState.ceEquityPlans[vid] == null ? 
+                         fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => appState.ceEquityPlans[vid] = p ) :
+                         new Future<bool>.value(true) ),
+                        
+                        (appState.ceImages[pid] == null ? 
+                         fetchProfileImage( context, container, pdpi ).then(            (p) => rawPITable = p ) :
+                         new Future<bool>.value(true) ),
+                        
+                        ]);
+   
+   if( !appState.hostPlatformsLoaded.contains( hostPlat ) ) { appState.hostPlatformsLoaded.add( hostPlat ); }
+   // One ha per platform, list length is 1
+   for( HostUser ha in haccts ) { appState.ceHostAccounts[ha.ceUserId] = [ha]; }
+   
+   if( rawPITable.keys.length > 0 ) {
+      print( rawPITable.keys.toString() );
+      print( rawPITable["CEProfileId"]);
+      print( rawPITable["ByteData"].length.toString());
+      // final ByteData assetImageByteData = await rootBundle.load( rawPITable["ByteData"] );
+      // final x = assetImageByteData.buffer.asUint8List();
+      Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
+      appState.ceImages[primeId] = Image.memory( bytes, key: Key( primeId + "Image" ), width: lhsFrameMaxWidth );
+      assert( appState.ceImages[primeId] != null );
+   }
+   
 }

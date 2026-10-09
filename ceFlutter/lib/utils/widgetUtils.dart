@@ -202,14 +202,17 @@ class _EditFormState extends State<EditForm> {
 
 Future<String> editList( BuildContext context, appState, scrollHeader,
                        List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc, 
-                       { saveName: "Save", headerWidth: -1, subHeader = "" }) async {
+                         { saveName: "Save", headerWidth: -1, subHeader = "", multi = false }) async {
    double stepWidth = 40;
-   bool edit = scrollHeader.contains( "Edit" );
+   double editWidth = appState.MAX_PANE_WIDTH * .75;
+   bool edit = scrollHeader.contains( "Edit" ) || scrollHeader.contains( "Update" );
    assert( controllers.length == values.length );
    List<Widget> editVals = [];
    Widget c = Container( height: 1, width: appState.MID_PAD );
    for( int i = 0; i < values.length; i++ ) {
-      Widget text = makeInputField( appState, values[i], false, controllers[i], keyName: "editRow " + values[i], edit: edit);
+      Widget text = multi ?
+                    makeInputBox( appState, values[i], controllers[i], editWidth, keyName: "editRow " + values[i], edit: edit) :
+                    makeInputField( appState, values[i], false, controllers[i], keyName: "editRow " + values[i], edit: edit);
       Widget h = headerWidth > 0 ?
                  Container( width: headerWidth, child: Text(itemHeaders[i] )) :
                  IntrinsicWidth( stepWidth: stepWidth, child: Text( itemHeaders[i] ));
@@ -252,7 +255,6 @@ Future<String> editList( BuildContext context, appState, scrollHeader,
 
    return (retVal ?? "");   
 }
-
 
 Future<void> radioDialog( BuildContext context, boxHeader, List<String> choices, String initChoice, executeFunc, cancelFunc, {execArgs = null} ) async {
 
@@ -577,7 +579,24 @@ Widget makeIndentedText( appState, title, width, wrap, lines ) {
                                        ))));
 }
 
-Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {keyPreface = "", sub = false, lgap = -1, tgap=-1, bgap=0} ) {
+Widget makeActionableWidget( appState, Widget w, String key, String text, id, hov, nohov ) {
+
+   Widget mr = MouseRegion(
+      onEnter: hov,
+      onExit: nohov,
+      cursor: SystemMouseCursors.click,
+      child: IntrinsicWidth(
+         key: Key( key ),
+         child: id != appState.hoverChunk ?
+         w :
+         Column( mainAxisSize: MainAxisSize.min,
+                 children: [ w, makeTitleText( appState, text, appState.CELL_HEIGHT * 3, false, 1, italic: true ) ] )
+         ));
+   return mr;
+}
+
+
+Widget makeActionableText( appState, title, id, hov, nohov, width, wrap, lines, {keyPreface = "", sub = false, lgap = -1, tgap=-1, bgap=0} ) {
 
    String lead = "";
    for( int i = 0; i < title.length; i++ ) {
@@ -711,11 +730,11 @@ Widget makeInputField( appState, hintText, obscure, controller, {keyName = "", e
       );
 }
 
-Widget makeInputBox( appState, hintText, controller, maxWidth, {keyName = "" } ) {
+Widget makeInputBox( appState, hintText, controller, maxWidth, {keyName = "", edit = false } ) {
    TextStyle style     = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
    TextStyle hintStyle = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0, fontStyle: FontStyle.italic);
    if( keyName == "" ) { keyName = hintText; }
-   // controller.text = hintText;
+   if( edit ) { controller.text = hintText; }
    return Container( width: maxWidth, child: TextField(
                         key: Key( keyName ),
                         style: style,
