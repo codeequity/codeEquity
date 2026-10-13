@@ -117,7 +117,7 @@ class _CEActivityState extends State<CEActivityPanel> {
    }
 
    // Note: do not need to await updateDynamo for withdrawAll - user will reload only after logging in, which takes a while.
-   void _withdrawCEV( Person cePeep ) async {
+   void _withdrawCE( Person cePeep ) async {
       print( "WITHDRAW CE" );
          
       cePeep.withdraw();
@@ -158,7 +158,7 @@ class _CEActivityState extends State<CEActivityPanel> {
 
    // Note that withdraw follows role removal rules.  For example, if sole founder withdraws, next highest level of collabs are promoted to founder.
    //      if founder is the sole collaborator and withdraws, the CEV will no longer be operable by anyone.  Contact CE staff.
-   void _withdrawCEP( Person cePeep, String cevId ) async {
+   void _withdrawCEV( Person cePeep, String cevId ) async {
       print( "WITHDRAW Vent " + cevId );
 
       CEVenture? cev = appState.ceVenture[ cevId ];
@@ -206,7 +206,7 @@ class _CEActivityState extends State<CEActivityPanel> {
          msg       += "Your login will survive.  Press \'Continue\' to withdraw.";
          String ret = await confirm( context, "Withdraw from CodeEquity?", msg, _noop, _cancel );
 
-         if( ret == "noop" ) { _withdrawCEV( cePeep ); }
+         if( ret == "noop" ) { _withdrawCE( cePeep ); }
       }
       else {
          String cevId = await _chooseVenture( "Select the CodeEquity Venture to withdraw from" );
@@ -225,7 +225,7 @@ class _CEActivityState extends State<CEActivityPanel> {
          // select screen .. pop early to avoid awaits
          Navigator.of( context ).pop();         
          
-         if( ret == "noop" ) { _withdrawCEP( cePeep, cevId ); }
+         if( ret == "noop" ) { _withdrawCEV( cePeep, cevId ); }
       }
    }
 

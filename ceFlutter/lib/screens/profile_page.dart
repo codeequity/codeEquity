@@ -857,11 +857,6 @@ class _CEProfileState extends State<CEProfilePage> {
                                                           () async {
                                                              prime is CEVenture ? _updateProfile( prime ) : _editProjectProfile( prime ); 
                                                           }),
-                                   makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 3.0,
-                                                          () async {
-                                                             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
-                                                             confirmedNav( context, container, newPage );
-                                                          }),
                                    makeActionButtonFixed( appState, deltxt, lhsFrameMaxWidth / 3.0,
                                                           () async {
                                                              dissolve( context, container, prime, screenArgs ); 
@@ -1183,7 +1178,7 @@ class _CEProfileState extends State<CEProfilePage> {
      // aggressive, and without locking, failure for integration testing.
      // assert( appState.cogUser!.preferredUserName != null);
 
-     final itsMe      = screenArgs["id"] == "";   // Is this profile for the logged in user?
+     final itsMe      = screenArgs["id"] == "" || screenArgs["id"] == appState.ceUserId;   // Is this profile for the logged in user?
      final textWidth  = lhsFrameMaxWidth - 2*appState.GAP_PAD - appState.TINY_PAD;
      final ceUserName = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
      Widget? pi        = null;
@@ -1273,11 +1268,8 @@ class _CEProfileState extends State<CEProfilePage> {
                  itsMe ? 
                  Wrap( children: [ Container( width: appState.GAP_PAD ),
                                    makeActionButtonFixed( appState, 'Edit profile', lhsFrameMaxWidth / 3.0, () => editProfile( context, container, cePeep )),
-                                   makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 3.0, () async {
-                                         MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
-                                         confirmedNav( context, container, newPage );
-                                      }),
-                                   logout
+                                   logout,
+                                   makeActionButtonFixed( appState, 'Dissolve', lhsFrameMaxWidth / 3.0, () => dissolveHost( context, container ))
                           ])
                  :
                  Container( width: 1.0 ),

@@ -233,9 +233,8 @@ Future<void> flushAppState( context, container ) async {
    appState.loaded           = true;
 }
 
-// flush everything, and reload back to homepage.  pop off the last screen.
+// flush everything, and reload back to homepage.
 Future<void> reload( context, container ) async {
-   Navigator.of( context ).pop( 'Cancel' );
    await flushAppState( context, container );
    MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
    confirmedNav( context, container, newPage );
@@ -654,6 +653,14 @@ Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, 
    }
 
    return !setInStone;
+}
+
+Future<bool> removeHostUser( context, container, HostUser hu ) async {
+      String shortName = "RemoveEntries";
+      String pids = json.encode( [[ hu.hostUserId ]] );  // list of lists in case pkey is not singular
+      String postData = '{ "Endpoint": "$shortName", "tableName": "CEHostUser", "ids": $pids }';
+      bool res = await updateDynamo( context, container, postData, shortName );
+      return true;
 }
 
 Future<bool> allIngested( container, context ) async {

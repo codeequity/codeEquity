@@ -53,7 +53,8 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
       }
 
       // reload's Cancel briefly pops back to prof page before navigating. 
-      screenArgs["profType"] = "---";  
+      screenArgs["profType"] = "---";
+      _popCancel();
       reload( context, container );
    }
    
@@ -313,4 +314,66 @@ Future<void> updateProjectData( context, container, String vid, String pid, Stri
       assert( appState.ceImages[primeId] != null );
    }
    
+}
+
+void dissolveHost( context, container ) async {
+   final appState  = container.state;
+
+   HostPlatforms hplat = HostPlatforms.end;
+
+   void _popCancel( ) {
+      Navigator.of( context ).pop( 'Cancel' );
+   }
+
+   void _setHPlat( String choice ) {
+      hplat = enumFromStr<HostPlatforms>( choice, HostPlatforms.values );
+      _popCancel(); // choose which host
+   }
+
+   // Removing a host may cut across multiple CEVs.
+   _removeHost() async {
+      assert( hplat != HostPlatforms.end );
+      print( "Removing " + enumToStr( hplat ) );
+
+      // get the huser account for hplat
+      List<HostUser> hus = appState.myHostAccounts;
+      for( HostUser hu in hus ) {
+         if( hu.hostPlatform == hplat ) {
+            
+            // an huser withdrawing from a cep means sending pacts.  dont wait
+            for( String cepId in hu.ceProjectIds ) {
+               print( hu.hostUserName + " is withdrawing from " + cepId );
+               writeWithdrawProjPAct( appState, context, container, appState.ceUserId, hu, cepId );
+            }
+            
+            // remove huser (removes pat as well)
+            await removeHostUser( context, container, hu );
+            
+            // update cemd
+            reload( context, container );
+            
+            break;
+         }
+      }
+   }
+
+   Future<String> _chooseHost( ) async {
+      List<String> choices = [];
+      HostPlatforms.values.forEach( (h) {
+            if( h != HostPlatforms.end ) { choices.add( enumToStr( h ) ); }
+         });
+         
+      _popCancel(); // Delete host linkage
+      await radioDialog( context, "Choose which Host platform to withdraw from", choices, choices[0], _setHPlat, _popCancel );
+      await _removeHost();
+
+      return "";
+   }
+
+   
+   String msg = "Would you like to remove a host linkage?  Doing so will delete data in CodeEquity connecting your CodeEquity account with that host, including ";
+   msg       += "any private access tokens and that host's user account on CodeEquity. This action impacts every CodeEquity Venture your host account touches.  ";
+   msg       += "Your PEQs in those Ventures will continue to exist, however, all further host activity you carry out related to those PEQs on the host will be ";
+   msg       += "invisible to CodeEquity. ";
+   await confirm( context, "Delete Host Linkage", msg, _chooseHost, _popCancel );
 }

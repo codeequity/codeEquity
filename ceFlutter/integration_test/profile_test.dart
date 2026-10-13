@@ -144,23 +144,11 @@ Future<bool> validateFlutProfile( WidgetTester tester ) async {
 
    // edit profile
    expect( find.byKey( Key( 'Edit profile' )),  findsOneWidget );
-   expect( find.byKey( Key( 'Edit image' )),    findsOneWidget );
-   await tester.tap(  find.byKey( Key( 'Edit image' )) );
+   expect( find.byKey( Key( "CEMD_PROJ_NAME" + " profile image" )),    findsOneWidget );
+   await tester.tap(  find.byKey( Key( "CEMD_PROJ_NAME" + " profile image" )) );
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
 
-   /*
-   expect( find.text( "Update which part?" ), findsOneWidget );
-   expect( find.text( "Description" ), findsOneWidget );
-   expect( find.text( "Profile Image" ), findsOneWidget );
-   expect( find.text( "Confirm" ), findsOneWidget );
-   await tester.tap( find.byKey( Key( 'Profile Image' )) );
-   await pumpSettle( tester, 1, verbose: true );    
-   await tester.tap( find.byKey( Key( 'Confirm' )) );
-   await pumpSettle( tester, 1, verbose: true );    
-   await pumpSettle( tester, 1, verbose: true );    
-   */
-   
    expect( find.text( "Select new profile image" ), findsOneWidget );
    expect( find.byKey( Key( 'Dismiss' )), findsOneWidget );
    expect( find.byKey( Key( 'thumb'+'images\/bGrad.jpg' )), findsOneWidget );

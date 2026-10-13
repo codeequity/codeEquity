@@ -606,6 +606,14 @@ Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) asyn
       });
 }
 
+
+Future<void> writeWithdrawProjPAct( appState, context, container, String ceUserId, HostUser hu, String cepId ) async {
+   String              note = "withdraw from host"; // XXX formalize.  This is notice only, ignore.
+   
+   sendPAct( context, container, cepId, [ ceUserId, hu.hostUserId ], hu.hostPlatform, note,
+             ingested: "false", ceuid: ceUserId, hostUserId: hu.hostUserId  );
+}
+
 Future<void> writeRemoveRepoPAct( context, container, CEProject cep, String repoId ) async {
    final appState  = container.state;
    String     note = "Remove Repo";
