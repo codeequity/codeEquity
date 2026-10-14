@@ -20,19 +20,6 @@ import 'package:ceFlutter/models/HostLoc.dart';
 Function eq    = const ListEquality().equals;
 
 
-// XXX move to WidgetUtils?
-// Workaround breaking change 5/2021
-// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
-class MyCustomScrollBehavior extends MaterialScrollBehavior {
-  // Override behavior methods and getters like dragDevices
-  @override
-  Set<PointerDeviceKind> get dragDevices => { 
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-  };
-}
-
-
 class CEStatusFrame extends StatefulWidget {
    final frameHeightUsed;
    var   appContainer;
@@ -130,7 +117,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    // Unavoidable, so make sure expensive stuff doesn't run twice.
    Future<void> _ingestNotice( context ) async {
       List<Widget> buttons = [];
-      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => pop( context ) ));
       String msg = "There are uningested PEQ actions for this CodeEquity Project.  Please update PEQ summary under the peq summary tab first."; 
 
       Widget m = makeBodyText( appState, msg, 3.0 * baseWidth, true, 8, keyTxt: "ingestNotice");
@@ -410,7 +397,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    }
 
    // Force reload, as core data has changed.
-   Future<void> _reset({pop = true}) async {
+   Future<void> _reset({popit = true}) async {
       print( "Reset called " + DateTime.now().millisecondsSinceEpoch.toString() );
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
@@ -421,9 +408,9 @@ class _CEStatusState extends State<CEStatusFrame> {
       setState( () => updateModel = true );
       
       // dismiss writeall popup, and the compare popup
-      if( pop ) {
-         Navigator.of( context ).pop();
-         Navigator.of( context ).pop();
+      if( popit ) {
+         pop( context );
+         pop( context );
       }
    }
    
@@ -549,7 +536,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<Widget> buttons = [];
       buttons.add( new TextButton( key: Key( 'Delete one CE' ), child: new Text("Delete one"), onPressed: () => _deleteCE( p, false )) );
       buttons.add( new TextButton( key: Key( 'Delete all CE' ), child: new Text("Delete all"), onPressed: () => _deleteCE( p, true  )) );
-      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => pop( context ) ));
 
       Widget m = makeBodyText( appState, msg1 + msg2, 3.0 * baseWidth, true, 5, keyTxt: "deleteCEPeq"+p.hostIssueId);
       popScroll( context, "CodeEquity PEQ:", m, buttons );
@@ -563,7 +550,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<Widget> buttons = [];
       buttons.add( new TextButton( key: Key( 'Delete one host' ), child: new Text("Delete one"), onPressed: () => _deleteHost( p, false )) );
       buttons.add( new TextButton( key: Key( 'Delete all host' ), child: new Text("Delete all"), onPressed: () => _deleteHost( p, true  )) );
-      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => pop( context ) ));
 
       Widget m = makeBodyText( appState, msg1 + msg2, 3.0 * baseWidth, true, 5, keyTxt: "deleteHostPeq"+p.hostIssueId);
       popScroll( context, "Host PEQ:", m, buttons );
@@ -576,7 +563,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<Widget> buttons = [];
       buttons.add( new TextButton( key: Key( 'Write one CE' ), child: new Text("Write one"), onPressed: () => _writeCEtoHost( p, false )) );
       buttons.add( new TextButton( key: Key( 'Write all CE' ), child: new Text("Write all"), onPressed: () => _writeCEtoHost( p, true  )) );
-      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => pop( context ) ));
 
       Widget m = makeBodyText( appState, msg1 + msg2 + msg3, 3.0 * baseWidth, true, 8, keyTxt: "chooseCEPeq"+p.hostIssueId);
       popScroll( context, "CodeEquity PEQ:", m, buttons );
@@ -590,7 +577,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<Widget> buttons = [];
       buttons.add( new TextButton( key: Key( 'Write one host' ), child: new Text("Write one"), onPressed: () => _writeHostToCE( p, false )) );
       buttons.add( new TextButton( key: Key( 'Write all host' ), child: new Text("Write all"), onPressed: () => _writeHostToCE( p, true  )) );
-      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => Navigator.of( context ).pop() ));
+      buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => pop( context ) ));
 
       Widget m = makeBodyText( appState, msg1 + msg2 + msg3, 3.0 * baseWidth, true, 8, keyTxt: "chooseHostPeq"+p.hostIssueId);
       popScroll( context, "Host PEQ:", m, buttons );
@@ -599,7 +586,7 @@ class _CEStatusState extends State<CEStatusFrame> {
    void _cancel() {
       updateView = true;
       appState.hoverChunk = "";      
-      Navigator.of( context ).pop();
+      pop( context );
    }
 
 
@@ -1019,7 +1006,7 @@ class _CEStatusState extends State<CEStatusFrame> {
                                buttonWidth, 
                                () async {
                                   showToast( "Updated." );
-                                  _reset( pop: false ); 
+                                  _reset( popit: false ); 
                                }),
                         empty, empty, empty ]] );
          

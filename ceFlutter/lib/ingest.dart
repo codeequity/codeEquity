@@ -1289,7 +1289,6 @@ Future<int> processWithdrawal( PEQAction pact, int index, context, container, Li
    String huid     = pact.hostUserId;
    String huname   = pact.subject[1];
 
-   // XXX XXX currently accrued peqs are being returned
    // get current state minus accrued.  don't attach to appState since that expects to see all accrued.
    List<PEQ> peqs = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserId": "$huid", "CEProjectId": "$cep" }' );
    print( "Host user " + huid + " has " + peqs.length.toString() + " non-accrued peqs" );
@@ -1300,7 +1299,7 @@ Future<int> processWithdrawal( PEQAction pact, int index, context, container, Li
    List<Future> dynamo = [];         
    
    peqs.forEach( (p) {
-         // Make a new PAct for unassign, then add it
+         // Make a new PAct for unassign, then add it.  do not use sendPact - want to keep the raw peq closer to host standard.
          PEQAction unassign = new PEQAction( id: randAlpha(10), ceUID: pact.ceUID, hostUserName: "", hostUserId: huid,
                                              ceProjectId: cep, verb: PActVerb.confirm, action: PActAction.change, subject: [p.id, huname],
                                              note: PActNotes['remAssignee']!, entryDate: pact.entryDate,

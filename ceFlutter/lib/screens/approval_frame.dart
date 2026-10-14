@@ -14,19 +14,6 @@ import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/Person.dart';
 
-// XXX move to WidgetUtils?
-// Workaround breaking change 5/2021
-// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
-class MyCustomScrollBehavior extends MaterialScrollBehavior {
-  // Override behavior methods and getters like dragDevices
-  @override
-  Set<PointerDeviceKind> get dragDevices => { 
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-  };
-}
-
-
 class CEApprovalFrame extends StatefulWidget {
    final frameHeightUsed;
    var   appContainer;
@@ -131,13 +118,13 @@ class _CEApprovalState extends State<CEApprovalFrame> {
    void _confirmReject( TextEditingController reason ) {
       print( "confirm reject" );
       reason.dispose();
-      Navigator.of( context ).pop();
+      pop( context );;
    }
    
    void _cancelReject( TextEditingController reason ) {
       print( "cancel reject" );
       reason.dispose();
-      Navigator.of( context ).pop();
+      pop( context );;
    }
    
    Widget getActions( PEQ p ) {

@@ -18,17 +18,6 @@ import 'package:ceFlutter/components/equityTree.dart';
 import 'package:ceFlutter/components/equityNode.dart';
 import 'package:ceFlutter/components/equityLeaf.dart';
 
-// Workaround breaking change 5/2021
-// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
-class MyCustomScrollBehavior extends MaterialScrollBehavior {
-  // Override behavior methods and getters like dragDevices
-  @override
-  Set<PointerDeviceKind> get dragDevices => { 
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-  };
-}
-
 
 class CEEquityFrame extends StatefulWidget {
    final frameHeightUsed;
@@ -157,12 +146,12 @@ class _CEEquityState extends State<CEEquityFrame> {
          setState(() => appState.updateEquityView = true );                  
       }
 
-      Navigator.of( context ).pop();
+      pop( context );;
    }
    
    void _cancelEdit() {
       print( "Cancel edit" );
-      Navigator.of( context ).pop();
+      pop( context );;
    }
 
    void _delete( EquityTree t ) {
@@ -172,7 +161,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       // Tree changed. update viewable list, then update the view
       setState(() => appState.updateEquityView = true );
       
-      Navigator.of( context ).pop();
+      pop( context );;
    }
 
    void _saveAdd( EquityTree tot ) {
@@ -191,7 +180,7 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       setState(() => appState.updateEquityView = true );                  
 
-      Navigator.of( context ).pop();
+      pop( context );;
    }
    
    Future<void> _add( EquityTree tot) async {
@@ -393,6 +382,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       // print( appState.myEquityPlan.toString() );
       
       if( appState.myEquityPlan != null && appState.myEquityPlan!.ceVentureId != appState.selectedCEVenture ) {
+         print( " myep and selVen " + appState.myEquityPlan!.ceVentureId + " " + appState.selectedCEVenture );
          print( "Error.  Equity plan is not for selected project." );
          return [];
       }

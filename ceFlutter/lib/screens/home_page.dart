@@ -9,6 +9,7 @@ import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
+import 'package:ceFlutter/utils/profileService.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
@@ -53,7 +54,7 @@ class _CEHomeState extends State<CEHomePage> {
    void initState() {
       super.initState();
       ceProjectLoading = false;
-      updateView  = true;
+      updateView   = true;
       ventIds = [];
    }
 
@@ -87,8 +88,6 @@ class _CEHomeState extends State<CEHomePage> {
          });
    }
 
-   void _cancel() { Navigator.of( context ).pop( 'Cancel' ); }
-
    Future<String> _chooseProject() async {
       Future<String> _select( List<TextEditingController> cont ) async {
          assert( cont.length == 1 );
@@ -101,17 +100,19 @@ class _CEHomeState extends State<CEHomePage> {
          }
          String cepId = cepEntry[0].key;
          assert( appState.ceProject[ cepId ] != null );
-         Navigator.of( context ).pop( cepId ); // select popup
-         initCEPRepos( context, container, appState.ceProject[ cepId ]! );
+         pop( context, retVal: cepId );
+         setState(() => ceProjectLoading = true );         
+         await initCEPRepos( context, container, appState.ceProject[ cepId ]! );
+         setState(() => ceProjectLoading = false );         
          return "";
       }
 
-      _cancel(); // Add Host popup               
+      pop( context ); // Add Host popup               
       String item = "Project name";
       String hint = "Type \'Project name\' in the search bar if you need a hint";
       addControllerPool( controllerPool, 0 );
       var retVal = await editList( context, appState, "Select the CE Project", [item], controllerPool.sublist(0, 1), [hint],
-                                   () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
+                                   () => _select( controllerPool.sublist(0, 1) ), () => pop( context ), null, saveName: "Select" );
       return retVal;
    }
 
@@ -138,7 +139,7 @@ class _CEHomeState extends State<CEHomePage> {
             // Have futureCEProject.  want to pop an option to add to a CEP.  
             if( itemId == "" && partner == "" ) {
                String msg = "Would you like to add this repo (or others) to a CodeEquity Project?  Press continue to do so.";
-               await confirm( context, "Add Host Repository to CE Project", msg, _chooseProject, _cancel );
+               await confirm( context, "Add Host Repository to CE Project", msg, _chooseProject, () => pop( context ) );
             }
             else {
                Map<String,int> screenArgs = {"initialPage": 0 };

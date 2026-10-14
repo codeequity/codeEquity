@@ -15,18 +15,6 @@ import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/Agreement.dart';
 import 'package:ceFlutter/models/UserDoc.dart';
 
-// XXX move to WidgetUtils?
-// Workaround breaking change 5/2021
-// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
-class MyCustomScrollBehavior extends MaterialScrollBehavior {
-  // Override behavior methods and getters like dragDevices
-  @override
-  Set<PointerDeviceKind> get dragDevices => { 
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-  };
-}
-
 class CECollabFrame extends StatefulWidget {
    final frameHeightUsed;
    var   appContainer;

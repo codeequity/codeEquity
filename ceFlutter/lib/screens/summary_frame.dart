@@ -24,17 +24,6 @@ void _vPrint( appState, v, String astring ) {
    if( v >= appState.verbose ) { print( astring ); }
 }
 
-// Workaround breaking change 5/2021
-// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
-class MyCustomScrollBehavior extends MaterialScrollBehavior {
-  // Override behavior methods and getters like dragDevices
-  @override
-  Set<PointerDeviceKind> get dragDevices => { 
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-  };
-}
-
 
 class CESummaryFrame extends StatefulWidget {
    final frameHeightUsed;

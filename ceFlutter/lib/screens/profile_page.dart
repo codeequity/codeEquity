@@ -2,12 +2,13 @@ import 'dart:ui';       // pointerKinds
 import 'dart:math';
 import 'dart:convert';  // json encode/decode
 import 'package:flutter/material.dart';
-import 'package:collection/collection.dart';  // firstwhereornull
-import 'package:flutter/services.dart';                 // byte data
+import 'package:collection/collection.dart';        // firstwhereornull
+import 'package:flutter/services.dart';             // byte data
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
+import 'package:ceFlutter/utils/profileService.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 
@@ -27,22 +28,6 @@ import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/Allocation.dart';
 
 import 'package:ceFlutter/customLetters.dart';
-
-
-
-// XXX copy!
-// XXX move to WidgetUtils?
-// Workaround breaking change 5/2021
-// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
-class MyCustomScrollBehavior2 extends MaterialScrollBehavior {
-  // Override behavior methods and getters like dragDevices
-  @override
-  Set<PointerDeviceKind> get dragDevices => { 
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-  };
-}
-
 
 class CEProfilePage extends StatefulWidget {
   CEProfilePage({Key? key}) : super(key: key);
@@ -106,7 +91,6 @@ class _CEProfileState extends State<CEProfilePage> {
     super.dispose();
   }
 
-  
   Function _logout( context, appState) {
      wrapper() async {
         logout( context, appState );
@@ -161,51 +145,21 @@ class _CEProfileState extends State<CEProfilePage> {
   void updatePerson( context, container ) async {
      if( loadingData && screenArgs["profType"] == "Person" ) {
         assert( screenArgs["id"] != null );
+        // Signed in user or click on different user?  
         String profId = screenArgs["id"]!;
-        // Signed in user?  
         if( profId == "" ) { profId = appState.ceUserId; }
-        // print( "Getting stuff (maybe) for " + profId );
-        String query = '{ "Endpoint": "GetHostA", "CEUserId": "$profId" }';
-        String pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$profId" }}';
         
-        Map<String,dynamic> rawPITable = {};
-        var futs = await Future.wait([
-                                        (appState.cePeople[profId] == null ? 
-                                         fetchAPerson( context, container, profId ).then( (p) => p != null ? appState.cePeople[profId] = p : true ) :
-                                         new Future<bool>.value(true) ),
-                                        
-                                        (appState.ceHostAccounts[profId] == null ? 
-                                         fetchHostUsers( context, container, query ).then( (p) => appState.ceHostAccounts[profId] = p ) :
-                                         new Future<bool>.value(true) ),
+        await updatePersonData( context, container, profId );
 
-                                        (appState.ceImages[profId] == null ? 
-                                         fetchProfileImage( context, container, pdpi ).then(            (p) => rawPITable = p ) :
-                                         new Future<bool>.value(true) ),
-                                        
-                                        ]);
-
+        profileImage = appState.ceImages[profId];
         myself = appState.cePeople[profId]!;
         assert( myself != null );
-
-        assert( appState.ceHostAccounts[profId] != null );
-        
-        assert( appState.cogUser != null );
-        if( myself!.userName != appState.cogUser!.preferredUserName ) { print( "Checking out a different profile: " + myself!.userName ); }
-        
-        if( rawPITable.keys.length > 0 ) {
-           print( rawPITable["CEProfileId"] + " " + rawPITable["ByteData"].length.toString() );
-           Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
-           appState.ceImages[profId] = Image.memory( bytes, key: Key( profId + "Image" ), width: lhsFrameMaxWidth );
-           assert( appState.ceImages[profId] != null );
-        }
-        profileImage = appState.ceImages[profId];
 
         setState(() => loadingData = false );
      }
   }
 
   // Updates for CEProject, and CEVenture
-  // XXX there is no need to get all this data - can reduce amount xferred
   void updateProjects( context, container, HostPlatforms hostPlat ) async {
      
      if( loadingData  && ( screenArgs["profType"] == "CEProject" || screenArgs["profType"] == "CEVenture" )) {
@@ -228,60 +182,12 @@ class _CEProfileState extends State<CEProfilePage> {
            pid = cepIds.length > 0 ? cepIds[0] : "";
            primeId = vid;
         }
+
+        await updateProjectData( context, container, vid, pid, primeId, hostPlat );
         
-        var postDataPS = {};
-        postDataPS['EquityPlanId'] = vid;
-        final pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
-
-        postDataPS = {};
-        postDataPS['PEQSummaryId'] = pid;
-        final pdps = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
-
-        final pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$primeId" }}';
-
-        final hostName = enumToStr( hostPlat );
-        final pdpa = '{ "Endpoint": "GetHostA", "HostPlatform": "$hostName" }'; 
-        
-        Map<String,dynamic> rawPITable = {};
-        List<HostUser>      haccts     = [];
-
-        await Future.wait([
-                             (!appState.hostPlatformsLoaded.contains( hostPlat ) ? 
-                              fetchHostUsers( context, container, pdpa ).then(                 (p) => haccts = p ) : 
-                              new Future<bool>.value(true) ),
-                             
-                             (appState.cePEQSummaries[pid] == null ?
-                              fetchPEQSummary( context, container, json.encode( pdps )).then((p) => appState.cePEQSummaries[pid] = p ) :
-                              new Future<bool>.value(true) ),
-
-                             (appState.ceEquityPlans[vid] == null ? 
-                              fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => appState.ceEquityPlans[vid] = p ) :
-                              new Future<bool>.value(true) ),
-                             
-                             (appState.ceImages[pid] == null ? 
-                              fetchProfileImage( context, container, pdpi ).then(            (p) => rawPITable = p ) :
-                              new Future<bool>.value(true) ),
-                             
-                             ]);
-        peqSummary = appState.cePEQSummaries[pid];
-        equityPlan = appState.ceEquityPlans[vid];
-        print( "Set equity plan to " + vid );
-
-        if( !appState.hostPlatformsLoaded.contains( hostPlat ) ) { appState.hostPlatformsLoaded.add( hostPlat ); }
-        // One ha per platform, list length is 1
-        for( HostUser ha in haccts ) { appState.ceHostAccounts[ha.ceUserId] = [ha]; }
-           
-        if( rawPITable.keys.length > 0 ) {
-           print( rawPITable.keys.toString() );
-           print( rawPITable["CEProfileId"]);
-           print( rawPITable["ByteData"].length.toString());
-           // final ByteData assetImageByteData = await rootBundle.load( rawPITable["ByteData"] );
-           // final x = assetImageByteData.buffer.asUint8List();
-           Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
-           appState.ceImages[primeId] = Image.memory( bytes, key: Key( primeId + "Image" ), width: lhsFrameMaxWidth );
-           assert( appState.ceImages[primeId] != null );
-        }
         profileImage = appState.ceImages[primeId];
+        peqSummary   = appState.cePEQSummaries[pid];
+        equityPlan   = appState.ceEquityPlans[vid];
         
         // need setState to trigger makeBody else blank info
         // print( "updateCEV-CEP done, SS" );
@@ -309,7 +215,7 @@ class _CEProfileState extends State<CEProfilePage> {
         GestureDetector(
            onTap: () async
            {
-              _cancel();
+              pop( context );
               Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
               confirmedNav( context, container, newPage );
@@ -346,7 +252,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return GestureDetector(
         onTap: () async
         {
-           _cancel();
+           pop( context );
            Map<String,String> screenArgs = {"id": ceUserId, "profType": "Person" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            confirmedNav( context, container, newPage );
@@ -373,7 +279,7 @@ class _CEProfileState extends State<CEProfilePage> {
         return GestureDetector( 
         onTap: () async
         {
-           popMRScroll( context, "CE Projects", ceUserId, ceps, cepIds, () => Navigator.of( context ).pop(), textWidth );
+           popMRScroll( context, "CE Projects", ceUserId, ceps, cepIds, () => pop( context ), textWidth );
         },
         child: makeActionableText( appState, "projects", "projects"+ceUserId, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
         );
@@ -699,7 +605,7 @@ class _CEProfileState extends State<CEProfilePage> {
      final svWidth  = rhsFrameMinWidth * 2.0;             // XXX oi
      
      return ScrollConfiguration(
-        behavior: MyCustomScrollBehavior2(),
+        behavior: MyCustomScrollBehavior(),
         child: SingleChildScrollView(
            scrollDirection: Axis.horizontal,
            child: SizedBox(
@@ -736,11 +642,9 @@ class _CEProfileState extends State<CEProfilePage> {
      return pi;
   }
 
-  void _cancel() {
-     Navigator.of( context ).pop( 'Cancel' );
-  }
 
 
+  // XXX with proper textEdCont disposal, could move this to profileService
   void _editProjectProfile( CEProject cep ) async {
 
      List<TextEditingController?> controllers = [];
@@ -759,7 +663,7 @@ class _CEProfileState extends State<CEProfilePage> {
         String postData = '{ "Endpoint": "UpdateCEP", "ceProject": $cepS }';
         await updateDynamo( context, container, postData, "UpdateCEP" );
         
-        Navigator.of( context ).pop();
+        pop( context );;
      }
      
      String title       = "Update Project Profile";
@@ -799,10 +703,11 @@ class _CEProfileState extends State<CEProfilePage> {
      }
 
      await showDropdownDialog( context, container, title,
-                               header, dropDown, options, curVals, toolTips, controllers, _save, _cancel );   
+                               header, dropDown, options, curVals, toolTips, controllers, _save, () => pop( context ) );   
      
   }
 
+  
   void _updateProfile( dynamic prime ) {
      final textWidth = lhsFrameMaxWidth + rhsFrameMaxWidth - 10 * appState.GAP_PAD;
      void _set( List<TextEditingController> cont ) {
@@ -828,7 +733,7 @@ class _CEProfileState extends State<CEProfilePage> {
         }
         else { assert( false ); }
 
-        Navigator.of( context ).pop( profileId );  // edit
+        pop( context, retVal: profileId );
      }
 
      assert( prime is CEVenture || prime is CEProject );
@@ -859,232 +764,23 @@ class _CEProfileState extends State<CEProfilePage> {
         addControllerPool( controllerPool, 2 );
      }
 
-     editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), _cancel, null );
+     editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), () => pop( context ), null, multi: true );     
   }
-  
-  void _dissolveChoice( CEProject cep, String choice ) async {
-     bool proceed = false;
-     List<String> candidate = [];
+
+  Widget _makeImageButton( Widget pi, String id, String name ) {
+     void _set( PointerEvent event )   { setState(() => appState.hoverChunk = id+"image" ); }
+     void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+
+     Widget pigd = GestureDetector( 
+        onTap: () async
+        {
+           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
+           confirmedNav( context, container, newPage );
+        },
+        child: pi );
      
-     void _proceed() {
-        _cancel();
-        proceed = true;
-     }
-
-     void _removeProject() async {
-        // remove CEP from all hostusers
-        // remove all non-ACCR peqs with cepId (delVen already does .. most of this?)
-
-        // Make sure peqs are updated first, then delete all non-ACCR
-        List<PEQ> peqs = [];
-        await updateCEPeqs( container, context, cepId: cep.ceProjectId );
-        peqs.addAll( appState.cePeqs[ cep.ceProjectId ] ?? [] );        
-        if( peqs.length > 0 ) {
-           List<String> peqIds = peqs
-                                 .where( (p) => p.peqType != PeqType.grant )
-                                 .map( (p) => p.id )
-                                 .toList();
-           print( "Deleting peqs " + peqIds.toString() );
-           
-           String shortName = "RemoveEntries";
-           String pids = json.encode( [ peqIds ] );  // list of lists in case pkey is not singular
-           String postData = '{ "Endpoint": "$shortName", "tableName": "CEPEQs", "ids": $pids }';
-           bool res = await updateDynamo( context, container, postData, shortName );
-        }
-
-        // remove cep, peqSummary, image, linkage, remove cepId from any hostUser. 
-        String shortName  = "KillVenture";
-        String cepid = cep.ceProjectId;
-        String postData = '{ "Endpoint": "$shortName", "id": "$cepid", "isProject": "true" }';
-        bool res = await updateDynamo( context, container, postData, shortName );
-
-        // tell ingest
-        sendPAct( context, container, cep.ceProjectId, cep.ceProjectId, HostPlatforms.GitHub, '{"note": "Remove CEProject"}' );
-
-        // XXX copy from _removeVenture
-        // Reload everything - cached venture data should no longer be available
-        screenArgs["profType"] = "---";  // Cancel briefly pops back to prof page before navigating.  without this, a new venture is created in makeVenBod
-        _cancel();
-        await flushAppState( context, container );
-        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
-        confirmedNav( context, container, newPage );
-     }
-        
-     void _removeRepo( List<bool> on ) {
-        assert( on.length == candidate.length );
-        for( int i = 0; i < on.length; i++ ) {
-           if( on[i] ) {
-              String repoId = cep.removeRepo( candidate[i] );
-              writeCEProject( appState, context, container, cep );  // don't wait
-
-              // do not add this back to hostUser futureCEProject page - homepage refresh button does the trick
-
-              // send pact.  This is a no-op for ingest
-              writeRemoveRepoPAct( context, container, cep, repoId );
-
-              // have dynamo remove hostRepoId for all hostRepoId/cepId peqs..  don't wait.
-              // This is carried out here instead of during ingest since it does not impact peqSummary, allocs, or anything else.  Also,
-              // would be two possibly overlapping subsets of updated peqs at the end of ingest - complication without reason.
-              String cepId = cep.ceProjectId;
-              String shortName = "RemoveRepo";
-              String postData = '{ "Endpoint": "$shortName", "cepId": "$cepId", "repoId": "$repoId" }';
-              updateDynamo( context, container, postData, shortName );
-           }
-        }
-        _cancel();
-     }
-        
-     _cancel();
-
-     // are you exec?
-     assert( appState.ceVenture[ cep.ceVentureId ] != null );
-     CEVenture cev = appState.ceVenture[ cep.ceVentureId ]!;
-     if( cev.roles[ appState.ceUserId ] != MemberRole.Executive ) {
-        String msg = "Only an Executive can carry out this operation.";
-        showToast( msg );
-        return;
-     }
-
-     if( choice == "Remove a repo" ) {
-
-        String msg = "All PEQ issues connected to the host repo will still be valid and will persist in CodeEquity, but will lose their grounding in the host.  ";
-        msg       += "With no host repository, CodeEquity background sanity checks and status repairs will fail.  This may be OK if work on these ";
-        msg       += "issues is complete.  Be sure you know what you are doing, this action can not be undone.  Would you like to continue?";
-        Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );
-        await confirm( context, "Are you sure you want to remove repos?", msg, _proceed, _cancel, body: body );
-        if( proceed ) {
-           String header = "Check the repos to remove";
-           candidate = cep.repositories;
-           await showDialog(
-              context: context,
-              builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _removeRepo, cancelFunc: _cancel ));
-        }
-
-     }
-     else if( choice == "Delete this project" ) {
-
-        String msg = "Any granted PEQ issues connected to this CodeEquity Project will remain unchanged in the Venture.  All other PEQ issues will be removed ";
-        msg       += "from the Venture including those that have already had work carried out on them.  There is no going back.  ";
-        msg       += "Are you certain you wish to delete " + cep.name + "?" ;
-        Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );
-        await confirm( context, "Are you sure you want to remove " + cep.name + "?", msg, _removeProject, _cancel, body: body );
-     }
-  }
-  
-  void _dissolveProject( CEProject cep ) async {
-     List<String> choices = [ "Remove a repo", "Delete this project" ]; // XXX formalize
-     await radioDialog( context, "Are you removing a repo, or deleting this project?", choices, choices[0], _dissolveChoice, _cancel, execArgs: [ cep ] );
-  }
-  
-  void _deletePrime( dynamic prime ) async {
-     List<PEQ> peqs = [];
-     List<CEProject> ceps = [];
-
-     if( prime is CEProject ) { return _dissolveProject( prime ); }
-     
-     _removeVenture() async {
-        // remove peqs
-        if( peqs.length > 0 ) {
-           List<String> peqIds = peqs.map( (p) => p.id ).toList();
-           print( "Deleting peqs " + peqIds.toString() );
-           
-           String shortName = "RemoveEntries";
-           String pids = json.encode( [ peqIds ] );  // list of lists in case pkey is not singular
-           String postData = '{ "Endpoint": "$shortName", "tableName": "CEPEQs", "ids": $pids }';
-           bool res = await updateDynamo( context, container, postData, shortName );
-        }
-
-        List<String> cepIds = ceps.map( (p) => p.ceProjectId ).toList();
-        
-        // remove CEV, peqSummary, CEP, image, linkage, hostUserId, equityPlan 
-        String shortName  = "KillVenture";
-        String vid = prime.ceVentureId;
-        String postData = '{ "Endpoint": "$shortName", "id": "$vid", "isProject": "false" }';
-        bool res = await updateDynamo( context, container, postData, shortName );
-
-        // send PActs 1 per each of venture and project
-        String note          = '{"note": "Remove Venture"}';
-        sendPAct( context, container, "-1", prime.ceVentureId, HostPlatforms.GitHub, note );
-        for( String id in cepIds ) {
-           note  = '{"note": "Remove CEProject"}';
-           sendPAct( context, container, id, id, HostPlatforms.GitHub, note );
-        }
-
-        // Reload everything - cached venture data should no longer be available
-        screenArgs["profType"] = "---";  // Cancel briefly pops back to prof page before navigating.  without this, a new venture is created in makeVenBod
-        _cancel();
-        await flushAppState( context, container );
-        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
-        confirmedNav( context, container, newPage );
-     }
-     
-     _doubleConfirm() {
-        confirm( context, "Delete Venture", "There is no going back.  Are you certain you wish to delete this Venture?", _removeVenture, _cancel );
-     }
-     
-     if( prime is CEProject ) { print( "XXX NYI" ); return; }
-     
-     assert( appState.ceVenture[ prime.ceVentureId ] != null );
-     CEVenture cev = appState.ceVenture[ prime.ceVentureId ] ?? prime;
-
-     // Get all ceps for cev. Typically 1.
-     for( CEProject cep in appState.ceProject.values ) {
-        if( cep.ceVentureId == cev.ceVentureId ) { ceps.add( cep ); }
-        // Make sure peqs are updated first
-        await updateCEPeqs( container, context, cepId: cep.ceProjectId );
-     }
-
-     // Get all peqs for all ceps in cev
-     for( CEProject cep in ceps ) {
-        print( "attempting to add peqs from " + cep.name + " " + (appState.cePeqs[ cep.ceProjectId ] ?? [] ).length.toString() );
-        
-        peqs.addAll( appState.cePeqs[ cep.ceProjectId ] ?? [] );
-     }
-
-     // XXX factor out the messaging
-     print( "Attempting to delete Venture.  It has " + ceps.length.toString() + " CEProjects with a total of " + peqs.length.toString() + " PEQs." );
-     int accr = 0;
-     int accrPeqs = 0;
-     int pend = 0;
-     int plan = 0;
-     for( PEQ peq in peqs ) {
-        if( peq.peqType == PeqType.grant )   { accr += 1; accrPeqs += peq.amount;}
-        if( peq.peqType == PeqType.pending ) { pend += 1; }
-        if( peq.peqType == PeqType.plan )    { plan += 1; }
-     }
-
-     // are you exec? 
-     if( prime.roles[ appState.ceUserId ] != MemberRole.Executive ) {
-        String msg = "Only an Executive can delete a Venture.";
-        showToast( msg );
-        return;
-     }
-     // are there granted peqs?
-     if( accr > 0 ) {
-        String msg = "CodeEquity guantees that once a PEQ has been granted, it can no longer be modified.  Your Venture\n";
-        msg       += " has " + accr.toString() + " individual PEQ grants for total of " + accrPeqs.toString() + " options.\n";
-        msg       += " This Venture can not be deleted.";
-        showToast( msg );
-        return;
-     }
-     // are you sure?
-     else if( pend > 0 ) {
-        String msg = "There are " + pend.toString() + " pending PEQs, which means work has already been carried out on this Venture.\n";
-        msg       += " If you delete the Venture, these pending PEQs will be removed as well, and will no longer be valid.\n";
-        msg       += " Are you sure you want to delete this Venture?  There is no going back.";
-        confirm( context, "Delete Venture", msg, _doubleConfirm, _cancel );
-     }
-     // never got past planning stage
-     else if( plan > 0 ) {
-        String msg = "There are " + plan.toString() + " planned PEQs already.\n";
-        msg       += " If you delete the Venture, these PEQs will be removed as well.\n";
-        msg       += " Are you sure you want to delete this Venture?  There is no going back.";
-        confirm( context, "Delete Venture", msg, _doubleConfirm, _cancel );
-     }
-     // Empty venture
-     else {
-        _doubleConfirm();
-     }
+     pigd = makeActionableWidget( appState, pigd, name + " profile image", "Change your image", id+"image", _set, _unset );
+     return pigd;
   }
 
   Widget _makeCEBody( context, Widget botLeft, Widget rhs, List<String> cepIds ) {
@@ -1116,9 +812,9 @@ class _CEProfileState extends State<CEProfilePage> {
            cevId = cev.ceVentureId;
         }
         
-        if( profileImage != null ) { pi   = profileImage!; }
         if( equityPlan   != null ) { ep   = equityPlan!; }
         if( peqSummary   != null ) { psum = peqSummary!; }
+        if( profileImage != null ) { pi   = profileImage!; }
 
      }
      dynamic prime  = screenArgs["profType"] == "CEProject" ? cep   : cev;
@@ -1130,6 +826,7 @@ class _CEProfileState extends State<CEProfilePage> {
      if( screenArgs["profType"] == "CEVenture" && ( prime.web == null || prime.web == "" )) { desc = "(Click \'Edit Profile\' to add a website)"; }
      
      if( pi == null ) { pi = _getProfImage( primeId, "a" ); }
+     pi = _makeImageButton( pi, screenArgs["profType"] == "CEProject" ? prime.ceProjectId : prime.ceVentureId, prime.name );     
      
      double accr     = ep.totalAllocation > 0 ? ( 1.0 * psum.accruedTot ) / ep.totalAllocation : 0.0;
      double tasked   = ep.totalAllocation > 0 ? ( 1.0 * psum.taskedTot  ) / ep.totalAllocation : 0.0;
@@ -1157,14 +854,9 @@ class _CEProfileState extends State<CEProfilePage> {
                                                           () async {
                                                              prime is CEVenture ? _updateProfile( prime ) : _editProjectProfile( prime ); 
                                                           }),
-                                   makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 3.0,
-                                                          () async {
-                                                             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
-                                                             confirmedNav( context, container, newPage );
-                                                          }),
                                    makeActionButtonFixed( appState, deltxt, lhsFrameMaxWidth / 3.0,
                                                           () async {
-                                                             _deletePrime( prime ); 
+                                                             dissolve( context, container, prime, screenArgs ); 
                                                           }),
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
@@ -1175,7 +867,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  Wrap( children: [spacer,
                                   makeActionButtonFixed( appState, "Build Initial Equity Plan", lhsFrameMaxWidth / 2.0,
                                                          () async {
-                                                            _cancel();
+                                                            pop( context );
                                                             appState.selectedCEVenture = primeId;
                                                             Map<String,int> sa = {"initialPage": 2};
                                                             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
@@ -1285,7 +977,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
      List<Widget> platData = [];
      platData.add( makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ) );
-     platData.add( makeTitleText( appState, "Host Platform: " + enumToStr( cep.hostPlatform ), textWidth, false, 1, fontSize: 18 ) );
+     platData.add( makeTitleText( appState, "Host Platform: " + (cep.hostPlatform == HostPlatforms.end ? "" : enumToStr( cep.hostPlatform )), textWidth, false, 1, fontSize: 18 ) );
      addControllerPool( controllerPool, 0 );
      if( cep.hostPlatform == HostPlatforms.end ) {
         platData.add( miniSpacer );
@@ -1347,7 +1039,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return GestureDetector( 
         onTap: () async
         {
-           _cancel();
+           pop( context );
            Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            confirmedNav( context, container, newPage );
@@ -1370,7 +1062,7 @@ class _CEProfileState extends State<CEProfilePage> {
                      GestureDetector( 
                         onTap: () async
                         {
-                           _cancel();
+                           pop( context );
                            Map<String,String> screenArgs = {"id": cevId, "profType": "CEVenture" };
                            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                            confirmedNav( context, container, newPage );
@@ -1412,7 +1104,7 @@ class _CEProfileState extends State<CEProfilePage> {
                              makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0,
                                                     () async
                                                     {
-                                                       _cancel();
+                                                       pop( context );
                                                        Map<String,String> screenArgs = {"id": "-1", "profType": "CEProject", "ventId": cev.ceVentureId };
                                                        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                                                        confirmedNav( context, container, newPage );
@@ -1476,15 +1168,14 @@ class _CEProfileState extends State<CEProfilePage> {
      // print( "MVB calling MCEB" );
      return _makeCEBody( context, ceProjects, rhs, cepIds ); 
   }
-  
-  
+
   Widget _makePersonBody( context, HostPlatforms hostPlat ) {
      assert( appState.cogUser != null );
 
      // aggressive, and without locking, failure for integration testing.
      // assert( appState.cogUser!.preferredUserName != null);
 
-     final itsMe      = screenArgs["id"] == "";   // Is this profile for the logged in user?
+     final itsMe      = screenArgs["id"] == "" || screenArgs["id"] == appState.ceUserId;   // Is this profile for the logged in user?
      final textWidth  = lhsFrameMaxWidth - 2*appState.GAP_PAD - appState.TINY_PAD;
      final ceUserName = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
      Widget? pi        = null;
@@ -1525,6 +1216,8 @@ class _CEProfileState extends State<CEProfilePage> {
               emptyVent.add( cev.ceVentureId );
            }
         }
+
+        if( itsMe ) { logout = makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 3.0, _logout( context, appState)); }
         
         // CE Host User
         for( var ha in hostAccs ) {
@@ -1534,7 +1227,6 @@ class _CEProfileState extends State<CEProfilePage> {
                  hostPeep["id"]       = ha.hostUserId;
                  cepWid               = _makeCEPs( context, ha, emptyVent, textWidth );
                  ppWid                = _makePperCEP( context, ha, textWidth );
-                 logout               = makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 3.0, _logout( context, appState));
               }
            }
            else { print( "Host organization not recognized." ); }
@@ -1553,6 +1245,7 @@ class _CEProfileState extends State<CEProfilePage> {
      }
 
      if( pi == null ) { pi = _getProfImage( cePeep.userName, ceUserName ); }
+     pi = _makeImageButton( pi, cePeep.id, cePeep.userName );
 
      String hname = hostPeep["userName"] == "" ? "" : hostPeep["userName"]! + " (" + hostPeep["id"]! + ")";
      String cname = cePeep.userName == "" ? "" : cePeep.userName + " (" + cePeep.id + ")";
@@ -1573,11 +1266,8 @@ class _CEProfileState extends State<CEProfilePage> {
                  itsMe ? 
                  Wrap( children: [ Container( width: appState.GAP_PAD ),
                                    makeActionButtonFixed( appState, 'Edit profile', lhsFrameMaxWidth / 3.0, () => editProfile( context, container, cePeep )),
-                                   makeActionButtonFixed( appState, "Edit image", lhsFrameMaxWidth / 3.0, () async {
-                                         MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
-                                         confirmedNav( context, container, newPage );
-                                      }),
-                                   logout
+                                   logout,
+                                   makeActionButtonFixed( appState, 'Dissolve', lhsFrameMaxWidth / 3.0, () => dissolveHost( context, container ))
                           ])
                  :
                  Container( width: 1.0 ),
@@ -1623,7 +1313,7 @@ class _CEProfileState extends State<CEProfilePage> {
       assert( appState != null );
       screenArgs = ModalRoute.of(context)!.settings.arguments as Map<String,String>;
 
-      lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;
+      lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;  // XXX move to appState
       lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       rhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       rhsFrameMaxWidth = appState.MAX_PANE_WIDTH - lhsFrameMaxWidth;      
@@ -1635,7 +1325,7 @@ class _CEProfileState extends State<CEProfilePage> {
       // print( "PP build " + screenArgs.toString() );
 
       updatePerson( context, container );
-      updateProjects( context, container, HostPlatforms.GitHub );
+      updateProjects( context, container, HostPlatforms.GitHub );  // XXX Github only?
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Profile" ),

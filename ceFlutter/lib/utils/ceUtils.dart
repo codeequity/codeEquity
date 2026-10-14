@@ -11,6 +11,7 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ghUtils.dart';      // host-specific Utils
 
+import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/screens/edit_page.dart';
 import 'package:ceFlutter/screens/launch_page.dart';
 
@@ -232,6 +233,13 @@ Future<void> flushAppState( context, container ) async {
    appState.loaded           = true;
 }
 
+// flush everything, and reload back to homepage.
+Future<void> reload( context, container ) async {
+   await flushAppState( context, container );
+   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
+   confirmedNav( context, container, newPage );
+}
+
 // Called on login, signup, refreshProjects, delete venture
 Future<void> initMDState( context, container ) async {
    print( "initMDState" );
@@ -343,41 +351,6 @@ String ceUIDFromHost( appState, String hostUID ) {
       return ceUID;
    }
 }
-
-// handles all the wiring between host, aws, internal state
-Future<void> updateRepos( context, container, HostPlatforms hplat ) async {
-   if( hplat == HostPlatforms.GitHub ) {
-      await updateGHRepos( context, container );
-   }
-   else{
-      print( "Error.  Platform: " + enumToStr( hplat ) + " is not recognized." );
-      assert( false );
-   }
-}
-
-// relies on updateRepos, handles connection between CEP and repos
-void initCEPRepos( context, container, CEProject cep, { reposLoadedCallback = null } ) async {
-   if( cep.hostPlatform == HostPlatforms.GitHub ) {
-      await initGHRepos( context, container, cep, reposLoadedCallback );
-   }
-   else{
-      print( "Error.  Platform: " + enumToStr( cep.hostPlatform ) + " is not recognized." );
-      assert( false );
-   }
-}
-
-void initProject( context, container, CEProject cep, List<TextEditingController> cont ) async {
-   if( cep.hostPlatform == HostPlatforms.GitHub ) {
-      assert( cont.length == 1 );
-      await initGHProject( context, container, cep, cont[0] );
-   }
-   else{
-      print( "Error.  Platform: " + enumToStr( cep.hostPlatform ) + " is not recognized." );
-      assert( false );
-   }
-
-}
-
 class HostVals {
    // CEP host profile related data
    static List<String>       profHeader( HostPlatforms hplat )   => hplat == HostPlatforms.GitHub ? GHVals.profHeader   : [""];
@@ -386,61 +359,6 @@ class HostVals {
    static List<String>       profCurVals( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profCurVals  : [""];
    static List<String>       profToolTips( HostPlatforms hplat ) => hplat == HostPlatforms.GitHub ? GHVals.profToolTips : [""];
 }                                  
-
-
-void editProfile( context, container, Person cePeep, {void Function()? updateCallback} ) async {
-
-   void _cancelEdit( context ) {
-      print( "Cancel update profile" );
-      Navigator.of( context ).pop();
-   }
-   
-   void _saveProfile( List<TextEditingController> controller ) {
-      final appState  = container.state;      
-      // Note: userName assigned during signup, can not change.
-      // Note: email assigned during signup, this can change.
-      assert( controller.length == 5 );
-      String na = controller[0].text;
-      String gb = controller[1].text;
-      String em = controller[2].text;
-      String ph = controller[3].text;
-      String pa = controller[4].text;
-      
-      cePeep.legalName      = na != "" ? na : cePeep.legalName;
-      cePeep.email          = em != "" ? em : cePeep.email;
-      cePeep.phone          = ph != "" ? ph : cePeep.phone;
-      cePeep.mailingAddress = pa != "" ? pa : cePeep.mailingAddress;
-      
-      if( gb != "" )                                           { cePeep.goesBy = gb; }
-      else if( cePeep.goesBy == "" && cePeep.legalName != "" ) { cePeep.goesBy = cePeep.legalName.split(" ")[0]; }
-
-      cePeep.completeProfile();
-      writeCEPerson( appState, context, container, cePeep );
-      updateCallback?.call();
-      
-      Navigator.of( context ).pop();
-   }
-
-   assert( cePeep.userName != "" );
-
-   List<String> header                    = cePeep.getEditable();
-   List<bool>   required                  = cePeep.getRequired();
-   List<String> curVal                    = cePeep.getCurVal();
-   List<String> toolTip                   = cePeep.getToolTip();
-
-   assert( header.length == required.length );
-   assert( header.length == curVal.length );
-   assert( header.length == toolTip.length );
-   
-   final appState = container.state;
-   String popupTitle = "Edit " + cePeep.userName + "'s Profile";
-
-   // This construction allows editForm to return a widget that we apply here.
-   await showDialog(
-      context: context,
-      builder: (BuildContext context) => EditForm( appState: appState, scrollHeader: popupTitle, header: header, curVal: curVal,
-                                                   required: required, toolTip: toolTip, saveFunc: _saveProfile, cancelFunc: _cancelEdit ));
-}
 
 
 // Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
@@ -565,65 +483,49 @@ Future<bool> makeCEPeq( context, container, CEProject cep, PEQ p, Map<String, PE
       // XXX Consider making this standalone
       String hostUserId = "";
       for( HostUser ha in appState.myHostAccounts ) {
-         if( ha.hostPlatform == HostPlatforms.GitHub && ha.ceUserId == appState.ceUserId ) {
+         if( ha.hostPlatform == cep.hostPlatform && ha.ceUserId == appState.ceUserId ) {
             hostUserId = ha.hostUserId;
             break;
          }
       }
       
-      DateTime now = DateTime.now();
-      String note  = setInStone ? '{"note": "Bad peq repair attempted via CEMD"}' : '{"note": "Repaired peq via CEMD, no raw body present"}';
-      
-      Map<String, dynamic> pact  = { };
-      pact["CEUID"]       = appState.ceUserId; 
-      pact["HostUserId"]  = hostUserId;
-      pact["CEProjectId"] = p.ceProjectId;
-      pact["Verb"]        = "confirm";               // XXX formalize
-      pact["Action"]      = "notice";                // XXX formalize
-      pact["Subject"]     = [p.id];
-      pact["Note"]        = note;
-      pact["Date"]        = getToday();
-      pact["RawBody"]     = note;
-      pact["Ingested"]    = "true";
-      pact["Locked"]      = "false";
-      pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
-      
-      shortName       = "RecordPEQAction";
-      String newPAct  = json.encode( pact );
-      postData        = '{ "Endpoint": "$shortName", "newPAction": $newPAct }';
-      await updateDynamo( context, container, postData, shortName );
+      String note  = setInStone ? "Bad peq repair attempted via CEMD" : "Repaired peq via CEMD, no raw body present";
+      await sendPAct( context, container, p.ceProjectId, [p.id], cep.hostPlatform, note, hostUserId: hostUserId );
    }
    return !setInStone;
 }
 
 // This only sends notices
-Future<bool> sendPAct( context, container, String cepId, String subject, HostPlatforms hostPlatform, String note ) async {
+Future<bool> sendPAct( context, container, String cepId, List<String> subject, HostPlatforms hostPlatform, String note, 
+                       { String ingested = "true", String ceuid = "-1", String hostUserId = "" }) async {
    final appState  = container.state;
+   ceuid = ceuid == "-1" ? appState.ceUserId : ceuid;
 
    // send PAct as a notice.
    print( "Adding PAct" );
-   
-   String hostUserId = "";
-   for( HostUser ha in appState.myHostAccounts ) {
-      if( ha.hostPlatform == hostPlatform && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
-         hostUserId = ha.hostUserId;
-         break;
+
+   if( hostUserId == "" ) {
+      for( HostUser ha in appState.myHostAccounts ) {
+         if( ha.hostPlatform == hostPlatform && ha.ceUserId == appState.ceUserId ) {  // XXX formalize
+            hostUserId = ha.hostUserId;
+            break;
+         }
       }
    }
    
    DateTime now = DateTime.now();
    
    Map<String, dynamic> pact  = { };
-   pact["CEUID"]       = appState.ceUserId; 
+   pact["CEUID"]       = ceuid;
    pact["HostUserId"]  = hostUserId;
    pact["CEProjectId"] = cepId;
    pact["Verb"]        = "confirm";               // XXX formalize
    pact["Action"]      = "notice";                // XXX formalize
-   pact["Subject"]     = [subject];
+   pact["Subject"]     = subject;
    pact["Note"]        = note;
    pact["Date"]        = getToday();
-   pact["RawBody"]     = note;
-   pact["Ingested"]    = "true";                  // there is no ingest work to do.  additionally, don't want to retrigger ingest notice for status frame.
+   pact["RawBody"]     = '{"notice": "$note"}';
+   pact["Ingested"]    = ingested;                // there is no ingest work to do.  additionally, don't want to retrigger ingest notice for status frame.
    pact["Locked"]      = "false";
    pact["TimeStamp"]   = now.millisecondsSinceEpoch.toString();
    
@@ -656,11 +558,19 @@ Future<bool> removeCEPeq( context, container, CEProject cep, PEQ p, Map<String, 
       bool res = await updateDynamo( context, container, postData, shortName );
       
       // send PAct 
-      String note  = setInStone ? '{"note": "Remove granted attempted via CEMD"}' : '{"note": "Remove peq via CEMD, no raw body present"}';
-      await sendPAct( context, container, p.ceProjectId, p.id, HostPlatforms.GitHub, note );
+      String note  = setInStone ? "Remove granted attempted via CEMD" : "Remove peq via CEMD, no raw body present";
+      await sendPAct( context, container, p.ceProjectId, [p.id], HostPlatforms.GitHub, note );
    }
 
    return !setInStone;
+}
+
+Future<bool> removeHostUser( context, container, HostUser hu ) async {
+      String shortName = "RemoveEntries";
+      String pids = json.encode( [[ hu.hostUserId ]] );  // list of lists in case pkey is not singular
+      String postData = '{ "Endpoint": "$shortName", "tableName": "CEHostUser", "ids": $pids }';
+      bool res = await updateDynamo( context, container, postData, shortName );
+      return true;
 }
 
 Future<bool> allIngested( container, context ) async {
@@ -688,7 +598,7 @@ Future<void> updateCEPeqs( container, context, {cepId = ""} ) async {
    if( appState.cePeqs[ cep ] == null ) {
       print( "building CE peq data for " + cep );
       appState.cePeqs[ cep ] =
-         await fetchPEQs( context, container, '{ "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": "$cep", "allAccrued": "true" }}' );
+         await fetchPEQs( context, container, '{ "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": "$cep" }}' );
    }
 
    assert( appState.cePeqs[ cep ] != null );
