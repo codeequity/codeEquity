@@ -1289,7 +1289,6 @@ Future<int> processWithdrawal( PEQAction pact, int index, context, container, Li
    String huid     = pact.hostUserId;
    String huname   = pact.subject[1];
 
-   // XXX XXX currently accrued peqs are being returned
    // get current state minus accrued.  don't attach to appState since that expects to see all accrued.
    List<PEQ> peqs = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserId": "$huid", "CEProjectId": "$cep" }' );
    print( "Host user " + huid + " has " + peqs.length.toString() + " non-accrued peqs" );

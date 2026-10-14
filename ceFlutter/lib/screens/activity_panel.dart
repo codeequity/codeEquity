@@ -14,6 +14,7 @@ import 'package:ceFlutter/screens/profile_page.dart';
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
+import 'package:ceFlutter/utils/profileService.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/CEVenture.dart';
@@ -78,14 +79,6 @@ class _CEActivityState extends State<CEActivityPanel> {
       if( appState.verbose >= 2 ) { print( "HP dispose" ); }
    }
 
-   void _noop() {
-      Navigator.of( context ).pop( 'noop' );
-   }
-
-   void _cancel() {
-      Navigator.of( context ).pop( 'Cancel' );
-   }
-
    void _reject() async {
       assert( targCEV.ceVentureId != "" );
       assert( applicant.id != "" );
@@ -103,7 +96,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
       await updateDynamo( context, container, ppostData, "UpdateCEV" );
       
-      Navigator.of( context ).pop( 'Reject' );
+      pop( context, retVal: "Reject" );
       appState.hoverChunk = "";      
       setState(() => updateView = true );
 
@@ -113,7 +106,7 @@ class _CEActivityState extends State<CEActivityPanel> {
    void _withdrawChoice( Person cePeep ) async {
 
       List<String> choices = [ "A specific CodeEquity Venture", "All of CodeEquity" ]; // XXX formalize
-      await radioDialog( context, "Withdraw from which?", choices, choices[0], _withdraw, _cancel, execArgs: [ cePeep ] );
+      await radioDialog( context, "Withdraw from which?", choices, choices[0], _withdraw, () => pop( context ), execArgs: [ cePeep ] );
    }
 
    // Note: do not need to await updateDynamo for withdrawAll - user will reload only after logging in, which takes a while.
@@ -204,26 +197,26 @@ class _CEActivityState extends State<CEActivityPanel> {
       if( choice == "All of CodeEquity" ) { // XXX
          String msg = "This action will end your participation in CodeEquity and any CodeEquity Ventures.\n All Provisional Equity that hasn't vested already will be terminated.\n";
          msg       += "Your login will survive.  Press \'Continue\' to withdraw.";
-         String ret = await confirm( context, "Withdraw from CodeEquity?", msg, _noop, _cancel );
+         String ret = await confirm( context, "Withdraw from CodeEquity?", msg, () => pop( context, retVal: "noop" ), () => pop( context ) );
 
          if( ret == "noop" ) { _withdrawCE( cePeep ); }
       }
       else {
          String cevId = await _chooseVenture( "Select the CodeEquity Venture to withdraw from" );
          if( cevId == "Cancel" ) {
-            _cancel();
+            pop( context );
             return;
          }
          
          String msg = "This action will end your participation in this Venture.\n All Provisional Equity in this Venture that hasn't vested already will be terminated.\n";
          msg       += "If you are the last member of the Venture, the Venture will no longer be accessible.\n";
          msg       += "Press \'Continue\' to withdraw.";
-         String ret = await confirm( context, "Withdraw from Venture?", msg, _noop, _cancel );
+         String ret = await confirm( context, "Withdraw from Venture?", msg, () => pop( context, retVal: "noop"), () => pop( context ) );
 
          if( ret == "Cancel" )    { return; }
 
          // select screen .. pop early to avoid awaits
-         Navigator.of( context ).pop();         
+         pop( context );
          
          if( ret == "noop" ) { _withdrawCEV( cePeep, cevId ); }
       }
@@ -324,7 +317,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       if( controlView ) {
          setState(() => updateView = true );
          appState.hoverChunk = "";      
-         Navigator.of( context ).pop();
+         pop( context );
       }
    }
 
@@ -420,7 +413,7 @@ class _CEActivityState extends State<CEActivityPanel> {
             return "";
          }
          String cevId = cevEntry[0].key;
-         Navigator.of( context ).pop( cevId );
+         pop( context, retVal: cevId );
          if( docType == DocType.end )         { return cevId; }              // select venture
          else if( docType == DocType.equity ) {                              // register venture
             assert( cePeep != null );
@@ -434,7 +427,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       String item = "Venture name";
       String hint = "Type \'Venture name\' in the search bar if you need a hint";
       addControllerPool( controllerPool, 0 );      
-      var retVal = await editList( context, appState, msg, [item], controllerPool.sublist(0, 1), [hint], () => _select( controllerPool.sublist(0, 1) ), _cancel, null, saveName: "Select" );
+      var retVal = await editList( context, appState, msg, [item], controllerPool.sublist(0, 1), [hint], () => _select( controllerPool.sublist(0, 1) ), () => pop( context ), null, saveName: "Select" );
       return retVal;
    }
 
@@ -454,8 +447,8 @@ class _CEActivityState extends State<CEActivityPanel> {
    
    // So far, venture equity agreement is the only editable doc
    void _updateDoc( Map<String, String> edits ) async {
-      Navigator.of( context ).pop();  // radio
-      Navigator.of( context ).pop();  // doc
+      pop( context );  // radio
+      pop( context );  // doc
 
       bool isApplicant = approver.id != "-1"  ? false : true;
       Person tPeep     = isApplicant          ? applicant : approver;
@@ -489,7 +482,7 @@ class _CEActivityState extends State<CEActivityPanel> {
 
       // Has anything changed?  if not, back out to avoid infinite confirm
       if( scrollDoc.equityVals[ item ] != null && scrollDoc.equityVals[ item ]! == choice ) {
-         _cancel();
+         pop( context );
       }
       else {
          _updateDoc( edits );
@@ -527,10 +520,10 @@ class _CEActivityState extends State<CEActivityPanel> {
          }
          
          editList( context, appState, box.blankTitle, item, controllerPool.sublist(0, ith), hint,
-                   () => _updateDocFree( item, hint, controllerPool.sublist(0, ith) ), _cancel, null, subHeader: box.blankSub, headerWidth: widget.overlayMaxWidth * 0.3 );
+                   () => _updateDocFree( item, hint, controllerPool.sublist(0, ith) ), () => pop( context ), null, subHeader: box.blankSub, headerWidth: widget.overlayMaxWidth * 0.3 );
       }
       else if( box.type == "radio" ) { 
-         radioDialog( context, box.radioTitle!, box.rchoices!.sublist(1), box.rInitChoice, _updateDocFixed, _cancel, execArgs: ["PartnerTitle"] );
+         radioDialog( context, box.radioTitle!, box.rchoices!.sublist(1), box.rInitChoice, _updateDocFixed, () => pop( context ), execArgs: ["PartnerTitle"] );
       }
    }
 
@@ -579,7 +572,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       if( docType == DocType.privacy ) {
          List<Widget> buttons = [];
          buttons.add( new TextButton( key: Key( 'Accept' ), child: new Text("Accept Statement"), onPressed: () => _accept( cePeep!, agmt.type, docId: agmt.id ) ));
-         buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: _cancel ));
+         buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => pop( context ) ));
          buttons.add( _makeDownload( agmt, agmt.content ));
          
          await showCEDoc( context, agmt, agmt.content, buttons, widget.overlayMaxWidth );         
@@ -596,7 +589,7 @@ class _CEActivityState extends State<CEActivityPanel> {
                
                if( applicant.appliedToCEV( targCEV ) ) {
                   String ret = await confirm( context, "More Edits?", "You have already sent a Venture Agreement for " + cevName + " to the Founders.  Do you want to edit it?",
-                                              _noop, _cancel );
+                                              () => pop( context, retVal: "noop" ), () => pop( context ) );
                   if( ret == 'Cancel' ) { return; }
                   
                   // Need to load, then use values from applicant
@@ -629,7 +622,7 @@ class _CEActivityState extends State<CEActivityPanel> {
          print( "filledIn composed " + filledInDoc.length.toString() );
          
          List<Widget> buttons = [];
-         buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: _cancel ));
+         buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => pop( context ) ));
          if( !isApplicant && !applicant.registeredWithCEV( targCEV ) ) {
             buttons.add( new TextButton( key: Key( 'Reject' ), child: new Text("Reject"), onPressed: _reject ));
          }

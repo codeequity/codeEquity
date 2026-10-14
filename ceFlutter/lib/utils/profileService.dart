@@ -6,6 +6,8 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/utils/widgetUtils.dart';
 
+import 'package:ceFlutter/utils/ghUtils.dart';      // host-specific Utils
+
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
@@ -24,10 +26,6 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
    List<CEProject>   ceps = [];
    List<String> candidate = [];
    
-   void _popCancel( ) {
-      Navigator.of( context ).pop( 'Cancel' );
-   }
-
    _deletePeqs( List<String> peqIds ) async {
       print( "Deleting peqs " + peqIds.toString() );
       String shortName = "RemoveEntries";
@@ -54,7 +52,7 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
 
       // reload's Cancel briefly pops back to prof page before navigating. 
       screenArgs["profType"] = "---";
-      _popCancel();
+      pop( context );
       reload( context, container );
    }
    
@@ -77,7 +75,7 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
             updateDynamo( context, container, postData, shortName );
          }
       }
-      _popCancel();
+      pop( context );
    }
 
    void _removeProject() async {
@@ -113,10 +111,11 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
       if( choice == "Delete this project" ) { choseRepo = false; }
       else if( choice == "Remove a repo" )  { choseRepo = true; }
       else { assert( false ); }
+      pop( context ); // radio
    }
 
    _doubleConfirm() {
-      confirm( context, "Delete Venture", "There is no going back.  Are you certain you wish to delete this Venture?", _removeVenture, _popCancel );
+      confirm( context, "Delete Venture", "There is no going back.  Are you certain you wish to delete this Venture?", _removeVenture, () => pop( context ) );
    }
 
    
@@ -131,30 +130,30 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
    
    if( prime is CEProject ) {
       List<String> choices = [ "Remove a repo", "Delete this project" ]; // XXX formalize
-      await radioDialog( context, "Are you removing a repo, or deleting this project?", choices, choices[0], _setRepoOrProj, _popCancel, execArgs: [ screenArgs ] );
+
+      String res = await radioDialog( context, "Are you removing a repo, or deleting this project?", choices, choices[0], _setRepoOrProj, () => pop( context ) );
+      if( res == "Cancel" ) { return; }
 
       bool proceed = false;
       
       void _proceed() {
-         _popCancel();
+         pop( context );
          proceed = true;
       }
    
-      _popCancel(); // radio
-      
       if( choseRepo ) {
          
          String msg = "All PEQ issues connected to the host repo will still be valid and will persist in CodeEquity, but will lose their grounding in the host.  ";
          msg       += "With no host repository, CodeEquity background sanity checks and status repairs will fail.  This may be OK if work on these ";
          msg       += "issues is complete.  Be sure you know what you are doing, this action can not be undone.  Would you like to continue?";
          Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );
-         await confirm( context, "Are you sure you want to remove repos?", msg, _proceed, _popCancel, body: body );
+         await confirm( context, "Are you sure you want to remove repos?", msg, _proceed, () => pop( context ), body: body );
          if( proceed ) {
             String header = "Check the repos to remove";
             candidate = prime.repositories;
             await showDialog(
                context: context,
-               builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _removeRepo, cancelFunc: _popCancel ));
+               builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _removeRepo, cancelFunc: () => pop( context ) ));
          }
          
       }
@@ -164,7 +163,7 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
          msg       += "from the Venture including those that have already had work carried out on them.  There is no going back.  ";
          msg       += "Are you certain you wish to delete " + prime.name + "?" ;
          Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH * 1.6, true, 5 );
-         await confirm( context, "Are you sure you want to remove " + prime.name + "?", msg, _removeProject, _popCancel, body: body );
+         await confirm( context, "Are you sure you want to remove " + prime.name + "?", msg, _removeProject, () => pop( context ), body: body );
       }
 
    }
@@ -202,14 +201,14 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
          String msg = "There are " + pend.toString() + " pending PEQs, which means work has already been carried out on this Venture.\n";
          msg       += " If you delete the Venture, these pending PEQs will be removed as well, and will no longer be valid.\n";
          msg       += " Are you sure you want to delete this Venture?  There is no going back.";
-         confirm( context, "Delete Venture", msg, _doubleConfirm, _popCancel );
+         confirm( context, "Delete Venture", msg, _doubleConfirm, () => pop( context ) );
       }
       // never got past planning stage
       else if( plan > 0 ) {
          String msg = "There are " + plan.toString() + " planned PEQs already.\n";
          msg       += " If you delete the Venture, these PEQs will be removed as well.\n";
          msg       += " Are you sure you want to delete this Venture?  There is no going back.";
-         confirm( context, "Delete Venture", msg, _doubleConfirm, _popCancel );
+         confirm( context, "Delete Venture", msg, _doubleConfirm, () => pop( context ) );
       }
       // Empty venture
       else {
@@ -321,13 +320,9 @@ void dissolveHost( context, container ) async {
 
    HostPlatforms hplat = HostPlatforms.end;
 
-   void _popCancel( ) {
-      Navigator.of( context ).pop( 'Cancel' );
-   }
-
    void _setHPlat( String choice ) {
       hplat = enumFromStr<HostPlatforms>( choice, HostPlatforms.values );
-      _popCancel(); // choose which host
+      pop( context ); // choose which host
    }
 
    // Removing a host may cut across multiple CEVs.
@@ -363,9 +358,9 @@ void dissolveHost( context, container ) async {
             if( h != HostPlatforms.end ) { choices.add( enumToStr( h ) ); }
          });
          
-      _popCancel(); // Delete host linkage
-      await radioDialog( context, "Choose which Host platform to withdraw from", choices, choices[0], _setHPlat, _popCancel );
-      await _removeHost();
+      pop( context ); // Delete host linkage
+      String res = await radioDialog( context, "Choose which Host platform to withdraw from", choices, choices[0], _setHPlat, () => pop( context ) );
+      if( res != "Cancel" ) { await _removeHost(); }
 
       return "";
    }
@@ -375,5 +370,123 @@ void dissolveHost( context, container ) async {
    msg       += "any private access tokens and that host's user account on CodeEquity. This action impacts every CodeEquity Venture your host account touches.  ";
    msg       += "Your PEQs in those Ventures will continue to exist, however, all further host activity you carry out related to those PEQs on the host will be ";
    msg       += "invisible to CodeEquity. ";
-   await confirm( context, "Delete Host Linkage", msg, _chooseHost, _popCancel );
+   await confirm( context, "Delete Host Linkage", msg, _chooseHost, () => pop( context ) );
 }
+
+void editProfile( context, container, Person cePeep, {void Function()? updateCallback} ) async {
+
+   void _cancelEdit( context ) {
+      print( "Cancel update profile" );
+      pop( context );
+   }
+   
+   void _saveProfile( List<TextEditingController> controller ) {
+      final appState  = container.state;      
+      // Note: userName assigned during signup, can not change.
+      // Note: email assigned during signup, this can change.
+      assert( controller.length == 5 );
+      String na = controller[0].text;
+      String gb = controller[1].text;
+      String em = controller[2].text;
+      String ph = controller[3].text;
+      String pa = controller[4].text;
+      
+      cePeep.legalName      = na != "" ? na : cePeep.legalName;
+      cePeep.email          = em != "" ? em : cePeep.email;
+      cePeep.phone          = ph != "" ? ph : cePeep.phone;
+      cePeep.mailingAddress = pa != "" ? pa : cePeep.mailingAddress;
+      
+      if( gb != "" )                                           { cePeep.goesBy = gb; }
+      else if( cePeep.goesBy == "" && cePeep.legalName != "" ) { cePeep.goesBy = cePeep.legalName.split(" ")[0]; }
+
+      cePeep.completeProfile();
+      writeCEPerson( appState, context, container, cePeep );
+      updateCallback?.call();
+      
+      pop( context );
+   }
+
+   assert( cePeep.userName != "" );
+
+   List<String> header                    = cePeep.getEditable();
+   List<bool>   required                  = cePeep.getRequired();
+   List<String> curVal                    = cePeep.getCurVal();
+   List<String> toolTip                   = cePeep.getToolTip();
+
+   assert( header.length == required.length );
+   assert( header.length == curVal.length );
+   assert( header.length == toolTip.length );
+   
+   final appState = container.state;
+   String popupTitle = "Edit " + cePeep.userName + "'s Profile";
+
+   // This construction allows editForm to return a widget that we apply here.
+   await showDialog(
+      context: context,
+      builder: (BuildContext context) => EditForm( appState: appState, scrollHeader: popupTitle, header: header, curVal: curVal,
+                                                   required: required, toolTip: toolTip, saveFunc: _saveProfile, cancelFunc: _cancelEdit ));
+}
+
+
+// XXX look at removeHost.. dup
+Future<HostPlatforms> chooseHost( context ) async {
+   List<String> choices = [];
+   HostPlatforms.values.forEach( (h) {
+         if( h != HostPlatforms.end ) { choices.add( enumToStr( h ) ); }
+      });
+
+   HostPlatforms plat = HostPlatforms.end;
+
+   void _setPlat( String choice ) {
+      plat = enumFromStr<HostPlatforms>( choice, HostPlatforms.values );
+      pop( context );
+   }   
+   
+   String res = await radioDialog( context, "Choose which Host platform to work with:", choices, choices[0], _setPlat, () => pop( context ) );
+   
+   return plat;
+}
+
+
+
+// handles all the wiring between host, aws, internal state
+Future<void> updateRepos( context, container, HostPlatforms hplat ) async {
+   if( hplat == HostPlatforms.GitHub ) {
+      await updateGHRepos( context, container );
+   }
+   else{
+      print( "Error.  Platform: " + enumToStr( hplat ) + " is not recognized." );
+      assert( false );
+   }
+}
+
+// relies on updateRepos, handles connection between CEP and repos
+Future<void> initCEPRepos( context, container, CEProject cep, { reposLoadedCallback = null } ) async {
+   if( cep.hostPlatform == HostPlatforms.GitHub ) {
+      await initGHRepos( context, container, cep, reposLoadedCallback );
+   }
+   else{
+      print( "Error.  Platform: " + enumToStr( cep.hostPlatform ) + " is not recognized." );
+      assert( false );
+   }
+}
+
+void initProject( context, container, CEProject cep, List<TextEditingController> cont ) async {
+   if( cep.hostPlatform == HostPlatforms.end ) {
+      cep.hostPlatform = await chooseHost( context );
+   }
+   
+   if( cep.hostPlatform == HostPlatforms.GitHub ) {
+      assert( cont.length == 1 );
+      String res = await initGHProject( context, container, cep, cont[0] );
+
+      // if the above failed, don't report partial hint values
+      if( res == "Cancel" ) { cep.hostPlatform = HostPlatforms.end; }
+   }
+   else if( cep.hostPlatform != HostPlatforms.end ) {
+      print( "Error.  Platform: " + enumToStr( cep.hostPlatform ) + " is not recognized." );
+      assert( false );
+   }
+
+}
+

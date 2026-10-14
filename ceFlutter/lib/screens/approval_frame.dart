@@ -118,13 +118,13 @@ class _CEApprovalState extends State<CEApprovalFrame> {
    void _confirmReject( TextEditingController reason ) {
       print( "confirm reject" );
       reason.dispose();
-      Navigator.of( context ).pop();
+      pop( context );;
    }
    
    void _cancelReject( TextEditingController reason ) {
       print( "cancel reject" );
       reason.dispose();
-      Navigator.of( context ).pop();
+      pop( context );;
    }
    
    Widget getActions( PEQ p ) {

@@ -91,10 +91,6 @@ class _CEProfileState extends State<CEProfilePage> {
     super.dispose();
   }
 
-  void _pop() {
-     Navigator.of( context ).pop( 'Cancel' );
-  }
-  
   Function _logout( context, appState) {
      wrapper() async {
         logout( context, appState );
@@ -219,7 +215,7 @@ class _CEProfileState extends State<CEProfilePage> {
         GestureDetector(
            onTap: () async
            {
-              _pop();
+              pop( context );
               Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
               confirmedNav( context, container, newPage );
@@ -256,7 +252,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return GestureDetector(
         onTap: () async
         {
-           _pop();
+           pop( context );
            Map<String,String> screenArgs = {"id": ceUserId, "profType": "Person" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            confirmedNav( context, container, newPage );
@@ -283,7 +279,7 @@ class _CEProfileState extends State<CEProfilePage> {
         return GestureDetector( 
         onTap: () async
         {
-           popMRScroll( context, "CE Projects", ceUserId, ceps, cepIds, () => Navigator.of( context ).pop(), textWidth );
+           popMRScroll( context, "CE Projects", ceUserId, ceps, cepIds, () => pop( context ), textWidth );
         },
         child: makeActionableText( appState, "projects", "projects"+ceUserId, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
         );
@@ -648,6 +644,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
 
 
+  // XXX with proper textEdCont disposal, could move this to profileService
   void _editProjectProfile( CEProject cep ) async {
 
      List<TextEditingController?> controllers = [];
@@ -666,7 +663,7 @@ class _CEProfileState extends State<CEProfilePage> {
         String postData = '{ "Endpoint": "UpdateCEP", "ceProject": $cepS }';
         await updateDynamo( context, container, postData, "UpdateCEP" );
         
-        Navigator.of( context ).pop();
+        pop( context );;
      }
      
      String title       = "Update Project Profile";
@@ -706,7 +703,7 @@ class _CEProfileState extends State<CEProfilePage> {
      }
 
      await showDropdownDialog( context, container, title,
-                               header, dropDown, options, curVals, toolTips, controllers, _save, _pop );   
+                               header, dropDown, options, curVals, toolTips, controllers, _save, () => pop( context ) );   
      
   }
 
@@ -736,7 +733,7 @@ class _CEProfileState extends State<CEProfilePage> {
         }
         else { assert( false ); }
 
-        Navigator.of( context ).pop( profileId );  // edit
+        pop( context, retVal: profileId );
      }
 
      assert( prime is CEVenture || prime is CEProject );
@@ -767,7 +764,7 @@ class _CEProfileState extends State<CEProfilePage> {
         addControllerPool( controllerPool, 2 );
      }
 
-     editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), _pop, null, multi: true );     
+     editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), () => pop( context ), null, multi: true );     
   }
 
   Widget _makeImageButton( Widget pi, String id, String name ) {
@@ -870,7 +867,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  Wrap( children: [spacer,
                                   makeActionButtonFixed( appState, "Build Initial Equity Plan", lhsFrameMaxWidth / 2.0,
                                                          () async {
-                                                            _pop();
+                                                            pop( context );
                                                             appState.selectedCEVenture = primeId;
                                                             Map<String,int> sa = {"initialPage": 2};
                                                             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
@@ -980,7 +977,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
      List<Widget> platData = [];
      platData.add( makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ) );
-     platData.add( makeTitleText( appState, "Host Platform: " + enumToStr( cep.hostPlatform ), textWidth, false, 1, fontSize: 18 ) );
+     platData.add( makeTitleText( appState, "Host Platform: " + (cep.hostPlatform == HostPlatforms.end ? "" : enumToStr( cep.hostPlatform )), textWidth, false, 1, fontSize: 18 ) );
      addControllerPool( controllerPool, 0 );
      if( cep.hostPlatform == HostPlatforms.end ) {
         platData.add( miniSpacer );
@@ -1042,7 +1039,7 @@ class _CEProfileState extends State<CEProfilePage> {
      return GestureDetector( 
         onTap: () async
         {
-           _pop();
+           pop( context );
            Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            confirmedNav( context, container, newPage );
@@ -1065,7 +1062,7 @@ class _CEProfileState extends State<CEProfilePage> {
                      GestureDetector( 
                         onTap: () async
                         {
-                           _pop();
+                           pop( context );
                            Map<String,String> screenArgs = {"id": cevId, "profType": "CEVenture" };
                            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                            confirmedNav( context, container, newPage );
@@ -1107,7 +1104,7 @@ class _CEProfileState extends State<CEProfilePage> {
                              makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0,
                                                     () async
                                                     {
-                                                       _pop();
+                                                       pop( context );
                                                        Map<String,String> screenArgs = {"id": "-1", "profType": "CEProject", "ventId": cev.ceVentureId };
                                                        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                                                        confirmedNav( context, container, newPage );
@@ -1219,6 +1216,8 @@ class _CEProfileState extends State<CEProfilePage> {
               emptyVent.add( cev.ceVentureId );
            }
         }
+
+        if( itsMe ) { logout = makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 3.0, _logout( context, appState)); }
         
         // CE Host User
         for( var ha in hostAccs ) {
@@ -1228,7 +1227,6 @@ class _CEProfileState extends State<CEProfilePage> {
                  hostPeep["id"]       = ha.hostUserId;
                  cepWid               = _makeCEPs( context, ha, emptyVent, textWidth );
                  ppWid                = _makePperCEP( context, ha, textWidth );
-                 logout               = makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 3.0, _logout( context, appState));
               }
            }
            else { print( "Host organization not recognized." ); }

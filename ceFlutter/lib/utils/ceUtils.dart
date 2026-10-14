@@ -351,41 +351,6 @@ String ceUIDFromHost( appState, String hostUID ) {
       return ceUID;
    }
 }
-
-// handles all the wiring between host, aws, internal state
-Future<void> updateRepos( context, container, HostPlatforms hplat ) async {
-   if( hplat == HostPlatforms.GitHub ) {
-      await updateGHRepos( context, container );
-   }
-   else{
-      print( "Error.  Platform: " + enumToStr( hplat ) + " is not recognized." );
-      assert( false );
-   }
-}
-
-// relies on updateRepos, handles connection between CEP and repos
-void initCEPRepos( context, container, CEProject cep, { reposLoadedCallback = null } ) async {
-   if( cep.hostPlatform == HostPlatforms.GitHub ) {
-      await initGHRepos( context, container, cep, reposLoadedCallback );
-   }
-   else{
-      print( "Error.  Platform: " + enumToStr( cep.hostPlatform ) + " is not recognized." );
-      assert( false );
-   }
-}
-
-void initProject( context, container, CEProject cep, List<TextEditingController> cont ) async {
-   if( cep.hostPlatform == HostPlatforms.GitHub ) {
-      assert( cont.length == 1 );
-      await initGHProject( context, container, cep, cont[0] );
-   }
-   else{
-      print( "Error.  Platform: " + enumToStr( cep.hostPlatform ) + " is not recognized." );
-      assert( false );
-   }
-
-}
-
 class HostVals {
    // CEP host profile related data
    static List<String>       profHeader( HostPlatforms hplat )   => hplat == HostPlatforms.GitHub ? GHVals.profHeader   : [""];
@@ -394,61 +359,6 @@ class HostVals {
    static List<String>       profCurVals( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profCurVals  : [""];
    static List<String>       profToolTips( HostPlatforms hplat ) => hplat == HostPlatforms.GitHub ? GHVals.profToolTips : [""];
 }                                  
-
-
-void editProfile( context, container, Person cePeep, {void Function()? updateCallback} ) async {
-
-   void _cancelEdit( context ) {
-      print( "Cancel update profile" );
-      Navigator.of( context ).pop();
-   }
-   
-   void _saveProfile( List<TextEditingController> controller ) {
-      final appState  = container.state;      
-      // Note: userName assigned during signup, can not change.
-      // Note: email assigned during signup, this can change.
-      assert( controller.length == 5 );
-      String na = controller[0].text;
-      String gb = controller[1].text;
-      String em = controller[2].text;
-      String ph = controller[3].text;
-      String pa = controller[4].text;
-      
-      cePeep.legalName      = na != "" ? na : cePeep.legalName;
-      cePeep.email          = em != "" ? em : cePeep.email;
-      cePeep.phone          = ph != "" ? ph : cePeep.phone;
-      cePeep.mailingAddress = pa != "" ? pa : cePeep.mailingAddress;
-      
-      if( gb != "" )                                           { cePeep.goesBy = gb; }
-      else if( cePeep.goesBy == "" && cePeep.legalName != "" ) { cePeep.goesBy = cePeep.legalName.split(" ")[0]; }
-
-      cePeep.completeProfile();
-      writeCEPerson( appState, context, container, cePeep );
-      updateCallback?.call();
-      
-      Navigator.of( context ).pop();
-   }
-
-   assert( cePeep.userName != "" );
-
-   List<String> header                    = cePeep.getEditable();
-   List<bool>   required                  = cePeep.getRequired();
-   List<String> curVal                    = cePeep.getCurVal();
-   List<String> toolTip                   = cePeep.getToolTip();
-
-   assert( header.length == required.length );
-   assert( header.length == curVal.length );
-   assert( header.length == toolTip.length );
-   
-   final appState = container.state;
-   String popupTitle = "Edit " + cePeep.userName + "'s Profile";
-
-   // This construction allows editForm to return a widget that we apply here.
-   await showDialog(
-      context: context,
-      builder: (BuildContext context) => EditForm( appState: appState, scrollHeader: popupTitle, header: header, curVal: curVal,
-                                                   required: required, toolTip: toolTip, saveFunc: _saveProfile, cancelFunc: _cancelEdit ));
-}
 
 
 // Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
@@ -688,7 +598,7 @@ Future<void> updateCEPeqs( container, context, {cepId = ""} ) async {
    if( appState.cePeqs[ cep ] == null ) {
       print( "building CE peq data for " + cep );
       appState.cePeqs[ cep ] =
-         await fetchPEQs( context, container, '{ "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": "$cep", "allAccrued": "true" }}' );
+         await fetchPEQs( context, container, '{ "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": "$cep" }}' );
    }
 
    assert( appState.cePeqs[ cep ] != null );

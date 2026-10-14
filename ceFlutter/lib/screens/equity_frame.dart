@@ -146,12 +146,12 @@ class _CEEquityState extends State<CEEquityFrame> {
          setState(() => appState.updateEquityView = true );                  
       }
 
-      Navigator.of( context ).pop();
+      pop( context );;
    }
    
    void _cancelEdit() {
       print( "Cancel edit" );
-      Navigator.of( context ).pop();
+      pop( context );;
    }
 
    void _delete( EquityTree t ) {
@@ -161,7 +161,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       // Tree changed. update viewable list, then update the view
       setState(() => appState.updateEquityView = true );
       
-      Navigator.of( context ).pop();
+      pop( context );;
    }
 
    void _saveAdd( EquityTree tot ) {
@@ -180,7 +180,7 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       setState(() => appState.updateEquityView = true );                  
 
-      Navigator.of( context ).pop();
+      pop( context );;
    }
    
    Future<void> _add( EquityTree tot) async {
@@ -382,6 +382,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       // print( appState.myEquityPlan.toString() );
       
       if( appState.myEquityPlan != null && appState.myEquityPlan!.ceVentureId != appState.selectedCEVenture ) {
+         print( " myep and selVen " + appState.myEquityPlan!.ceVentureId + " " + appState.selectedCEVenture );
          print( "Error.  Equity plan is not for selected project." );
          return [];
       }

@@ -75,6 +75,12 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, buttons ) {
               });
 }
 
+// Note that this is often the return value of showDialogs and anything that uses them (confirm, radiodialog, etc).
+// i.e. the awaited dialog returns as soon as cancel is hit.
+void pop( context, { String retVal = "Cancel" }) {
+   Navigator.of( context ).pop( retVal );
+}
+
 class CheckboxDialog extends StatefulWidget {
    final appState;
    final header;
@@ -256,13 +262,14 @@ Future<String> editList( BuildContext context, appState, scrollHeader,
    return (retVal ?? "");   
 }
 
-Future<void> radioDialog( BuildContext context, boxHeader, List<String> choices, String initChoice, executeFunc, cancelFunc, {execArgs = null} ) async {
+// remember to have funcs execute pop to properly break out of this
+Future<String> radioDialog( BuildContext context, boxHeader, List<String> choices, String initChoice, executeFunc, cancelFunc, {execArgs = null} ) async {
 
    String? _choice = initChoice;
 
    List<dynamic> args = [];
    if( execArgs != null ) { args = execArgs; }
-   
+
    List<Widget> buttons = [];
    buttons.add( new TextButton( key: Key( 'Confirm' ), child: new Text("Confirm"), onPressed: () => Function.apply( executeFunc, [...args, _choice] ) ));
    buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: cancelFunc ));
@@ -272,7 +279,7 @@ Future<void> radioDialog( BuildContext context, boxHeader, List<String> choices,
       tiles.add( RadioListTile<String>( key: Key( choices[i] ), title: Text( choices[i] ), value: choices[i] ));
    }
    
-   await showDialog(
+   return await showDialog(
       context: context,
       builder: (BuildContext context)
       {
@@ -324,7 +331,7 @@ Future<void> editBox( BuildContext context, appState, maxWidth, boxHeader, itemH
 
 
 // This dialog can be a mix of drop down and full text entries.  every list is same length .. make entries "" if not relevant
-Future<void> showDropdownDialog(BuildContext context, container, String title, List<String> header, List<bool> isDD, List<List<String>> ddOptions,
+Future<String> showDropdownDialog(BuildContext context, container, String title, List<String> header, List<bool> isDD, List<List<String>> ddOptions,
                                 List<String> hints, List<String> toolTips, List<TextEditingController?> controllers, execFunc, cancelFunc) async {
    List<Widget> buttons  = [];
    List<String> saveData = [];
@@ -372,7 +379,7 @@ Future<void> showDropdownDialog(BuildContext context, container, String title, L
       }
    }
    
-   await showDialog(
+   return await showDialog(
       context: context,
       builder: (BuildContext context)
       {

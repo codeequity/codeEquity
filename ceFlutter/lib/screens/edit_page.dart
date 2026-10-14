@@ -108,7 +108,7 @@ class _CEEditState extends State<CEEditPage> {
                Padding(
                   padding: EdgeInsets.fromLTRB(0, appState.TINY_PAD, 0, 0),
                   child: makeActionButtonFixed( appState, 'Dismiss', appState.screenWidth / 6.0, ( () {
-                           Navigator.of( context ).pop();
+                           pop( context );;
                            if( screenArgs["holdNav"] == null || screenArgs["holdNav"] != "true") {
                               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                               confirmedNav( context, container, newPage );

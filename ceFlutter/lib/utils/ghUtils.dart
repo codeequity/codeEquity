@@ -477,9 +477,6 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
 
    List<String> candidate = [];
 
-   // NOTE: having local _cancel simplifies access to context, thus calling method in buttons
-   void _cancel() { Navigator.of( context ).pop( 'cancel'); }
-
    print( "We have ce person " + appState.ceUserId );
    HostUser? myAcct = getPlatformAccount( appState.ceHostAccounts[ appState.ceUserId ], cep.hostPlatform );
 
@@ -522,7 +519,7 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
       assert( appState.ceProject[ cep.ceProjectId ] == cep );
 
       // Jump to equity page
-      Navigator.of( context ).pop();  // save dialog
+      pop( context );  // save dialog
       appState.selectedCEVenture = cep.ceVentureId;
       Map<String,int> sa = {"initialPage": 2};
       MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
@@ -533,7 +530,7 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
       msg        += "Operations:Planned:<issueName>.  You can connect host classifications to your Equity Plan by clicking on the Equity categories.  ";
       msg        += "Doing so can make your stats in the Peq Summary tab more informative.";
       Widget body = makeBodyText( appState, msg, appState.MIN_PANE_WIDTH, true, 6 );
-      await justConfirm( context, "Connect the Equity Table and your Host Repository", msg, _cancel, body: body );
+      await justConfirm( context, "Connect the Equity Table and your Host Repository", msg, () => pop( context ), body: body );
    }
 
    if( myAcct != null ) {
@@ -561,13 +558,13 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
          String msg = "No candidate repositories were found.  Candidates must be in the " + cep.hostOrganization + " organization, ";
          msg       += "and you must be a member of that organization with access to the candidate repository.";
          Widget body = makeBodyText( appState, msg, textWidth * 3, true, 2 );
-         confirm( context, "No candidates found", msg, _cancel, _cancel, body: body );
+         confirm( context, "No candidates found", msg, () => pop( context ), () => pop( context ), body: body );
       }
       else {
          String header = "Check the repos to add";
          await showDialog(
             context: context,
-            builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _save, cancelFunc: _cancel ));
+            builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _save, cancelFunc: () => pop( context ) ));
       }
    }
    else {
@@ -579,9 +576,7 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
 }
 
 
-Future<void> initGHProject( context, container, CEProject cep, TextEditingController cont ) async {
-   void _cancel() { Navigator.of( context ).pop(); }
-
+Future<String> initGHProject( context, container, CEProject cep, TextEditingController cont ) async {
    List<TextEditingController?> controllers = [ null, null, null, cont ];
 
    void _save( List<String> saveData ) async {
@@ -596,7 +591,7 @@ Future<void> initGHProject( context, container, CEProject cep, TextEditingContro
       String postData = '{ "Endpoint": "UpdateCEP", "ceProject": $cepS }';
       await updateDynamo( context, container, postData, "UpdateCEP" );
       
-      Navigator.of( context ).pop();
+      pop( context, retVal: "ok" );
    }
    
    assert( cep.ceProjectId != "" );
@@ -605,8 +600,9 @@ Future<void> initGHProject( context, container, CEProject cep, TextEditingContro
 
    // Note profOptions plus controllers means every header will either be paired with a list of options, or a textEditingController
    String popupTitle = "Describe where and how your code is hosted:";
-   await showDropdownDialog( context, container, popupTitle,
-                             GHVals.profHeader, GHVals.profDD, GHVals.profOptions, GHVals.profCurVals, GHVals.profToolTips, controllers, _save, _cancel );   
+   String res = await showDropdownDialog( context, container, popupTitle,
+                                          GHVals.profHeader, GHVals.profDD, GHVals.profOptions, GHVals.profCurVals, GHVals.profToolTips, controllers, _save, () => pop( context ) );
+   return res;
 }
 
 

@@ -238,6 +238,7 @@ async function acquireLock( peqId, lockId ) {
 }
 
 
+// If query obj has item that is not in allowed props, it will not be updated.  
 function buildUpdateParams( obj, props ) {
     let first = true;
 
@@ -261,21 +262,26 @@ function buildUpdateParams( obj, props ) {
 }
 
 // Simple conjunctive params for a scan, not intended for pagination
-function buildConjScanParams( obj, props ) {
+function buildConjScanParams( obj, allowedProps ) {
     let first = true;
 
     let filterExpr = "";
     let attrVals = {};
-    
-    for( const prop of props ) {
-	if( prop in obj ) {
-	    if( !first ) { filterExpr += ' AND '; }
-	    let pval = ":" + prop;
-	    filterExpr += ( prop + " = " + pval );
 
-	    attrVals[pval] = obj[prop];
-	    first = false;
-	}
+    const queryKeys = Object.keys( obj );
+    for( const queryKey of queryKeys ) {
+       if( allowedProps.includes( queryKey )) {
+          if( !first ) { filterExpr += ' AND '; }
+          let pval = ":" + queryKey;
+          filterExpr += ( queryKey + " = " + pval );
+          
+          attrVals[pval] = obj[queryKey];
+          first = false;
+       }
+       else if( queryKey != "empty" ) {
+          console.log( "Property not found: ", queryKey );
+          assert( false );
+       }
     }
     
     assert( filterExpr.length == 0 || filterExpr.length >= 5 );
@@ -891,10 +897,10 @@ async function getPeq( uid, hostUser, ceProjId, isAlloc, allAccr ) {
     }
     else {
 	if( uid != "" ) {
-            params.FilterExpression = 'contains( CEHolderId, :ceid) AND CEProjectId = :pid AND Active = :true';
-            params.ExpressionAttributeValues = { ":ceid": uid, ":pid": ceProjId, ":true": "true" };
+            params.FilterExpression = 'contains( CEHolderId, :ceid) AND CEProjectId = :pid AND PeqType <> :grant AND Active = :true';
+            params.ExpressionAttributeValues = { ":ceid": uid, ":pid": ceProjId, ":true": "true", ":grant": ptGrant };
 	}
-	else if( hostUser == "" ) {  // allocation, or unassigned
+	else if( hostUser == "" ) {  // allocation, or unassigned .. can't be grant
 	    if( isAlloc ) { params.FilterExpression = 'size( HostHolderId ) < :empty AND PeqType = :alloc  AND CEProjectId = :pid AND Active = :true'; }
 	    else {          params.FilterExpression = 'size( HostHolderId ) < :empty AND PeqType <> :alloc AND CEProjectId = :pid AND Active = :true'; }
             params.ExpressionAttributeValues = { ":empty": 1, ":alloc": "allocation", ":pid": ceProjId, ":true": "true" };
