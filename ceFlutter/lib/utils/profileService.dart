@@ -111,7 +111,7 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
       if( choice == "Delete this project" ) { choseRepo = false; }
       else if( choice == "Remove a repo" )  { choseRepo = true; }
       else { assert( false ); }
-      pop( context ); // radio
+      pop( context, retVal: "madeChoice" ); // radio
    }
 
    _doubleConfirm() {
@@ -153,7 +153,8 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
             candidate = prime.repositories;
             await showDialog(
                context: context,
-               builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _removeRepo, cancelFunc: () => pop( context ) ));
+               builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate,
+                                                                  saveFunc: _removeRepo, cancelFunc: () => pop( context ), saveName: "Continue" ));
          }
          
       }

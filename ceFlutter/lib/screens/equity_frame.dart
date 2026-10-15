@@ -51,6 +51,7 @@ class CEEquityFrame extends StatefulWidget {
 //    view:  y    y      y      y
 
 
+
 class _CEEquityState extends State<CEEquityFrame> {
 
    late var      container;
@@ -76,10 +77,13 @@ class _CEEquityState extends State<CEEquityFrame> {
    late Widget fatPad;
    late Widget midPad;
    late Widget empty;
+
+   late bool realignEP;
    
    @override
    void initState() {
       super.initState();
+      realignEP = false;
    }
 
    @override
@@ -371,24 +375,32 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       // if( appState.equityTree != null ) {  print( appState.equityTree!.toStr() ); }
    }
-   
+      
+   Future<void> realign() async {
+      print( "realigning selectedCEVenture and myEquityPlan" );
+      await reloadCEVentureOnly( context, container );
+      assert( appState.myEquityPlan!.ceVentureId == appState.selectedCEVenture );
+      setState( () => realignEP = false );
+   }
    
    List<List<Widget>> _getCategoryWidgets( context ) {
       if( appState.verbose >= 4 ) { print( "Getting equity table widgets update tree/view: " + appState.updateEquityPlan.toString() + " " + appState.updateEquityView.toString() ); }
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       final numWidth = width / 2.5;
 
-      // print( appState.selectedCEVenture );
-      // print( appState.myEquityPlan.toString() );
-      
-      if( appState.myEquityPlan != null && appState.myEquityPlan!.ceVentureId != appState.selectedCEVenture ) {
-         print( " myep and selVen " + appState.myEquityPlan!.ceVentureId + " " + appState.selectedCEVenture );
-         print( "Error.  Equity plan is not for selected project." );
-         return [];
-      }
-
+      // Equity frame can be entered from spots that do not directly update the venture being viewed.  Make sure we are aligned here.
+      if( appState.myEquityPlan != null && appState.myEquityPlan!.ceVentureId != appState.selectedCEVenture ) { realignEP = true; }
+      if( appState.myEquityPlan != null && !realignEP ) { assert( appState.myEquityPlan!.ceVentureId == appState.selectedCEVenture ); }
+         
       List<List<Widget>> catList = [];
+      if( realignEP ) {
+         // These must be kept up to date, and updated before _getTiles.
+         equityTop = 5;   // spacer + title + spacer + header + hdiv
 
+         realign();
+         return catList;
+      }
+      
       if( appState.updateEquityPlan ) { _buildEquityTree(); }
       
       if( appState.updateEquityView ) {

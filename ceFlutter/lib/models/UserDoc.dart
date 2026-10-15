@@ -149,13 +149,12 @@ class UserDoc {
             CEVenture? cev = appState.ceVenture[ cevId ];
             assert( cev != null );
             EquityPlan? ep = appState.ceEquityPlans[ cevId ];
-            assert( ep != null );
                
             equityVals["EffectiveDate"]         = "";
             equityVals["VentureId"]             = cevId;
             equityVals["VentureName"]           = cev!.name;
             equityVals["VentureWebsite"]        = cev!.web == "" ? "https://www.codeequity.org/XXX" : cev!.web!;
-            equityVals["OutstandingShares"]     = addCommas( ep!.totalAllocation );
+            equityVals["OutstandingShares"]     = ep == null ? "0" : addCommas( ep!.totalAllocation );
             
             // no use signing with yourself
             List<Person> execs = cev!.getExecutives( appState );

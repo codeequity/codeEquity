@@ -166,7 +166,6 @@ class _CECollabState extends State<CECollabFrame> {
       final buttonWidth = 100;
       List<List<Widget>> collabs = [];
 
-      // get all CEPS the currently logged-in user is connected to.  
       if( !peqsLoaded )
       {
          Widget spacer  = Container( height: 1, width: (svWidth - 2.0*appState.BASE_TXT_HEIGHT )/2.0 );
@@ -189,16 +188,21 @@ class _CECollabState extends State<CECollabFrame> {
             // role
             collab.add( enumToStr( cev.roles[ ceuid ] ?? MemberRole.end ));
 
-
+            // Get all cepIds for cev
+            List<CEProject> ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev.ceVentureId ).toList();
+            List<String> cepIds  = ceps.map( (c) => c.ceProjectId ).toList();
+            
             int count = 0;
             int plan = 0;
             int pend = 0;
             int grant = 0;
             for( final peq in appState.userPeqs[ ceuid ] ?? [] ) {
-               count += 1;
-               if( peq.peqType == PeqType.plan )    { plan  = (plan  + peq.amount).toInt(); }  // ouch!  waat?
-               if( peq.peqType == PeqType.pending ) { pend  = (pend  + peq.amount).toInt(); }
-               if( peq.peqType == PeqType.grant )   { grant = (grant + peq.amount).toInt(); }
+               if( cepIds.contains( peq.ceProjectId ) ) {
+                  count += 1;
+                  if( peq.peqType == PeqType.plan )    { plan  = (plan  + peq.amount).toInt(); }  // ouch!  waat?
+                  if( peq.peqType == PeqType.pending ) { pend  = (pend  + peq.amount).toInt(); }
+                  if( peq.peqType == PeqType.grant )   { grant = (grant + peq.amount).toInt(); }
+               }
             }            
             
             collab.add( addCommas( count ));
