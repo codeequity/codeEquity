@@ -87,7 +87,8 @@ class CheckboxDialog extends StatefulWidget {
    final choices;
    final saveFunc;
    final cancelFunc;
-   CheckboxDialog({super.key, this.appState, this.header, this.choices, this.saveFunc, this.cancelFunc });
+   final saveName;
+   CheckboxDialog({super.key, this.appState, this.header, this.choices, this.saveFunc, this.cancelFunc, this.saveName });
 
    @override
    State<CheckboxDialog> createState() => _CheckboxDialogState();
@@ -126,7 +127,7 @@ class _CheckboxDialogState extends State<CheckboxDialog> {
         );
      
      List<Widget> buttons = [];
-     buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Save"), onPressed: () => Function.apply( widget.saveFunc, [_on] )));
+     buttons.add( new TextButton( key: Key( 'Save' ), child: new Text(widget.saveName), onPressed: () => Function.apply( widget.saveFunc, [_on] )));
      buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: widget.cancelFunc ));
      
      return AlertDialog(

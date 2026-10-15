@@ -145,6 +145,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       updateDynamo( context, container, ppostData, "PutPerson" );
       
       // Clear host accounts so initMDState reloads it upon login
+      pop( context );
       appState.ceHostAccounts.clear();
       logout( context, appState );
    }
@@ -522,7 +523,8 @@ class _CEActivityState extends State<CEActivityPanel> {
          editList( context, appState, box.blankTitle, item, controllerPool.sublist(0, ith), hint,
                    () => _updateDocFree( item, hint, controllerPool.sublist(0, ith) ), () => pop( context ), null, subHeader: box.blankSub, headerWidth: widget.overlayMaxWidth * 0.3 );
       }
-      else if( box.type == "radio" ) { 
+      else if( box.type == "radio" ) {
+         print( "RADIO fillin" );
          radioDialog( context, box.radioTitle!, box.rchoices!.sublist(1), box.rInitChoice, _updateDocFixed, () => pop( context ), execArgs: ["PartnerTitle"] );
       }
    }

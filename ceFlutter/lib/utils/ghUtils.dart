@@ -564,7 +564,8 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
          String header = "Check the repos to add";
          await showDialog(
             context: context,
-            builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate, saveFunc: _save, cancelFunc: () => pop( context ) ));
+            builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate,
+                                                               saveFunc: _save, cancelFunc: () => pop( context ), saveName: "Save" ));
       }
    }
    else {

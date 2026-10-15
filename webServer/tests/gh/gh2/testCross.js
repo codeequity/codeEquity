@@ -75,7 +75,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     // Adding makeProjectCard creates second add/relo which clears assignees found in pnp:fromLabelIssue.  It's ok, PACt has it.
     testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1});
     
-    let oldPeqs = await awsUtils.getPEQs( authData, { "ceProjectId": td.ceProjectId });
+    let oldPeqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let peq     = oldPeqs.find(p => p.HostIssueId == issDat[0].toString() );
     let sub     = [peq.PEQId, td.githubOpsPID.toString(), stripeLoc.colId.toString() ];
     testStatus  = await gh2tu.checkPact( authData, testLinks, td, issDat[3], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
@@ -92,7 +92,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     
     testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1});
     
-    let oldPeqsX  = await awsUtils.getPEQs( authDataX, { "ceProjectId": tdX.ceProjectId });
+    let oldPeqsX  = await awsUtils.getPEQs( authDataX, { "CEProjectId": tdX.ceProjectId });
     let peqX      = oldPeqsX.find(p => p.HostIssueId == issDatX[0].toString() );
     sub           = [peqX.PEQId, crossPid.toString(), crossCid.toString() ];
     testStatus    = await gh2tu.checkPact( authDataX, testLinks, tdX, issDatX[3], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
@@ -139,8 +139,8 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, stripeLoc, issDat, card, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: tdX.ceProjectId} );    
     testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, crossLoc, issDatX, cardX, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: td.ceProjectId} );    
 
-    let newPeqs  = awsUtils.getPEQs( authDataX, { "ceProjectId": td.ceProjectId });
-    let newPeqsX = awsUtils.getPEQs( authDataX, { "ceProjectId": tdX.ceProjectId });
+    let newPeqs  = awsUtils.getPEQs( authDataX, { "CEProjectId": td.ceProjectId });
+    let newPeqsX = awsUtils.getPEQs( authDataX, { "CEProjectId": tdX.ceProjectId });
 
     
     let testRepo = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
@@ -189,7 +189,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     
     testStatus = await gh2tu.checkSituatedIssue( authDataF, testLinks, tdF, FcrossLoc, issDatF, cardF, testStatus, {label: 704, lblCount: 1});
     
-    let oldPeqsF  = await awsUtils.getPEQs( authDataF, { "ceProjectId": tdF.ceProjectId });
+    let oldPeqsF  = await awsUtils.getPEQs( authDataF, { "CEProjectId": tdF.ceProjectId });
     let peqF      = oldPeqsF.find(p => p.HostIssueId == issDatF[0].toString() );
     sub           = [peqF.PEQId, FcrossPid.toString(), FcrossCid.toString() ];
     testStatus    = await gh2tu.checkPact( authDataF, testLinks, tdF, issDatF[3], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
@@ -224,7 +224,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     testStatus = await gh2tu.checkSituatedIssue( authDataF, testLinks, tdF, FcrossLoc, issDatF, cardF, testStatus,
 						 {assign: 0, label: 704, lblCount: 1, peqCEP: tdF.ceProjectId, peqIID: issDatF[0], newCardId: true} );    
     
-    let newPeqsF = awsUtils.getPEQs( authDataF, { "ceProjectId": tdF.ceProjectId });
+    let newPeqsF = awsUtils.getPEQs( authDataF, { "CEProjectId": tdF.ceProjectId });
     
     // PAct is found from oldCEP
     sub         = [peqF.PEQId, oldIdF, tdF.ghRepoId, tdF.ceProjectId, issDatF[0], tdF.ghRepoId, tdF.ceProjectId ];
