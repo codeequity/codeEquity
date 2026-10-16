@@ -507,7 +507,7 @@ Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
    return Material(
       elevation: 5.0,
       borderRadius: BorderRadius.circular(10.0),
-      color: appState.BUTTON_COLOR,
+      color: fn == null ? appState.DISABLE_COLOR : appState.BUTTON_COLOR,
       child: MaterialButton(
          key: Key( buttonText ),
          minWidth: minWidth,

@@ -71,6 +71,8 @@ class _CEProfileState extends State<CEProfilePage> {
    late bool updatedPeqTable;
    late bool loadingRepos;
 
+   static String noName = "(No name yet)";
+   
    List<TextEditingController> controllerPool = [];
    
   @override
@@ -678,7 +680,7 @@ class _CEProfileState extends State<CEProfilePage> {
      options.addAll( HostVals.profOptions( cep.hostPlatform ));
 
      List<String> curVals = [];
-     curVals.add( cep.name == "" ? "(No name yet)" : cep.name );
+     curVals.add( cep.name == "" ? noName : cep.name );
      if( cep.description == null || cep.description == "" ) { curVals.add( "Describe your project in one short sentence" ); }
      else                                                   { curVals.add( cep.description! ); }
      curVals.addAll( HostVals.profCurVals( cep.hostPlatform ));  // if hostPlatform is incorrect, will fail here
@@ -743,7 +745,7 @@ class _CEProfileState extends State<CEProfilePage> {
      List<String> hints = [];
 
      items.add( "Name    " );
-     hints.add( prime.name == "" ? "(No name yet)" : prime.name );
+     hints.add( prime.name == "" ? noName : prime.name );
      addControllerPool( controllerPool, 0 );
 
      items.add( "Description" );
@@ -783,6 +785,13 @@ class _CEProfileState extends State<CEProfilePage> {
      return pigd;
   }
 
+  void _prepareAgreement( CEVenture cev, Person cePeep ) async {
+     String msg = "All members of the Venture must sign the Equity Agreement.  Typically, a new contributor will sign, then the document will show up in your ";
+     msg       += "( or another Founder's) pending tasks for countersigning (or rejection). As the first Founder, there is no other person to countersign.  You will ";
+     msg       += "sign the agreement just as a new contributor would (be sure to select \'Founder\'), and CodeEquity will countersign for you as a non-participant. ";
+     await confirm( context, "Sign the Equity Agreement", msg, () => print( "oi!" ), () => pop( context ) );
+  }
+  
   Widget _makeCEBody( context, Widget botLeft, Widget rhs, List<String> cepIds ) {
      final textWidth      = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
      Widget? pi           = null;
@@ -792,6 +801,9 @@ class _CEProfileState extends State<CEProfilePage> {
      String cevId         = cev.ceVentureId;
      EquityPlan ep        = EquityPlan.empty( screenArgs["id"]! );
      PEQSummary psum      = PEQSummary.empty( screenArgs["id"]! );
+     Person? cePeep       = appState.cePeople[ appState.ceUserId ];
+
+     assert( cePeep != null );
 
      // print( "MCEB " + loadingData.toString() + " " + (screenArgs["ventId"] ?? "noVent") );     
      if( !loadingData ) {
@@ -822,7 +834,6 @@ class _CEProfileState extends State<CEProfilePage> {
      String desc    = screenArgs["profType"] == "CEProject" ? prime.description : prime.web ?? "";
      String deltxt  = "Dissolve";
 
-     if( prime.name == "" ) { prime.name = "(No name yet)"; }
      if( screenArgs["profType"] == "CEVenture" && ( prime.web == null || prime.web == "" )) { desc = "(Click \'Edit Profile\' to add a website)"; }
      
      if( pi == null ) { pi = _getProfImage( primeId, "a" ); }
@@ -834,7 +845,14 @@ class _CEProfileState extends State<CEProfilePage> {
 
      // XXX oh boy.  projectPage
      double fhu = 24+18+7*appState.MID_PAD + 2*appState.TINY_PAD;
-     
+
+     bool dissolveEnabled = (( prime is CEVenture && prime.name != noName &&                                                  // venture profile has some detail
+                               appState.myEquityPlan != null && appState.myEquityPlan!.ceVentureId == prime.ceVentureId ) ||  // Have an equity plan
+                             prime is CEProject );
+     bool buildEPEnabled  = ( prime is CEVenture && cePeep!.hasEquityAgreement( cev.ceVentureId ));
+     bool signShowing     = ( prime is CEVenture && !cePeep!.hasEquityAgreement( cev.ceVentureId ));
+     bool signEnabled     = signShowing && prime.name != noName;
+
      return Wrap(
         children: [
            spacer, 
@@ -855,9 +873,9 @@ class _CEProfileState extends State<CEProfilePage> {
                                                              prime is CEVenture ? _updateProfile( prime ) : _editProjectProfile( prime ); 
                                                           }),
                                    makeActionButtonFixed( appState, deltxt, lhsFrameMaxWidth / 3.0,
-                                                          () async {
-                                                             dissolve( context, container, prime, screenArgs ); 
-                                                          }),
+                                                          dissolveEnabled ?
+                                                          () async { dissolve( context, container, prime, screenArgs ); } :
+                                                          null),
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
                  miniSpacer,
@@ -865,14 +883,24 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeToolTip( makeTitleText( appState, "Venture Equity Plan PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
                  ep.totalAllocation == 0 ?
                  Wrap( children: [spacer,
+                                  
+                                  signShowing ?
+                                  makeActionButtonFixed( appState, "Equity Agreement", lhsFrameMaxWidth / 3.0,
+                                                         signEnabled ?
+                                                         () => _prepareAgreement( cev, cePeep ) : 
+                                                         null ) :
+                                  spacer,
+                                  
                                   makeActionButtonFixed( appState, "Build Initial Equity Plan", lhsFrameMaxWidth / 2.0,
+                                                         buildEPEnabled ? 
                                                          () async {
                                                             pop( context );
                                                             appState.selectedCEVenture = primeId;
                                                             Map<String,int> sa = {"initialPage": 2};
                                                             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
                                                             confirmedNav( context, container, newPage );
-                                                         }) ]) :
+                                                         } :
+                                                         null ) ]) :
                  Table(
                     defaultColumnWidth: FixedColumnWidth( 2.0 * textWidth / 3.0 ),
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -924,6 +952,8 @@ class _CEProfileState extends State<CEProfilePage> {
         cep   = appState.ceProject[ screenArgs["id"] ] ?? cep;
         cepId = cep.ceProjectId;
 
+        if( cep.name == "" ) {cep.name = noName; }
+        
         // CEProject repos
         for( int i = 0; i < cep.repositories.length; i++ ) {
            if( i == 0 ) { repoWid = [ makeTitleText( appState, "   " + cep.repositories[i]  + " (" + cep.hostRepoId[i] + ")", textWidth*1.2, false, 1 ) ]; }
@@ -981,7 +1011,8 @@ class _CEProfileState extends State<CEProfilePage> {
      addControllerPool( controllerPool, 0 );
      if( cep.hostPlatform == HostPlatforms.end ) {
         platData.add( miniSpacer );
-        platData.add( Wrap( children: [spacer, makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0, () => initProject( context, container, cep, controllerPool.sublist(0, 1)))
+        platData.add( Wrap( children: [spacer, makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0,
+                                                                      () => initProject( context, container, cep, controllerPool.sublist(0, 1)))
                                ]));
      }
      else {
@@ -1097,18 +1128,24 @@ class _CEProfileState extends State<CEProfilePage> {
            else        { cepWid.add( _makeCEPLink( cep.name, cep.ceProjectId, namePreface: "   " )); }
            first = false;
         }
+
+        if( cev.name == "" ) {cev.name = noName; }
+        bool cepEnabled = cev.name != noName;
+        
         if( cepWid.length == 0 ) {
            cepWid = [ miniSpacer,
                       Wrap( children:
                             [spacer,
                              makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0,
+                                                    cepEnabled ? 
                                                     () async
                                                     {
                                                        pop( context );
                                                        Map<String,String> screenArgs = {"id": "-1", "profType": "CEProject", "ventId": cev.ceVentureId };
                                                        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                                                        confirmedNav( context, container, newPage );
-                                                    })
+                                                    } :
+                                                    null )
                                ])
               ];
         }
@@ -1140,7 +1177,6 @@ class _CEProfileState extends State<CEProfilePage> {
            children: <Widget>[
               makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
               makeTitleText( appState, "CEProjects:", textWidth, false, 1, fontSize: 18 ),
-              // makeTitleText( appState, "Current:", textWidth, false, 1 ),
               Column( 
                  crossAxisAlignment: CrossAxisAlignment.start,
                  mainAxisAlignment: MainAxisAlignment.start,
@@ -1165,7 +1201,6 @@ class _CEProfileState extends State<CEProfilePage> {
            mainAxisAlignment: MainAxisAlignment.start,
            children: rhsRows );
 
-     // print( "MVB calling MCEB" );
      return _makeCEBody( context, ceProjects, rhs, cepIds ); 
   }
 
