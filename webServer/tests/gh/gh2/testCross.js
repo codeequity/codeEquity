@@ -73,7 +73,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     await utils.sleep( 1000 );
 
     // Adding makeProjectCard creates second add/relo which clears assignees found in pnp:fromLabelIssue.  It's ok, PACt has it.
-    testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1});
+    testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1, peqHolder: "maybe"});
     
     let oldPeqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let peq     = oldPeqs.find(p => p.HostIssueId == issDat[0].toString() );

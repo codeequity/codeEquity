@@ -26,6 +26,8 @@ import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/Allocation.dart';
+import 'package:ceFlutter/models/Agreement.dart';
+import 'package:ceFlutter/models/UserDoc.dart';
 
 import 'package:ceFlutter/customLetters.dart';
 
@@ -786,10 +788,37 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
   void _prepareAgreement( CEVenture cev, Person cePeep ) async {
+     _showDoc( ) {
+        pop( context );  // confirm
+        
+        Agreement? equity = appState.agreements[ enumToStr( DocType.equity ) ];
+        assert( equity != null );
+        UserDoc scrollDoc = new UserDoc( docType: equity!.type, docId: equity!.id, acceptedDate: getToday(), equityVals: {} );
+        String filledInDoc = scrollDoc.compose( appState, Person.empty(), Person.empty(), equity, cev.ceVentureId );
+        
+        // XXX from homepage
+        final lhsFrameMaxWidth = 300.0;
+        final rhsFrameMaxWidth = appState.MAX_PANE_WIDTH - lhsFrameMaxWidth;
+        final overlayWidth     = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
+
+        List<Widget> buttons = [];
+        buttons.add( new TextButton( key: Key( 'Dismiss' ), child: new Text("Dismiss"), onPressed: () => pop( context ) ));
+        
+        showCEDoc( context, equity, filledInDoc, buttons, overlayWidth );
+     }
+
+     // Should only be relevant for first founder.
+     assert( cev.roles.length == 1 && cev.roles[ cePeep.id ] == MemberRole.Executive );
+     
      String msg = "All members of the Venture must sign the Equity Agreement.  Typically, a new contributor will sign, then the document will show up in your ";
-     msg       += "( or another Founder's) pending tasks for countersigning (or rejection). As the first Founder, there is no other person to countersign.  You will ";
-     msg       += "sign the agreement just as a new contributor would (be sure to select \'Founder\'), and CodeEquity will countersign for you as a non-participant. ";
-     await confirm( context, "Sign the Equity Agreement", msg, () => print( "oi!" ), () => pop( context ) );
+     msg       += "( or another Founder's) pending tasks for countersigning (or rejection). As the first Founder, there is no other person to countersign.  This is ok.  ";
+     msg       += "Once a second person joins, you will be asked to countersign.  Once you do, the agreement becomes a meaningful contract between both parties. ";
+     msg       += "For now, just viewing the document will unlock the rest of CEMD functionality for you.";
+     await confirm( context, "Sign the Equity Agreement", msg, _showDoc, () => pop( context ), confName: "View Doc" );
+
+     // Don't wait
+     cePeep.viewedEA = true;
+     writeCEPerson( appState, context, container, cePeep );
   }
   
   Widget _makeCEBody( context, Widget botLeft, Widget rhs, List<String> cepIds ) {
@@ -846,10 +875,10 @@ class _CEProfileState extends State<CEProfilePage> {
      // XXX oh boy.  projectPage
      double fhu = 24+18+7*appState.MID_PAD + 2*appState.TINY_PAD;
 
-     bool dissolveEnabled = (( prime is CEVenture && prime.name != noName &&                                                  // venture profile has some detail
-                               appState.myEquityPlan != null && appState.myEquityPlan!.ceVentureId == prime.ceVentureId ) ||  // Have an equity plan
-                             prime is CEProject );
-     bool buildEPEnabled  = ( prime is CEVenture && cePeep!.hasEquityAgreement( cev.ceVentureId ));
+     // venture profile should have some detail before dissolve is relevant
+     bool dissolveEnabled = (( prime is CEVenture && prime.name != noName ) || prime is CEProject );
+     bool buildEPShowing  = ( prime is CEVenture );
+     bool buildEPEnabled  = ( buildEPShowing && ( cePeep!.hasEquityAgreement( cev.ceVentureId ) || ( cePeep!.viewedEA != null && cePeep!.viewedEA! )));
      bool signShowing     = ( prime is CEVenture && !cePeep!.hasEquityAgreement( cev.ceVentureId ));
      bool signEnabled     = signShowing && prime.name != noName;
 
@@ -881,6 +910,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  miniSpacer,
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeToolTip( makeTitleText( appState, "Venture Equity Plan PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
+                 // XXX Too big here for == ? : ; - gimme widgets
                  ep.totalAllocation == 0 ?
                  Wrap( children: [spacer,
                                   
@@ -890,7 +920,8 @@ class _CEProfileState extends State<CEProfilePage> {
                                                          () => _prepareAgreement( cev, cePeep ) : 
                                                          null ) :
                                   spacer,
-                                  
+
+                                  buildEPShowing ? 
                                   makeActionButtonFixed( appState, "Build Initial Equity Plan", lhsFrameMaxWidth / 2.0,
                                                          buildEPEnabled ? 
                                                          () async {
@@ -900,7 +931,9 @@ class _CEProfileState extends State<CEProfilePage> {
                                                             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
                                                             confirmedNav( context, container, newPage );
                                                          } :
-                                                         null ) ]) :
+                                                         null ) :
+                                  spacer, 
+                          ]) :
                  Table(
                     defaultColumnWidth: FixedColumnWidth( 2.0 * textWidth / 3.0 ),
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,

@@ -397,7 +397,7 @@ Future<String> showDropdownDialog(BuildContext context, container, String title,
 }
 
 // okFunc and cancelFunc need to return strings.  See home_screen:confirm
-Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc, { Widget? body = null } ) async {
+Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc, { String confName = "Continue", Widget? body = null } ) async {
    return await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -407,7 +407,7 @@ Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc
                     actions: <Widget>[
                        new TextButton(
                           key: Key( 'confirmContinue' ),
-                          child: new Text("Continue"),
+                          child: new Text(confName),
                           onPressed: okFunc ),
                        new TextButton(
                           key: Key( 'cancelContinue' ),

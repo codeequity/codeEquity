@@ -13,21 +13,28 @@ class Person {
    String       email;
    String       phone;
    String       mailingAddress;
+   bool?        viewedEA;          // first founder has no cosigner - view equity agmt unlocks functionality
    bool         registered;        // with CodeEquity.  i.e. signed privacy, completed profile
    bool         locked;
    Map< DocType, List<UserDoc>> userDocs;   // { privacy: UserDoc, equity with venture 1, 2: UserDoc}
 
    Person({required this.id, required this.goesBy, required this.legalName, required this.userName,
-            required this.email, required this.phone, required this.mailingAddress, required this.registered, required this.userDocs, required this.locked});
+            required this.email, required this.phone, required this.mailingAddress, this.viewedEA, required this.registered, required this.userDocs, required this.locked});
    
    dynamic toJson() {
       Map<String, List<UserDoc>> encodable = {};
       userDocs.forEach( (k,v) {
             encodable[ enumToStr( k ) ] = v; 
          });
-      
-      return { 'id': id, 'goesBy': goesBy, 'legalName': legalName, 'userName': userName, 'email': email, 'phone': phone,
-            'mailingAddress': mailingAddress, 'locked': false, 'registered': registered, 'userDocs': encodable }; 
+
+      if( viewedEA != null && viewedEA! ) {
+         return { 'id': id, 'goesBy': goesBy, 'legalName': legalName, 'userName': userName, 'email': email, 'phone': phone,
+               'mailingAddress': mailingAddress, 'locked': false, 'viewedEA': viewedEA!, 'registered': registered, 'userDocs': encodable };
+      }
+      else {
+         return { 'id': id, 'goesBy': goesBy, 'legalName': legalName, 'userName': userName, 'email': email, 'phone': phone,
+               'mailingAddress': mailingAddress, 'locked': false, 'registered': registered, 'userDocs': encodable };
+      }
    }
 
    String getFullName() {
@@ -187,8 +194,9 @@ class Person {
          email:          json['Email'] ?? "",
          phone:          json['Phone'] ?? "",
          mailingAddress: json['mailingAddress'] ?? "",
+         viewedEA:       json['ViewedEA' ] ?? false,
          registered:     json['Registered'] ?? false,
-         userDocs:   docs,
+         userDocs:       docs,
          locked:         json['Locked'],
          );
    }

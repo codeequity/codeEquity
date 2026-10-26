@@ -58,11 +58,13 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
    
    void _removeRepo( List<bool> on ) {
       assert( on.length == candidate.length );
+      bool gotOne = false;
       for( int i = 0; i < on.length; i++ ) {
          if( on[i] ) {
+            gotOne = true;
+            
             // do not add this back to hostUser futureCEProject page - homepage refresh button does the trick
             String repoId = prime.removeRepo( candidate[i] );
-            writeCEProject( appState, context, container, prime );  // don't wait
             
             // send pact.  This is a no-op for ingest
             writeRemoveRepoPAct( context, container, prime, repoId );
@@ -75,6 +77,9 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
             updateDynamo( context, container, postData, shortName );
          }
       }
+      // Write at the end to avoid traffic, race conditions.  Don't wait.
+      if( gotOne ) { writeCEProject( appState, context, container, prime ); }
+      
       pop( context );
    }
 
@@ -150,7 +155,7 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
          await confirm( context, "Are you sure you want to remove repos?", msg, _proceed, () => pop( context ), body: body );
          if( proceed ) {
             String header = "Check the repos to remove";
-            candidate = prime.repositories;
+            candidate = [...prime.repositories];
             await showDialog(
                context: context,
                builder: (BuildContext context) => CheckboxDialog( appState: appState, header: header, choices: candidate,

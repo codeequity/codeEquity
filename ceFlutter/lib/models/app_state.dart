@@ -115,7 +115,7 @@ class AppState {
    final double FAT_PAD         = 15.0;     // Action button padding
    final double GAP_PAD         = 20.0;     // padding between objects
    
-   final DISABLE_COLOR          = Colors.grey[250];
+   final DISABLE_COLOR          = Colors.grey[300];
    final DIV_BAR_COLOR          = Colors.grey[200];
    final BUTTON_COLOR           = Color(0xff01A0C7);
    final BACKGROUND             = Colors.grey[50];
