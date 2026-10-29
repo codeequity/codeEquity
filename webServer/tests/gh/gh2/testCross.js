@@ -22,6 +22,14 @@ async function cardPresentHelp( authData, td, pid, colId, issId ) {
     return retVal;
 }
 
+async function issuePresentHelp( authData, td, issName ) {
+
+    let retVal = await gh2tu.findIssueByName( authData, td, issName );
+    if( retVal == -1 ) { retVal = false; }
+
+    return retVal;
+}
+
 
 // Requires config.TEST_ACTOR to have installed the codeEquity app for all repos, not just one.
 // Requires config.CROSS_TEST_REPO & config.TEST_REPO & config.FLUTTER_TEST_REPO to allow both config.CE_ACTOR and config.TEST_ACTOR to have R/W access
@@ -180,7 +188,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     let assignee2F  = await gh2tu.getAssignee( authDataF, ASSIGNEE2 );
     const FcrossLoc = await gh2tu.getFlatLoc( authDataF, FcrossPid, "Cross Proj", "Cross Col" );
     
-    // Create in fail cross project (i.e. create in ce_altTest, xfer to ce_flutTest, delete from ce_flutTest)
+    // Create in fail cross project (i.e. create in ce_altTest (gh is cetesterAriAlt), xfer to ce_flutTest, delete from ce_flutTest)
     let issDatF = await gh2tu.blastIssue( authDataF, tdF, "CT Blast F", [labF], [assignee1F, assignee2F] );               
     await utils.sleep( 2000 );
 
@@ -212,8 +220,9 @@ async function testCrossRepo( flutterTest, authData, authDataX, authDataF, testL
     testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, issDatF, testStatus );
 
     // The transfer was rejected, led to this new issue in same spot with all same data
-    // XXX If this new issue is not created in time again, do settle wait.
-    const newFIssue  = await gh2tu.findIssueByName( authDataF, tdF, issDatF[3] );
+    // Can take a moment to show up
+    // const newFIssue  = await gh2tu.findIssueByName( authDataF, tdF, issDatF[3] );
+    const newFIssue = await tu.settleWithVal( "Fail Cross test new issue not yet present", issuePresentHelp, authDataF, tdF, issDatF[3] );
     let oldIdF = issDatF[0];
     issDatF[0] = newFIssue.id;
     issDatF[1] = newFIssue.number;

@@ -462,15 +462,18 @@ async function findIssue( authData, issueId ) {
 
 // Prefer to use findIssue.  IssueNames are not unique. 
 async function findIssueByName( authData, td, issueName ) {
+    // console.log( "Looking for", issueName );
     let retVal = -1;
     let issues = await getIssues( authData, td );
     retVal = issues.find( issue => issue.title == issueName );
+    // console.log( "Found", retVal );
     if( typeof retVal == 'undefined' ) {
 	retVal = -1;
     }
     else {
-	retVal = findIssue( authData, retVal.id );
+	retVal = await findIssue( authData, retVal.id );
     }
+    // console.log( "by id", retVal );
     return retVal; 
 }
 

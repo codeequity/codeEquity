@@ -382,27 +382,64 @@ class _CEEquityState extends State<CEEquityFrame> {
       assert( appState.myEquityPlan!.ceVentureId == appState.selectedCEVenture );
       setState( () => realignEP = false );
    }
+
+   _offerDefault( List<List<Widget>> categories ) {
+      Widget miniSpace = Container( height: 1, width: 4 * appState.GAP_PAD );         
+      
+      Widget makeHotLink( String content, String hovKey ){
+         void _set( PointerEvent event )   { setState(() => appState.hoverChunk = hovKey ); }
+         void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+         
+         final textWidth = 2 * appState.GAP_PAD;
+         
+         return GestureDetector( 
+            onTap: () async { pop( context );  },
+            child: makeActionableText( appState, content, hovKey, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
+            );
+      }
+      
+      String msg  = "Your venture needs an equity structure to direct how (provisional) equity will be allocated.  A CodeEquity venture does this by allocating provisional equity ";
+      msg        += "to the high level tasks that needed for your venture to succeed.  CodeEquity recommends starting with its default strawman ";
+      msg        += "equity plan meant for software startups interacting with GitHub.  You can modify this plan at any time as your requirements clarify.  ";
+
+      Widget body = makeBodyText( appState, msg, appState.MAX_PANE_WIDTH - 10 * appState.GAP_PAD, true, 6 );
+
+      categories.addAll( [[ miniSpace, body, empty, empty, empty ]] );
+      
+      String msg2 = "Click "; 
+      String msg3 = "to choose the default, or simply enter your own.";
+      
+      Widget body2 = Wrap( spacing: 0,
+                           children: [ makeIWTitleText( appState, msg2, false, 1 ),
+                                       makeHotLink( "here", "strawman equity" ),
+                                       // makeTitleText( appState, msg3, appState.MIN_PANE_WIDTH, false, 1 )
+                                       makeIWTitleText( appState, msg3, false, 1 )
+                              ]);
+      categories.addAll( [[ miniSpace, body2, empty, empty, empty ]] );
+   }
    
    List<List<Widget>> _getCategoryWidgets( context ) {
       if( appState.verbose >= 4 ) { print( "Getting equity table widgets update tree/view: " + appState.updateEquityPlan.toString() + " " + appState.updateEquityView.toString() ); }
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       final numWidth = width / 2.5;
 
+      List<List<Widget>> catList = [];
+
+      // make sure we are viewing correct equity plan
       // Equity frame can be entered from spots that do not directly update the venture being viewed.  Make sure we are aligned here.
       if( appState.myEquityPlan != null && appState.myEquityPlan!.ceVentureId != appState.selectedCEVenture ) { realignEP = true; }
       if( appState.myEquityPlan != null && !realignEP ) { assert( appState.myEquityPlan!.ceVentureId == appState.selectedCEVenture ); }
-         
-      List<List<Widget>> catList = [];
+      
       if( realignEP ) {
          // These must be kept up to date, and updated before _getTiles.
          equityTop = 5;   // spacer + title + spacer + header + hdiv
-
+         
          realign();
          return catList;
       }
-      
+            
       if( appState.updateEquityPlan ) { _buildEquityTree(); }
-      
+
       if( appState.updateEquityView ) {
          // These must be kept up to date, and updated before _getTiles.
          equityTop = 5;   // spacer + title + spacer + header + hdiv
@@ -521,6 +558,11 @@ class _CEEquityState extends State<CEEquityFrame> {
       categories.addAll( [[ Container( height: appState.MID_PAD ), empty, empty, empty, empty ]] );
       categories.addAll( [[ spacer, makeIWTitleText( appState, cev!.name, false, 1, fontSize: 18), empty, empty, empty ]] );
 
+      // Offer to start with defaults if no plan in place yet
+      if( appState.myEquityPlan == null || appState.myEquityPlan!.totalAllocation == 0 ) {
+         _offerDefault( categories );
+      }
+
       // XXX build too often?  check.
       categories.addAll( _getCategoryWidgets( context ) );
       
@@ -582,7 +624,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       
       // Set this here to update view if minimized, then recovered.
       appState.updateEquityView = true;      
-      
+
       return getEquityPlan( context );
       
  }
