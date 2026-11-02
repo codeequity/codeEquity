@@ -559,22 +559,28 @@ async function putPerson( newPerson ) {
           return BAD_SEMANTICS; 	     
        }
     }
+
+    let item = {
+       "CEUserId":       newPerson.id,
+       "GoesBy":         newPerson.goesBy,
+       "LegalName":      newPerson.legalName,
+       "CEUserName":     newPerson.userName,
+       "Email":          newPerson.email,
+       "Phone":          newPerson.phone,
+       "MailingAddress": newPerson.mailingAddress,
+       "Locked":         newPerson.locked,
+       "ImagePng":       newPerson.imagePng,
+       "Registered":     newPerson.registered,
+       "UserDocs":       newPerson.userDocs
+    };
+
+    if( typeof newPerson.viewedEA !== 'undefined' && newPerson.viewedEA ) {
+       item.ViewedEA = newPerson.ViewedEA;
+    }
     
     const params = {
 	TableName: 'CEPeople',
-	Item: {
-	    "CEUserId":       newPerson.id,
-	    "GoesBy":         newPerson.goesBy,
-	    "LegalName":      newPerson.legalName,
-	    "CEUserName":     newPerson.userName,
-	    "Email":          newPerson.email,
-	    "Phone":          newPerson.phone,
-	    "MailingAddress": newPerson.mailingAddress,
-	    "Locked":         newPerson.locked,
-	    "ImagePng":       newPerson.imagePng,
-            "Registered":     newPerson.registered,
-            "UserDocs":       newPerson.userDocs
-	}
+        Item: item,
     };
     const putCmd = new PutCommand( params );
 

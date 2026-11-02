@@ -382,27 +382,113 @@ class _CEEquityState extends State<CEEquityFrame> {
       assert( appState.myEquityPlan!.ceVentureId == appState.selectedCEVenture );
       setState( () => realignEP = false );
    }
+
+   // XXX Wrong location?
+   // Build a default strawman equity table for a 3 person-year software startup with 20M shares.
+   // Founder percentage is very low compared to the norm, since founder is not risking significant capital.
+   // Unallocated values leave room to add specific allocations as plans clarify.  If they are unused, ownership ratios remain stable, so there is no impact.
+   // Equity size guideline: 3.5 person years -> 180 person weeks for 9M shares in sw, or 50k per person week.
+   Future<void> createDefaultEquityTable() async {
+      String cevId = appState.selectedCEVenture;
+      EquityPlan ep = new EquityPlan( ceVentureId: cevId, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: getToday() );
+
+      ep.categories = [
+         ["Founders grants"],
+         ["Business Operations"],
+         ["Software Contributions"],
+         ["Software Contributions", "Host platform ops"],
+         ["Software Contributions", "Cloud platform ops"],
+         ["Software Contributions", "Back end"],
+         ["Software Contributions", "Front end"],
+         ["Software Contributions", "Data security"],
+         ["Software Contributions", "Unallocated"],
+         ["Unallocated"],
+         ];
+      ep.amounts = [
+         5000000,              // founder(s)
+         3000000,              // busops
+         9000000,              // Software 
+         1000000,              // soft:host platform
+         1000000,              // soft:cloud platform
+         3000000,              // soft:backend
+         2000000,              // soft:frontend
+         1000000,              // soft:pii
+         1000000,              // soft:unalloc
+         3000000,              // unallocated
+         ];
+      ep.hostNames = [ "", "", "", "", "", "", "", "", "", "" ];
+      for( int i = 0; i < ep.categories.length; i++ ) {
+         if( ep.categories[i].length == 1 ) { ep.totalAllocation += ep.amounts[i]; }
+      }
+
+      appState.ceEquityPlans[ cevId ] = ep;
+      appState.myEquityPlan = appState.ceEquityPlans[ cevId ];
+      await writeEqPlan( appState, context, container );
+
+      setState(() => appState.updateEquityPlan = true );
+      setState(() => appState.updateEquityView = true );
+   }
+   
+   _offerDefault( List<List<Widget>> categories ) {
+      Widget miniSpace = Container( height: 1, width: 4 * appState.GAP_PAD );         
+      
+      Widget makeHotLink( String content, String hovKey ){
+         void _set( PointerEvent event )   { setState(() => appState.hoverChunk = hovKey ); }
+         void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+         
+         final textWidth = 2 * appState.GAP_PAD;
+         
+         return GestureDetector( 
+            onTap: () async
+            {
+               await createDefaultEquityTable();
+            },
+            child: makeActionableText( appState, content, hovKey, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
+            );
+      }
+      // XXX aside from limits in EA, for example once a 2nd collab can't suddenly assign yourself 30% of the total PEQ allocations
+      // XXX as explained in the manual, So, your early choices here are useful to start communications with contributors, but beyond that, they are neither major nor permanent.
+      String msg  = "Your venture needs an equity structure to direct how (provisional) equity will be allocated.  A CodeEquity venture does this by allocating provisional equity ";
+      msg        += "to the high level tasks that needed for your venture to succeed.  CodeEquity recommends starting with its default strawman ";
+      msg        += "equity plan meant for software startups interacting with GitHub.  You can modify this plan at any time as your requirements clarify.  ";
+
+      Widget body = makeBodyText( appState, msg, appState.MAX_PANE_WIDTH - 10 * appState.GAP_PAD, true, 6 );
+
+      categories.addAll( [[ miniSpace, body, empty, empty, empty ]] );
+      
+      String msg2 = "Click "; 
+      String msg3 = "to choose the default, or simply enter your own.";
+      
+      Widget body2 = Wrap( spacing: 0,
+                           children: [ makeIWTitleText( appState, msg2, false, 1 ),
+                                       makeHotLink( "here", "strawman equity" ),
+                                       makeIWTitleText( appState, msg3, false, 1, lgap: 1 )
+                              ]);
+      categories.addAll( [[ miniSpace, body2, empty, empty, empty ]] );
+   }
    
    List<List<Widget>> _getCategoryWidgets( context ) {
       if( appState.verbose >= 4 ) { print( "Getting equity table widgets update tree/view: " + appState.updateEquityPlan.toString() + " " + appState.updateEquityView.toString() ); }
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       final numWidth = width / 2.5;
 
+      List<List<Widget>> catList = [];
+
+      // make sure we are viewing correct equity plan
       // Equity frame can be entered from spots that do not directly update the venture being viewed.  Make sure we are aligned here.
       if( appState.myEquityPlan != null && appState.myEquityPlan!.ceVentureId != appState.selectedCEVenture ) { realignEP = true; }
       if( appState.myEquityPlan != null && !realignEP ) { assert( appState.myEquityPlan!.ceVentureId == appState.selectedCEVenture ); }
-         
-      List<List<Widget>> catList = [];
+      
       if( realignEP ) {
          // These must be kept up to date, and updated before _getTiles.
          equityTop = 5;   // spacer + title + spacer + header + hdiv
-
+         
          realign();
          return catList;
       }
-      
+            
       if( appState.updateEquityPlan ) { _buildEquityTree(); }
-      
+
       if( appState.updateEquityView ) {
          // These must be kept up to date, and updated before _getTiles.
          equityTop = 5;   // spacer + title + spacer + header + hdiv
@@ -521,6 +607,11 @@ class _CEEquityState extends State<CEEquityFrame> {
       categories.addAll( [[ Container( height: appState.MID_PAD ), empty, empty, empty, empty ]] );
       categories.addAll( [[ spacer, makeIWTitleText( appState, cev!.name, false, 1, fontSize: 18), empty, empty, empty ]] );
 
+      // Offer to start with defaults if no plan in place yet
+      if( appState.myEquityPlan == null || appState.myEquityPlan!.totalAllocation == 0 ) {
+         _offerDefault( categories );
+      }
+
       // XXX build too often?  check.
       categories.addAll( _getCategoryWidgets( context ) );
       
@@ -582,7 +673,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       
       // Set this here to update view if minimized, then recovered.
       appState.updateEquityView = true;      
-      
+
       return getEquityPlan( context );
       
  }

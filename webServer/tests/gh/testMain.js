@@ -344,7 +344,7 @@ async function runTests() {
 	await utils.sleep( 1000 );
 	testStatus = tu.mergeTests( testStatus, subTest );
     }
-    
+
     tu.testReport( testStatus, "================= Testing complete =================" );
 
 }

@@ -1028,11 +1028,14 @@ class _CEStatusState extends State<CEStatusFrame> {
       _loadPeqs( cep! );
 
       // header afterwards to get status.  If need ingest, don't print header as it will say status is good
-      if( !ingestNoticeDisplayed ) {  
-         if( peqsLoaded && ( updateModel || updateView )) { pending.addAll( _getBody( context, cep! ) ); }
-         else                                             { pending.addAll( body ); }
-         
-         pending.insertAll( 0, _getHeader( context, cep! ) ); 
+      // Don't try working on a uninitialized project
+      if( appState.cePeqs[ cep.ceProjectId ] != null && appState.hostPeqs[ cep.ceProjectId ] != null ) {
+         if( !ingestNoticeDisplayed ) {  
+            if( peqsLoaded && ( updateModel || updateView )) { pending.addAll( _getBody( context, cep! ) ); }
+            else                                             { pending.addAll( body ); }
+            
+            pending.insertAll( 0, _getHeader( context, cep! ) ); 
+         }
       }
       
       return ScrollConfiguration(

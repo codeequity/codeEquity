@@ -397,7 +397,7 @@ Future<String> showDropdownDialog(BuildContext context, container, String title,
 }
 
 // okFunc and cancelFunc need to return strings.  See home_screen:confirm
-Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc, { Widget? body = null } ) async {
+Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc, { String confName = "Continue", Widget? body = null } ) async {
    return await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -407,7 +407,7 @@ Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc
                     actions: <Widget>[
                        new TextButton(
                           key: Key( 'confirmContinue' ),
-                          child: new Text("Continue"),
+                          child: new Text(confName),
                           onPressed: okFunc ),
                        new TextButton(
                           key: Key( 'cancelContinue' ),
@@ -507,7 +507,7 @@ Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
    return Material(
       elevation: 5.0,
       borderRadius: BorderRadius.circular(10.0),
-      color: appState.BUTTON_COLOR,
+      color: fn == null ? appState.DISABLE_COLOR : appState.BUTTON_COLOR,
       child: MaterialButton(
          key: Key( buttonText ),
          minWidth: minWidth,
@@ -657,12 +657,12 @@ Widget makeToolTip( child, message, {wait=false, maxWidth=0} ) {
       );
 }
 
-Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "", sw = null } ) {
+Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "", sw = null, lgap: 0 } ) {
 
    String keyName = keyTxt == "" ? title : keyTxt;
    Color color = highlight ? appState.BUTTON_COLOR : Colors.black;
    
-   return makeText( appState, title, null, null, wrap, lines, keyTxt: keyName, fontSize: fontSize, color: color, iw: true, sw: sw );
+   return makeText( appState, title, null, null, wrap, lines, keyTxt: keyName, fontSize: fontSize, color: color, iw: true, sw: sw, lgap: lgap );
 }
 
 Widget makeTitleText( appState, title, width, wrap, lines, { lgap = 0.0, bgap = 0.0, fontSize = 14, highlight = false, keyTxt = "", italic = false, color = Colors.black } ) {

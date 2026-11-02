@@ -4,6 +4,9 @@ import assert from 'assert';
 import * as config from '../config.js';
 
 
+// For managing ceServer connection retries
+var serverRetries = {};
+
 // UNIT TESTING ONLY!!
 // Ugly ugly hack to test error handler.  Turn this off for normal runs.
 const TEST_EH     = true;
@@ -35,16 +38,52 @@ async function postCE( shortName, postData ) {
 	body: postData
     };
 
-    let ret = await fetch( ceServerTestingURL, params )
-	.catch( err => console.log( err ));
-
-    if( ret['status'] == 201 ) {
+    // XXX This has been throwing FetchError: request to http://127.0.0.1:3000/github/testing failed, reason: connect ECONNREFUSED 127.0.0.1:3000
+    //     occasionally during nighttime regressions.  Have yet to see it otherwise.
+    let ret = "";
+    try  {
+	ret = await fetch( ceServerTestingURL, params )
+    }
+    catch( err ) {
+	console.log( "WARNING.  Connection refused by ceServer.", err );
+	ret = await errorHandler( "postCE", err, postCE, shortName, postData ); 
+    }
+    
+    if( typeof ret !== 'undefined' && ret['status'] == 201 ) {
 	let body = await ret.json();
 	return body;
     }
-    else { return -1; }
+    else {
+	if( ret === 'undefined' ) { console.log( "WARNING.  ceServer returning undefined." ); }
+	return -1;
+    }
 }
+
+async function errorHandler( source, e, func, ...params ) {
+    if( typeof serverRetries === 'undefined' )            { serverRetries = {}; }
+    if( !serverRetries.hasOwnProperty( source ) )         { serverRetries[source] = {}; }
     
+    if( !serverRetries[source].hasOwnProperty( 'stamp' )) { serverRetries[source].stamp = Date.now(); }
+    if( !serverRetries[source].hasOwnProperty( 'count' )) { serverRetries[source].count = 0; }
+    
+    if( Date.now() - serverRetries[source].stamp > 5000 ) { serverRetries[source].count = 0; }
+    
+    if( serverRetries[source].count <= 10 ) {
+	console.log( "ceServer troubles with", source, e );
+	console.log( "Retrying", source, serverRetries[source].count );
+	serverRetries[source].count++;
+	serverRetries[source].stamp = Date.now();
+	console.log( "Err Handler Status:", serverRetries );
+	return await func( ...params );
+    }
+    else { console.log( "Error.  Retries exhausted, command failed.  Please try again later." ); }
+
+    return -1;
+}
+
+
+
+
 
 // This needs to occur after linkage is overwritten.
 // Provide good subs no matter if using Master project indirection, or flat projects.
