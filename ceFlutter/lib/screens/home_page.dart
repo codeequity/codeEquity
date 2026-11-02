@@ -144,6 +144,7 @@ class _CEHomeState extends State<CEHomePage> {
             else {
                Map<String,int> screenArgs = {"initialPage": 0 };
                if( ceVent ) {
+                  appState.selectedCEProject = "";
                   appState.selectedCEVenture = itemId;
                   setState(() => ceProjectLoading = true );
                   
@@ -155,6 +156,16 @@ class _CEHomeState extends State<CEHomePage> {
                      await reloadCEVentureOnly( context, container );
                   }
                   ceProjectLoading = false;
+
+                  // See if there is a 1:1 cep:cev 
+                  if( appState.selectedCEProject == "" ) {
+                     for( CEProject cep in appState.ceProject.values ) {
+                        if( cep.ceVentureId == itemId ) {
+                           appState.selectedCEProject == cep.ceProjectId;
+                           break;
+                        }
+                     }
+                  }
                   
                   screenArgs["initialPage"] = 3;
                }

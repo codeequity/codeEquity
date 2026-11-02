@@ -219,6 +219,7 @@ Future<void> reloadCEProject( context, container ) async {
       appState.myHostLinks == null ? print( "nope - no associated repo" ) : print( appState.myHostLinks.toString() );
    }
 
+   if( appState.myEquityPlan != null ) { appState.updateEquityPlan = true; } // force equity tree update, otherwise equityTree rewrites equity plan when popping around
    if( appState.myPEQSummary != null ) { appState.updateAllocTree = true;  } // force alloc tree update
 }
 
@@ -353,10 +354,10 @@ String ceUIDFromHost( appState, String hostUID ) {
 }
 class HostVals {
    // CEP host profile related data
-   static List<String>       profHeader( HostPlatforms hplat )   => hplat == HostPlatforms.GitHub ? GHVals.profHeader   : [""];
+   static List<String>       profHeader( HostPlatforms hplat )   => hplat == HostPlatforms.GitHub ? GHVals.profHeader   : ["Host platform"];
    static List<bool>         profDD( HostPlatforms hplat )       => hplat == HostPlatforms.GitHub ? GHVals.profDD       : [false];
    static List<List<String>> profOptions( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profOptions  : [ [""] ];
-   static List<String>       profCurVals( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profCurVals  : [""];
+   static List<String>       profCurVals( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profCurVals  : ["No host platform details yet"];
    static List<String>       profToolTips( HostPlatforms hplat ) => hplat == HostPlatforms.GitHub ? GHVals.profToolTips : [""];
 }                                  
 
@@ -613,6 +614,9 @@ Future<void> updateHostPeqs( container, CEProject cep ) async {
    if( cep.hostPlatform == HostPlatforms.GitHub ) {
       print( "building host peq data for " + cep.ceProjectId );
       appState.hostPeqs[ cep.ceProjectId ] = await updateGHPeqs( container, cep );
+   }
+   else if( cep.hostPlatform == HostPlatforms.end ) {
+      return;
    }
    else {
       print( "Error, host platform not yet implemented." );

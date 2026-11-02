@@ -654,14 +654,15 @@ class _CEProfileState extends State<CEProfilePage> {
      List<TextEditingController?> controllers = [];
 
      void _save( List<String> saveData ) async {
-        assert( controllers.length == 6 && controllers[0] != null && controllers[1] != null && controllers[5] != null );
+        assert( controllers.length > 1 && controllers[0] != null && controllers[1] != null );
 
         cep.name             = controllers[0]!.text;
         cep.description      = controllers[1]!.text;
-        cep.hostPlatform     = enumFromStr<HostPlatforms>( saveData[2], HostPlatforms.values );
-        cep.ownerCategory    = saveData[3];
-        cep.projectMgmtSys   = saveData[4];
-        cep.hostOrganization = controllers[5]!.text;
+        
+        if( saveData.length > 2 )    { cep.hostPlatform     = enumFromStr<HostPlatforms>( saveData[2], HostPlatforms.values ); }
+        if( saveData.length > 3 )    { cep.ownerCategory    = saveData[3]; }
+        if( saveData.length > 4 )    { cep.projectMgmtSys   = saveData[4]; }
+        if( controllers.length > 5 ) { cep.hostOrganization = controllers[5]!.text; }
         
         String cepS = json.encode( cep );
         String postData = '{ "Endpoint": "UpdateCEP", "ceProject": $cepS }';
@@ -672,29 +673,30 @@ class _CEProfileState extends State<CEProfilePage> {
      
      String title       = "Update Project Profile";
 
-     List<String> header = ["Name    ", "Description"];
-     header.addAll( HostVals.profHeader( cep.hostPlatform ));
-          
-     List<bool> dropDown = [ false, false ];
-     dropDown.addAll( HostVals.profDD( cep.hostPlatform ));
-
+     List<String> header        = ["Name    ", "Description"];
+     List<bool> dropDown        = [ false, false ];
      List<List<String>> options = [ [], [] ];
-     options.addAll( HostVals.profOptions( cep.hostPlatform ));
-
-     List<String> curVals = [];
+     List<String> toolTips      = ["", "" ];
+     List<String> curVals       = [];
+     
      curVals.add( cep.name == "" ? noName : cep.name );
      if( cep.description == null || cep.description == "" ) { curVals.add( "Describe your project in one short sentence" ); }
      else                                                   { curVals.add( cep.description! ); }
-     curVals.addAll( HostVals.profCurVals( cep.hostPlatform ));  // if hostPlatform is incorrect, will fail here
-     if( options[3].contains( cep.ownerCategory ))  { curVals[3] = cep.ownerCategory; }
-     if( options[4].contains( cep.projectMgmtSys )) { curVals[4] = cep.projectMgmtSys; }
+
+     options.addAll( HostVals.profOptions( cep.hostPlatform ));
+     header.addAll( HostVals.profHeader( cep.hostPlatform ));
+     dropDown.addAll( HostVals.profDD( cep.hostPlatform ));
+     curVals.addAll( HostVals.profCurVals( cep.hostPlatform ));
+     if( options.length > 3 && options[3].contains( cep.ownerCategory ))  { curVals[3] = cep.ownerCategory; }
+     if( options.length > 4 && options[4].contains( cep.projectMgmtSys )) { curVals[4] = cep.projectMgmtSys; }
      
      for( int i = 0; i < header.length; i++ ) {
         if( header[i] == "Organization name on host" ) { curVals[i] = cep.hostOrganization; }
      }
-
-     List<String> toolTips = ["", "" ];
+     
      toolTips.addAll( HostVals.profToolTips( cep.hostPlatform ));
+
+     print( header.length.toString() + " " + options.length.toString() + " " + dropDown.length.toString() + " " + curVals.length.toString() + " " + toolTips.length.toString() );
 
      int count = 0;
      for( bool dd in dropDown ) {

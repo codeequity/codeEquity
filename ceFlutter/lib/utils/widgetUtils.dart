@@ -657,12 +657,12 @@ Widget makeToolTip( child, message, {wait=false, maxWidth=0} ) {
       );
 }
 
-Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "", sw = null } ) {
+Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "", sw = null, lgap: 0 } ) {
 
    String keyName = keyTxt == "" ? title : keyTxt;
    Color color = highlight ? appState.BUTTON_COLOR : Colors.black;
    
-   return makeText( appState, title, null, null, wrap, lines, keyTxt: keyName, fontSize: fontSize, color: color, iw: true, sw: sw );
+   return makeText( appState, title, null, null, wrap, lines, keyTxt: keyName, fontSize: fontSize, color: color, iw: true, sw: sw, lgap: lgap );
 }
 
 Widget makeTitleText( appState, title, width, wrap, lines, { lgap = 0.0, bgap = 0.0, fontSize = 14, highlight = false, keyTxt = "", italic = false, color = Colors.black } ) {

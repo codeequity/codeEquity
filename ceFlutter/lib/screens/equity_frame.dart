@@ -383,6 +383,52 @@ class _CEEquityState extends State<CEEquityFrame> {
       setState( () => realignEP = false );
    }
 
+   // XXX Wrong location?
+   // Build a default strawman equity table for a 3 person-year software startup with 20M shares.
+   // Founder percentage is very low compared to the norm, since founder is not risking significant capital.
+   // Unallocated values leave room to add specific allocations as plans clarify.  If they are unused, ownership ratios remain stable, so there is no impact.
+   // Equity size guideline: 3.5 person years -> 180 person weeks for 9M shares in sw, or 50k per person week.
+   Future<void> createDefaultEquityTable() async {
+      String cevId = appState.selectedCEVenture;
+      EquityPlan ep = new EquityPlan( ceVentureId: cevId, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: getToday() );
+
+      ep.categories = [
+         ["Founders grants"],
+         ["Business Operations"],
+         ["Software Contributions"],
+         ["Software Contributions", "Host platform ops"],
+         ["Software Contributions", "Cloud platform ops"],
+         ["Software Contributions", "Back end"],
+         ["Software Contributions", "Front end"],
+         ["Software Contributions", "Data security"],
+         ["Software Contributions", "Unallocated"],
+         ["Unallocated"],
+         ];
+      ep.amounts = [
+         5000000,              // founder(s)
+         3000000,              // busops
+         9000000,              // Software 
+         1000000,              // soft:host platform
+         1000000,              // soft:cloud platform
+         3000000,              // soft:backend
+         2000000,              // soft:frontend
+         1000000,              // soft:pii
+         1000000,              // soft:unalloc
+         3000000,              // unallocated
+         ];
+      ep.hostNames = [ "", "", "", "", "", "", "", "", "", "" ];
+      for( int i = 0; i < ep.categories.length; i++ ) {
+         if( ep.categories[i].length == 1 ) { ep.totalAllocation += ep.amounts[i]; }
+      }
+
+      appState.ceEquityPlans[ cevId ] = ep;
+      appState.myEquityPlan = appState.ceEquityPlans[ cevId ];
+      await writeEqPlan( appState, context, container );
+
+      setState(() => appState.updateEquityPlan = true );
+      setState(() => appState.updateEquityView = true );
+   }
+   
    _offerDefault( List<List<Widget>> categories ) {
       Widget miniSpace = Container( height: 1, width: 4 * appState.GAP_PAD );         
       
@@ -393,11 +439,15 @@ class _CEEquityState extends State<CEEquityFrame> {
          final textWidth = 2 * appState.GAP_PAD;
          
          return GestureDetector( 
-            onTap: () async { pop( context );  },
+            onTap: () async
+            {
+               await createDefaultEquityTable();
+            },
             child: makeActionableText( appState, content, hovKey, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
             );
       }
-      
+      // XXX aside from limits in EA, for example once a 2nd collab can't suddenly assign yourself 30% of the total PEQ allocations
+      // XXX as explained in the manual, So, your early choices here are useful to start communications with contributors, but beyond that, they are neither major nor permanent.
       String msg  = "Your venture needs an equity structure to direct how (provisional) equity will be allocated.  A CodeEquity venture does this by allocating provisional equity ";
       msg        += "to the high level tasks that needed for your venture to succeed.  CodeEquity recommends starting with its default strawman ";
       msg        += "equity plan meant for software startups interacting with GitHub.  You can modify this plan at any time as your requirements clarify.  ";
@@ -412,8 +462,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       Widget body2 = Wrap( spacing: 0,
                            children: [ makeIWTitleText( appState, msg2, false, 1 ),
                                        makeHotLink( "here", "strawman equity" ),
-                                       // makeTitleText( appState, msg3, appState.MIN_PANE_WIDTH, false, 1 )
-                                       makeIWTitleText( appState, msg3, false, 1 )
+                                       makeIWTitleText( appState, msg3, false, 1, lgap: 1 )
                               ]);
       categories.addAll( [[ miniSpace, body2, empty, empty, empty ]] );
    }
