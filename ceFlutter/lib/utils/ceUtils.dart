@@ -234,6 +234,31 @@ Future<void> flushAppState( context, container ) async {
    appState.loaded           = true;
 }
 
+void flushProject( appState, String cepId ) {
+   appState.ceProject.remove( cepId );
+   appState.cePeqs.remove( cepId );
+   appState.hostPeqs.remove( cepId );
+   appState.cePEQSummaries.remove( cepId );
+   appState.ceHostLinks.remove( cepId );
+   appState.ceImages.remove( cepId );
+   
+   appState.selectedCEProject = "";
+}
+
+void flushVenture( appState, String cevId ) {
+   for( CEProject cep in appState.ceProject.values ) {
+      if( cep.ceVentureId == cevId ) {
+         String cepId = cep.ceProjectId;
+         flushProject( appState, cepId );
+      }
+   }
+   
+   appState.ceVenture.remove( cevId );
+   appState.ceEquityPlans.remove( cevId );
+   appState.selectedCEVenture = "";
+}
+
+
 // flush everything, and reload back to homepage.
 Future<void> reload( context, container ) async {
    await flushAppState( context, container );

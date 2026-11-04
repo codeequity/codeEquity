@@ -85,7 +85,7 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
 
    void _removeProject() async {
       // remove CEP from all hostusers
-      // remove all non-ACCR peqs with cepId (delVen already does .. most of this?)
+      // remove all non-ACCR peqs with cepId (delVen already does .. most of this?)..
       
       // Make sure peqs are updated first, then delete all non-ACCR
       await updateCEPeqs( container, context, cepId: prime.ceProjectId );
@@ -108,6 +108,12 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
       }
 
       List<String> cepIds = ceps.map( (p) => p.ceProjectId ).toList();
+
+      // clean appState
+      for( String cepId in cepIds ) {
+         flushProject( appState, cepId );
+      }
+      flushVenture( appState, prime.ceVentureId );
 
       _cleanDynamo( prime.ceVentureId, "false", cepIds );
    }
@@ -176,8 +182,10 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
    else { // remove Venture
       // remove peqs for all ceps in cev (usually 1)
       for( CEProject cep in appState.ceProject.values ) {
-         if( cep.ceVentureId == cev.ceVentureId ) { ceps.add( cep ); }
-         await updateCEPeqs( container, context, cepId: cep.ceProjectId );
+         if( cep.ceVentureId == cev.ceVentureId ) {
+            ceps.add( cep ); 
+            await updateCEPeqs( container, context, cepId: cep.ceProjectId );
+         }
       }
       for( CEProject cep in ceps ) {
          peqs.addAll( appState.cePeqs[ cep.ceProjectId ] ?? [] );

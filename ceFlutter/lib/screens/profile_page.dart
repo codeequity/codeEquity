@@ -1281,11 +1281,13 @@ class _CEProfileState extends State<CEProfilePage> {
               }
            }
         }
+        // print( "Vents with ceps " + ventIds.toString() );
         for( final cev in appState.ceVenture.values ) {
            if( !ventIds.contains( cev.ceVentureId ) && cev.roles.keys.contains( appState.ceUserId )) {
               emptyVent.add( cev.ceVentureId );
            }
         }
+        // print( "Vents without ceps " + emptyVent.toString() );
 
         if( itsMe ) { logout = makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 3.0, _logout( context, appState)); }
         

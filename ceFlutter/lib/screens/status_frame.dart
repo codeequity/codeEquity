@@ -173,7 +173,7 @@ class _CEStatusState extends State<CEStatusFrame> {
       List<PEQ> pendHPeqs = [];
       List<PEQ> accrHPeqs = [];
 
-      if( peqsLoaded ) {
+      if( peqsLoaded && appState.cePeqs[ cep.ceProjectId ] != null && appState.hostPeqs[ cep.ceProjectId ] != null ) {
          // appState.cePeqs.keys.forEach( print );
          assert( appState.cePeqs[ cep.ceProjectId ] != null );
          peqs     = appState.cePeqs[ cep.ceProjectId ]!;
@@ -1033,10 +1033,9 @@ class _CEStatusState extends State<CEStatusFrame> {
          if( !ingestNoticeDisplayed ) {  
             if( peqsLoaded && ( updateModel || updateView )) { pending.addAll( _getBody( context, cep! ) ); }
             else                                             { pending.addAll( body ); }
-            
-            pending.insertAll( 0, _getHeader( context, cep! ) ); 
          }
       }
+      pending.insertAll( 0, _getHeader( context, cep! ) ); 
       
       return ScrollConfiguration(
          behavior: MyCustomScrollBehavior(),
