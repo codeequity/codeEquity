@@ -608,6 +608,127 @@ Future<bool> backToSummary( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> save( tester ) async {
+   final Finder save  = find.byKey( const Key( "Save" ) );
+   expect( save, findsOneWidget );
+   await tester.tap( save );
+   await pumpSettle( tester, 2 );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   return true;
+}
+
+
+Future<bool> openProfile( tester ) async {
+
+   final Finder editProf = find.byKey( const Key('Complete profileGD'));
+   expect( editProf, findsOneWidget );
+
+   await tester.tap( editProf );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   
+   expect( await verifyAriEditProfile( tester ), true );
+   return true;
+}
+
+Future<bool> editPhone( tester, String phone ) async {
+   final Finder editPhone = find.byKey( const Key('editForm Phone'));
+   expect( editPhone, findsOneWidget );
+
+   await tester.enterText( editPhone, phone );   
+   await pumpSettle( tester, 2);
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
+   expect( await save( tester ), true );
+   return true;
+}
+
+Future<bool> validateAriFillProfile( tester ) async {
+
+   expect( await openProfile( tester ), true );
+
+   // Test is only modding phone
+   expect( await editPhone( tester, "1 111-222-3333" ), true );
+   
+   return true;
+}
+
+Future<bool> validateAriAcceptPrivacy( tester ) async {
+
+   final Finder privacy = find.byKey( const Key( "Privacy Notice" ));
+   expect( privacy, findsOneWidget );
+
+   await tester.tap( privacy );
+   await pumpSettle( tester, 1 );
+   await tester.pumpAndSettle();
+
+   expect( find.text( "Privacy Statement" ), findsOneWidget );
+   expect( find.text( "Accept Statement" ), findsOneWidget );
+   expect( find.text( "Dismiss" ), findsOneWidget );
+
+   final Finder accept = find.byKey( const Key( 'Accept' ));
+   expect( accept, findsOneWidget );
+   
+   await tester.tap( accept );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   
+   return true;
+}
+
+Future<bool> toggleVnP( tester ) async {
+   expect( find.text( 'Ventures & Projects' ), findsOneWidget );
+
+   final Finder tVent = find.byKey( const Key( "toggleRegister" ));
+   expect( tVent, findsOneWidget );
+
+   await tester.tap( tVent );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   return true;
+}
+
+Future<bool> validateAriWithdraw( tester ) async {
+   expect( find.text( 'Ventures & Projects' ), findsOneWidget );
+
+   expect( await( toggleVnP( tester )), true );
+
+   final Finder withdraw = find.byKey( const Key( "Withdraw" ));
+   expect( withdraw, findsOneWidget );
+
+   await tester.tap( withdraw );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   
+   expect( find.text( "Withdraw from which?" ), findsOneWidget );
+   final Finder ce  = find.byKey( const Key( "All of CodeEquity" ));
+   final Finder cev = find.byKey( const Key( "A specific CodeEquity Venture" ));
+   expect( ce, findsOneWidget );
+   expect( cev, findsOneWidget );
+
+   await tester.tap( ce );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   final Finder confirm = find.byKey( const Key( "Confirm" ) );
+   expect( confirm, findsOneWidget );
+   await tester.tap( confirm );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
+   expect( find.text( "Withdraw from CodeEquity?" ), findsOneWidget );
+   final Finder cont = find.byKey( const Key( "confirmContinue" ));
+   final Finder dism = find.byKey( const Key( "cancelContinue" ));
+   expect( cont, findsOneWidget );
+   expect( dism, findsOneWidget );
+   
+   await tester.tap( cont );
+   await pumpSettle( tester, 3 );
+   await tester.pumpAndSettle();
+
+   return true;
+}
 
 void report( descr, {group = false} ) {
    final pre  = group ? "ceFlutter Test Group: " : "   Subtest: ";

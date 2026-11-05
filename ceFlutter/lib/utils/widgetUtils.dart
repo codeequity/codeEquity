@@ -209,7 +209,7 @@ class _EditFormState extends State<EditForm> {
 
 Future<String> editList( BuildContext context, appState, scrollHeader,
                        List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc, 
-                         { saveName: "Save", headerWidth: -1, subHeader = "", multi = false }) async {
+                         { saveName: "Save", headerWidth: -1, subHeader = "", multi = false, keyUseIndex = false }) async {
    double stepWidth = 40;
    double editWidth = appState.MAX_PANE_WIDTH * .75;
    bool edit = scrollHeader.contains( "Edit" ) || scrollHeader.contains( "Update" );
@@ -217,9 +217,10 @@ Future<String> editList( BuildContext context, appState, scrollHeader,
    List<Widget> editVals = [];
    Widget c = Container( height: 1, width: appState.MID_PAD );
    for( int i = 0; i < values.length; i++ ) {
+      String key = keyUseIndex ? "editRow" + i.toString() :  "editRow " + values[i];
       Widget text = multi ?
-                    makeInputBox( appState, values[i], controllers[i], editWidth, keyName: "editRow " + values[i], edit: edit) :
-                    makeInputField( appState, values[i], false, controllers[i], keyName: "editRow " + values[i], edit: edit);
+                    makeInputBox( appState, values[i], controllers[i], editWidth, keyName: key, edit: edit) :
+                    makeInputField( appState, values[i], false, controllers[i], keyName: key, edit: edit);
       Widget h = headerWidth > 0 ?
                  Container( width: headerWidth, child: Text(itemHeaders[i] )) :
                  IntrinsicWidth( stepWidth: stepWidth, child: Text( itemHeaders[i] ));
@@ -504,12 +505,13 @@ Widget makeActionButtonSmall( appState, buttonText, fn ) {
 
 Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 12.0);
+   String key = buttonText + ( fn == null ? " disabled" : "" );
    return Material(
       elevation: 5.0,
       borderRadius: BorderRadius.circular(10.0),
       color: fn == null ? appState.DISABLE_COLOR : appState.BUTTON_COLOR,
       child: MaterialButton(
-         key: Key( buttonText ),
+         key: Key( key ),
          minWidth: minWidth,
          onPressed: fn,
          child: Text( buttonText,

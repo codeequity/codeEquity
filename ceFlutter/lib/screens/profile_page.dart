@@ -770,7 +770,8 @@ class _CEProfileState extends State<CEProfilePage> {
         addControllerPool( controllerPool, 2 );
      }
 
-     editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints, () => _set( controllerPool.sublist(0,items.length)), () => pop( context ), null, multi: true );     
+     editList( context, appState, title, items, controllerPool.sublist( 0, items.length ), hints,
+               () => _set( controllerPool.sublist(0,items.length)), () => pop( context ), null, multi: true, keyUseIndex: true );     
   }
 
   Widget _makeImageButton( Widget pi, String id, String name ) {
