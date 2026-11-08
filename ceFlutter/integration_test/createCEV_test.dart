@@ -61,8 +61,8 @@ bool verifyRoleVP( tester, String role, String cev ) {
    return true;
 }
 
-Future<bool> verifyCEVProfile( tester, cev, descr, web, {empty = false} ) async {
-   if( empty ) {
+Future<bool> verifyCEVProfile( tester, cev, descr, web, { hasName = false, hasEA = false} ) async {
+   if( !hasName ) {
       expect( find.textContaining( "Welcome to your new Venture" ), findsOneWidget );
       expect( find.textContaining( "to start adding details" ), findsOneWidget );
       expect( find.text( "(No name yet)" ), findsOneWidget );
@@ -79,14 +79,28 @@ Future<bool> verifyCEVProfile( tester, cev, descr, web, {empty = false} ) async 
    expect( find.byKey( const Key( "Venture Equity Plan PEQs:" )), findsOneWidget );   
    expect( find.byKey( const Key( "CEProjects:" )), findsOneWidget );   
 
-   expect( find.byKey( Key( "Edit profile" )),              findsOneWidget );   
-   expect( find.byKey( Key( "Build Initial Equity Plan" )), findsOneWidget );
-
-   String disable = empty ? " disabled" : "" ;
-   expect( find.byKey( Key( "Dissolve" + disable )),          findsOneWidget );
-   expect( find.byKey( Key( "Equity Agreement" + disable )),  findsOneWidget );
-   expect( find.byKey( Key( "Initialize" + disable )),        findsOneWidget );
-   
+   String disable = " disabled";
+   if( !hasName ) {
+      expect( find.byKey( Key( "Edit profile" )),                        findsOneWidget );   
+      expect( find.byKey( Key( "Build Initial Equity Plan" + disable )), findsOneWidget );
+      expect( find.byKey( Key( "Dissolve" + disable )),                  findsOneWidget );
+      expect( find.byKey( Key( "Equity Agreement" )),                    findsOneWidget );
+      expect( find.byKey( Key( "Initialize" + disable )),                findsOneWidget );
+   }
+   else if( !hasEA ) {
+      expect( find.byKey( Key( "Edit profile" )),                        findsOneWidget );   
+      expect( find.byKey( Key( "Build Initial Equity Plan" + disable )), findsOneWidget );
+      expect( find.byKey( Key( "Dissolve" )),                            findsOneWidget );
+      expect( find.byKey( Key( "Equity Agreement" )),                    findsOneWidget );
+      expect( find.byKey( Key( "Initialize" )),                          findsOneWidget );
+   }
+   else {
+      expect( find.byKey( Key( "Edit profile" )),                        findsOneWidget );   
+      expect( find.byKey( Key( "Build Initial Equity Plan" )),           findsOneWidget );
+      expect( find.byKey( Key( "Dissolve" )),                            findsOneWidget );
+      expect( find.byKey( Key( "Initialize" )),                          findsOneWidget );
+   }
+      
    return true;
 }
 
@@ -100,7 +114,7 @@ Future<bool> createEmptyCEV( tester, bool newUser ) async {
 
       expect( await( toggleVnP( tester )), true );
       expect( await( popCreateVenture( tester )), true );
-      expect( await( verifyCEVProfile( tester, "", "", "", empty: true )), true );
+      expect( await( verifyCEVProfile( tester, "", "", "" )), true );
    }
    else {
       assert( false );
@@ -146,7 +160,7 @@ Future<bool> editCEVProfile( tester, String cev, String descr, String web ) asyn
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
 
-   expect( await verifyCEVProfile( tester, cev, descr, web ), true );
+   expect( await verifyCEVProfile( tester, cev, descr, web, hasName: true ), true );
 
    return true;
 }
@@ -160,15 +174,139 @@ Future<bool> addEquityPlan( tester, String cev, { useDefault = true } ) async {
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
 
-   // look for stuff
-   // accept if default or add
+   expect( find.text( cev ), findsOneWidget );
+   expect( find.textContaining( "strawman equity plan" ), findsOneWidget );
+   expect( find.text( "Category" ), findsOneWidget );
+   expect( find.text( "Associated host project name" ), findsOneWidget );
+   expect( find.text( "Allocation" ), findsOneWidget );
+   expect( find.text( "Rearrange" ), findsOneWidget );
+   expect( find.text( "0" ), findsOneWidget );   
+
+   if( useDefault ) {
+      Finder here = find.byKey( Key( "here" ) );
+      expect( here, findsOneWidget );
+      await tester.tap( here );
+      await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
+      
+      expect( find.text("20,000,000"), findsOneWidget );
+      expect( find.text("Founders grants"), findsOneWidget );
+      expect( find.text("Host platform ops"), findsOneWidget );
+      expect( find.text("Cloud platform ops"), findsOneWidget );
+   }
+   return true;
+}
+
+Future<bool> viewEA( tester, String cev, String descr, String web ) async {
+   expect( await goCEV( tester, cev ), true );
    
+   Finder bep = find.byKey( Key( "Equity Agreement" ));
+   expect( bep, findsOneWidget );
+   await tester.tap( bep );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
+   expect( find.text( "View the Equity Agreement" ), findsOneWidget );
+   expect( find.textContaining( "must sign the Equity Agreement" ), findsOneWidget );
+   
+   Finder view = find.byKey( Key( "confirmContinue" ));
+   expect( view, findsOneWidget );
+   await tester.tap( view );
+   await pumpSettle( tester, 2, verbose: true );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
+   expect( find.textContaining( "Provisional Company" ), findsAtLeast(1) );
+   expect( find.textContaining( "Software Contributions" ), findsAtLeast(1) );
+   
+   Finder dismiss = find.byKey( Key( "Dismiss" ));
+   expect( dismiss, findsOneWidget );
+   await tester.tap( dismiss );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
+   expect( await verifyCEVProfile( tester, cev, descr, web, hasName: true, hasEA: true ), true );
+
+   return true;
+}
+
+Future<bool> verifyCEPProfile( tester, String cev, {hasName=false} ) async {
+   if( !hasName ) {
+      expect( find.textContaining( "Welcome to your new Project" ), findsOneWidget );
+      expect( find.text( "(No name yet)" ), findsOneWidget );
+      expect( find.textContaining( cev ), findsOneWidget );
+      expect( find.textContaining( "Adding repositories connects" ), findsOneWidget );
+   }
+
+   expect( find.byKey( const Key( "Venture Equity Plan PEQs:" )), findsOneWidget );   
+   expect( find.byKey( const Key( "Collaborators" )), findsOneWidget );   
+   expect( find.byKey( const Key( "Host Platform: " )), findsOneWidget );   
+
+   String disable = " disabled";
+   if( !hasName ) {
+      expect( find.byKey( Key( "Edit profile" )),                        findsOneWidget );   
+      expect( find.byKey( Key( "Dissolve" + disable )),                  findsOneWidget );
+      expect( find.byKey( Key( "Initialize" + disable )),                findsOneWidget );
+   }
+      
+   return true;
+}
+
+
+Future<bool> verifyCEPLinks( tester, String cev, String cep ) async {
+   if( cep == "" ) {
+      // Home -> proj prof page
+      expect( await goHome( tester ), true );
+      expect( find.text( cev ), findsOneWidget );
+      // Finder hlink = find.text( "<No CodeEquity Project yet>" );
+      expect( await tapit( tester, find.text( "(No name yet)" ), 1 ), true );
+      expect( await verifyCEPProfile( tester, cev ), true );
+      // expect( find.textContaining( "This CodeEquity Project hasn\'t been initialized yet" ), findsOneWidget );
+
+      // ari profile proj -> proj prof page
+      expect( await goAri( tester ), true );
+      expect( await tapit( tester, find.text( "(No name yet)" ), 1 ), true );
+      expect( await verifyCEPProfile( tester, cev ), true );
+      expect( await goAri( tester ), true );
+      expect( await tapit( tester, find.text( cev ), 1 ), true );
+      expect( find.text( "Collaborator Roles within this Venture" ), findsOneWidget );
+
+      // venture profile -> proj prof page
+      expect( await tapit( tester, find.text( "(No name yet)" ), 1 ), true );
+      expect( await verifyCEPProfile( tester, cev ), true );
+
+      // XXX peq summary 
+   }
+   return true;
+}
+
+Future<bool> createEmptyCEP( tester, String cev ) async {
+   expect( await goCEV( tester, cev ), true );
+
+   Finder init = find.byKey( Key( "Initialize" ));
+   expect( init, findsOneWidget );
+   await tester.tap( init );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+
+   expect( await verifyCEPProfile( tester, cev ), true );
+   expect( await verifyCEPLinks( tester, cev, "" ), true );
+   return true;
+}
+
+Future<bool> createCEP( tester, String cev ) async {
+   await createEmptyCEP( tester, cev );
+   
+   return true;
 }
 
 Future<bool> createCEV( tester, String cev, String descr, String web, { newUser = true, defaultEquity = true, initCEP = true } ) async {
    expect( await createEmptyCEV( tester, newUser ), true );
    expect( await editCEVProfile( tester, cev, descr, web ), true );
-   // expect( await addEquityPlan( tester, cev ); 
+   expect( await viewEA( tester, cev, descr, web ), true );
+   expect( await addEquityPlan( tester, cev ), true );
+
+   expect( await createCEP( tester, cev ), true );
    
    return true;
 }
@@ -268,11 +406,12 @@ void main() {
 
          // As new user
          expect( await verifyAriHome( tester ), true );
+
          expect( await validateAriWithdraw( tester ), true );  // start from scratch
          await login( tester, true );
          expect( await verifyAriHome( tester, subset: [] ), true );
-
          expect( await failCreateCEV( tester, cev ), true );
+         
          expect( await createCEV( tester, cev, "a descr", "a website" ), true );
 
          // XXX do stuff

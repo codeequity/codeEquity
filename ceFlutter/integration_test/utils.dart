@@ -147,6 +147,18 @@ Future<bool> pumpSettle( WidgetTester tester, int delaySecs, {bool verbose = fal
    return true;
 }
 
+
+Future<bool> tapit( WidgetTester tester, Finder link, int wait ) async {
+   expect( link, findsOneWidget );
+   await tester.tap( link );
+   if( wait > 0 ) {
+      await pumpSettle( tester, wait, verbose: true );
+   }
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   return true;
+}
+
 // The keyName is the name of the visibility node key
 Future<bool> checkVisNode( WidgetTester tester, String keyName, bool visVal ) async {
 

@@ -817,7 +817,7 @@ class _CEProfileState extends State<CEProfilePage> {
      msg       += "( or another Founder's) pending tasks for countersigning (or rejection). As the first Founder, there is no other person to countersign.  This is ok.  ";
      msg       += "Once a second person joins, you will be asked to countersign.  Once you do, the agreement becomes a meaningful contract between both parties. ";
      msg       += "For now, just viewing the document will unlock the rest of CEMD functionality for you.";
-     await confirm( context, "Sign the Equity Agreement", msg, _showDoc, () => pop( context ), confName: "View Doc" );
+     await confirm( context, "View the Equity Agreement", msg, _showDoc, () => pop( context ), confName: "View Doc" );
 
      // Don't wait
      cePeep.viewedEA = true;
@@ -879,11 +879,13 @@ class _CEProfileState extends State<CEProfilePage> {
      double fhu = 24+18+7*appState.MID_PAD + 2*appState.TINY_PAD;
 
      // venture profile should have some detail before dissolve is relevant
-     bool dissolveEnabled = (( prime is CEVenture && prime.name != noName ) || prime is CEProject );
-     bool buildEPShowing  = ( prime is CEVenture );
-     bool buildEPEnabled  = ( buildEPShowing && ( cePeep!.hasEquityAgreement( cev.ceVentureId ) || ( cePeep!.viewedEA != null && cePeep!.viewedEA! )));
-     bool signShowing     = ( prime is CEVenture && !cePeep!.hasEquityAgreement( cev.ceVentureId ));
-     bool signEnabled     = signShowing && prime.name != noName;
+     // buildEP and sign are irrelevent once ep.totalAlloc > 0
+     // buildEP enabled if have already seen an equity agreement, somewhere.
+     bool dissolveEnabled = prime.name != noName;
+     bool buildEPShowing  = prime is CEVenture;                                                                             // show if no alloc yet
+     bool buildEPEnabled  = ( buildEPShowing && prime.name != noName && ( cePeep!.viewedEA != null && cePeep!.viewedEA! )); // enable if no alloc and have seen an ea and have name
+     bool signShowing     = ( prime is CEVenture && !( cePeep!.viewedEA != null && cePeep!.viewedEA! ));                    // show if no allow and not yet seen
+     bool signEnabled     = signShowing;                                                                                    // enable if showing - view attaches to person not cev
 
      return Wrap(
         children: [
@@ -913,6 +915,8 @@ class _CEProfileState extends State<CEProfilePage> {
                  miniSpacer,
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeToolTip( makeTitleText( appState, "Venture Equity Plan PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
+
+
                  // XXX Too big here for == ? : ; - gimme widgets
                  ep.totalAllocation == 0 ?
                  Wrap( children: [spacer,
@@ -1041,6 +1045,7 @@ class _CEProfileState extends State<CEProfilePage> {
         collabWid = _makeCollabs( context, collabs, textWidth );
      }
 
+     bool initEnabled = cep.name != noName;
      List<Widget> platData = [];
      platData.add( makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ) );
      platData.add( makeTitleText( appState, "Host Platform: " + (cep.hostPlatform == HostPlatforms.end ? "" : enumToStr( cep.hostPlatform )), textWidth, false, 1, fontSize: 18 ) );
@@ -1048,7 +1053,9 @@ class _CEProfileState extends State<CEProfilePage> {
      if( cep.hostPlatform == HostPlatforms.end ) {
         platData.add( miniSpacer );
         platData.add( Wrap( children: [spacer, makeActionButtonFixed( appState, "Initialize", lhsFrameMaxWidth / 2.0,
-                                                                      () => initProject( context, container, cep, controllerPool.sublist(0, 1)))
+                                                                      initEnabled ? 
+                                                                      () => initProject( context, container, cep, controllerPool.sublist(0, 1)) :
+                                                                      null )
                                ]));
      }
      else {
