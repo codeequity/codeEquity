@@ -375,7 +375,7 @@ Future<String> showDropdownDialog(BuildContext context, container, String title,
          bool   edit = hints[i] == "" ? false     : true;
          rows.add(
             Wrap( children: [ makeToolTip( makeTableText( appState, header[i], appState.MIN_PANE_WIDTH/1.3, appState.CELL_HEIGHT, false, 1 ), toolTips[i] ),
-                              Container( width: appState.MIN_PANE_WIDTH, child: makeInputField( appState, hint, false, controllers[i]!, edit: edit ))
+                              Container( width: appState.MIN_PANE_WIDTH, child: makeInputField( appState, hint, false, controllers[i]!, edit: edit, keyName: "input" + i.toString() ))
                                 ])
                );
       }
@@ -699,7 +699,7 @@ Widget makeText( appState, title, width, height, wrap, lines,
                  { tgap = -1, lgap = 0, bgap = 0.0, keyTxt = null, fontSize = 14, mux = 1.0, bold = true, iw = false, sw = null, color = Colors.black, italic = false } ) {
    if( lgap == 0 )  { lgap = mux * appState.GAP_PAD; }
    if( tgap == -1 ) { tgap = appState.TINY_PAD; }
-   
+
    if( iw ) {
       return Padding(
          padding: EdgeInsets.fromLTRB( lgap, tgap, appState.TINY_PAD, bgap),

@@ -180,24 +180,29 @@ Future<bool> goHome(  WidgetTester tester ) async {
       final Finder goHome = find.byIcon( customIcons.home );
       expect( goHome, findsOneWidget );
       await tester.tap( goHome );
-      await pumpSettle( tester, 2, verbose: true );
-      await pumpSettle( tester, 2, verbose: true );    
+      await pumpSettle( tester, 4, verbose: true );
+      await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
    }
    return true;
 }
 
 // go home first, might be in proj profile
 Future<bool> goAri(  WidgetTester tester ) async {
-   await goHome( tester );
 
-   expect( find.byIcon( customIcons.profile ),  findsOneWidget );
-   await tester.tap( find.byIcon( customIcons.profile ));
-   await pumpSettle( tester, 2, verbose: true );    
-   await pumpSettle( tester, 2, verbose: true );
-   await pumpSettle( tester, 2, verbose: true );
-   
-   Finder txt = find.text( 'Ari Star (Ari)' );
-   expect( txt, findsOneWidget );
+   try{ expect( find.text( 'Ari Star (Ari)' ), findsOneWidget ); }
+   catch(e) {
+
+      try{ expect( find.byIcon( customIcons.profile ),  findsOneWidget ); }
+      catch(e) {
+         await goHome( tester );
+         expect( find.byIcon( customIcons.profile ),  findsOneWidget );
+      }
+      
+      expect( await tapit( tester, find.byIcon( customIcons.profile ), 4 ), true ); 
+      Finder txt = find.text( 'Ari Star (Ari)' );
+      expect( txt, findsOneWidget );
+   }
    return true;
 }
 
