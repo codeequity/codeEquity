@@ -557,7 +557,7 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
       if( candidate.length == 0 ) {
          String msg = "No candidate repositories were found.  Candidates must be in the " + cep.hostOrganization + " organization, ";
          msg       += "and you must be a member of that organization with access to the candidate repository.";
-         Widget body = makeBodyText( appState, msg, textWidth * 3, true, 2 );
+         Widget body = makeBodyText( appState, msg, textWidth * 3, true, 3 );
          confirm( context, "No candidates found", msg, () => pop( context ), () => pop( context ), body: body );
       }
       else {

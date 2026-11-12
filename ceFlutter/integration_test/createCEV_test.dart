@@ -166,12 +166,6 @@ Future<bool> editCEPProfile( tester, String cev, String cep ) async {
    expect( await tapit( tester, find.text( "(No name yet)" ), 1 ), true );
    expect( await verifyCEPProfile( tester, cev ), true );
    expect( await tapit( tester, find.byKey( Key( "Edit profile" ) ), 0), true );
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
 
    expect( find.text( "Update Project Profile" ), findsOneWidget );
    expect( find.textContaining( "Name" ), findsOneWidget );
@@ -259,7 +253,7 @@ Future<bool> viewEA( tester, String cev, String descr, String web ) async {
    return true;
 }
 
-Future<bool> verifyCEPProfile( tester, String cev, { hasName = false, cep = "" } ) async {
+Future<bool> verifyCEPProfile( tester, String cev, { hasName = false, cep = "", hasOrg = false } ) async {
    expect( find.textContaining( cev ), findsOneWidget );
    expect( find.textContaining( "Adding repositories connects" ), findsOneWidget );
    if( hasName ) {
@@ -272,14 +266,28 @@ Future<bool> verifyCEPProfile( tester, String cev, { hasName = false, cep = "" }
    }
 
    expect( find.byKey( const Key( "Venture Equity Plan PEQs:" )), findsOneWidget );   
-   expect( find.byKey( const Key( "Collaborators" )), findsOneWidget );   
-   expect( find.byKey( const Key( "Host Platform: " )), findsOneWidget );   
+   expect( find.byKey( const Key( "Collaborators" )), findsOneWidget );
 
-   String disable = hasName ? "" : " disabled";
-   expect( find.byKey( Key( "Edit profile" )),                        findsOneWidget );   
-   expect( find.byKey( Key( "Dissolve" + disable )),                  findsOneWidget );
-   expect( find.byKey( Key( "Initialize" + disable )),                findsOneWidget );
+   if( !hasOrg ) {
+      expect( find.byKey( const Key( "Host Platform: " )), findsOneWidget );   
       
+      String disable = hasName ? "" : " disabled";
+      expect( find.byKey( Key( "Edit profile" )),                        findsOneWidget );   
+      expect( find.byKey( Key( "Dissolve" + disable )),                  findsOneWidget );
+      expect( find.byKey( Key( "Initialize" + disable )),                findsOneWidget );
+   }
+   else {
+      expect( find.byKey( const Key( "Host Platform: GitHub" )), findsOneWidget );   
+      expect( find.byKey( Key( "Edit profile" )),                findsOneWidget );   
+      expect( find.byKey( Key( "Dissolve" )),                    findsOneWidget );
+      expect( find.byKey( Key( "Add Code Repos" )),              findsOneWidget );
+
+      expect( find.text( "Organization: TeaHolics" ), findsOneWidget ); 
+      expect( find.text( "Project management system:" ), findsOneWidget ); 
+      expect( find.text( "    GH Version 2" ), findsOneWidget ); 
+      expect( find.text( "Repositories" ), findsOneWidget ); 
+   }
+
    return true;
 }
 
@@ -287,24 +295,29 @@ Future<bool> verifyCEPProfile( tester, String cev, { hasName = false, cep = "" }
 Future<bool> verifyCEPLinks( tester, String cev, String cep ) async {
    if( cep == "" ) {
       // Home -> proj prof page
+      print( "home cep to proj prof page" );
       expect( await goHome( tester ), true );
       expect( find.text( cev ), findsOneWidget );
       expect( await tapit( tester, find.text( "(No name yet)" ), 1 ), true );
       expect( await verifyCEPProfile( tester, cev ), true );
 
       // ari profile proj -> proj prof page
+      print( "ari prof cep to proj prof page" );
       expect( await goAri( tester ), true );
       expect( await tapit( tester, find.text( "(No name yet)" ), 1 ), true );
       expect( await verifyCEPProfile( tester, cev ), true );
 
-      // ar profile -> venture -> proj prof
+      // ari profile -> venture -> proj prof
+      print( "ari prof to venture prof" );
       expect( await goAri( tester ), true );
       expect( await tapit( tester, find.text( cev ), 1 ), true );
       expect( find.text( "Collaborator Roles within this Venture" ), findsOneWidget );
+      print( "venture prof cep to proj prof page" );
       expect( await tapit( tester, find.text( "(No name yet)" ), 1 ), true );
       expect( await verifyCEPProfile( tester, cev ), true );
 
       // peq summary
+      print( "peq summary sez uninit" );
       expect( await goHome( tester ), true );      
       expect( await tapit( tester, find.text( cev ), 1 ), true );
       expect( await tapit( tester, find.byKey( const Key('PEQ Summary' )), 0), true );
@@ -315,8 +328,8 @@ Future<bool> verifyCEPLinks( tester, String cev, String cep ) async {
 }
 
 Future<bool> createEmptyCEP( tester, String cev ) async {
+   print( "create empty cep" );
    expect( await goCEV( tester, cev ), true );
-
    expect( await tapit( tester, find.byKey( Key( "Initialize" )), 0 ), true );
 
    // XXX
@@ -325,12 +338,128 @@ Future<bool> createEmptyCEP( tester, String cev ) async {
    return true;
 }
 
+bool countDD( tester, String key, expectedCount ) {
+
+   Finder dd = find.byKey( Key( key ) );
+   expect( dd, findsOneWidget );
+   final dropdownWidget = tester.widget<DropdownMenu<String>>(dd);
+   final int itemCount = dropdownWidget.dropdownMenuEntries.length;
+   expect(itemCount, equals(expectedCount));
+   print( "Counting " + key + " " + itemCount.toString() + " " + expectedCount.toString() );
+   
+   return true;
+}
 
 Future<bool> addGitHub( tester, String cev, String cep ) async {
+   expect( await goCEP( tester, cep ), true );
+   expect( await tapit( tester, find.byKey( Key( "Initialize" )), 0 ), true );
+
+   // radio 1
+   expect( find.textContaining( "Choose which Host platform" ), findsOneWidget );
+   expect( find.text( "GitHub" ), findsOneWidget );
+   expect( find.byKey( Key("Cancel") ), findsOneWidget );
+   expect( await tapit( tester, find.byKey( Key("Confirm")), 0), true );
+
+   // New box
+   expect( find.textContaining( "Describe where and how" ), findsOneWidget );
+   expect( find.text( "Host platform" ), findsOneWidget );
+   expect( find.text( "Owner category" ), findsOneWidget );
+   expect( find.text( "Host project management version" ), findsOneWidget );
+   expect( find.text( "Organization name on host" ), findsAtLeast(1) );
+
+   // dropdown 0
+   expect( await tapit( tester, find.byKey( Key( "dropdown0" )), 0 ), true );
+   await pumpSettle( tester, 1 );
+   expect( find.text( "GitHub" ), findsAtLeast(2) );
+   expect( countDD( tester, "dropdown0", 1 ), true );
+   expect( find.text( "GitHub").last, findsOneWidget );
+   expect( await tapit( tester, find.text( "GitHub").last, 0 ), true );
+
+   // dropdown 1
+   expect( await tapit( tester, find.byKey( Key( "dropdown1" )), 0 ), true );
+   await pumpSettle( tester, 1 );
+   expect( find.text( "Organization" ), findsAtLeast(2) );
+   expect( find.text( "Individual" ), findsAtLeast(1) );
+   expect( countDD( tester, "dropdown1", 2 ), true );
+   expect( await tapit( tester, find.text( "Organization").last, 0 ), true );
+
+   // dropdown 2
+   expect( await tapit( tester, find.byKey( Key( "dropdown2" )), 0 ), true );
+   await pumpSettle( tester, 1 );
+   expect( find.text( "GH Version 2" ), findsAtLeast(2) );
+   expect( find.text( "GH Classic" ), findsAtLeast(1) );
+   expect( countDD( tester, "dropdown2", 2 ), true );
+   expect( await tapit( tester, find.text( "GH Version 2").last, 0 ), true );
+
+   // input 3
+   final Finder org = find.byKey( Key( "input3" ));
+   expect( org, findsOneWidget );
+   await tester.enterText( org, "TeaHolics" );
+
+   // Check profile
+   expect( find.byKey( Key( "Cancel" )), findsOneWidget );
+   expect( await tapit( tester, find.byKey( Key( "Save" )), 2 ), true );
+   expect( await verifyCEPProfile( tester, cev, cep: cep, hasName: true, hasOrg: true ), true );
+
+   // Skim check edit expansion
+   expect( await tapit( tester, find.byKey( Key( "Edit profile" )), 0 ), true );
+   expect( find.text( cep ), findsAtLeast(2) );
+   expect( find.text( "a proj desc" ), findsAtLeast(2) );
+   expect( find.textContaining( "GH Version 2" ), findsAtLeast(2) );
+   expect( find.byKey( Key( "input0"  )), findsOneWidget );
+   expect( find.byKey( Key( "input1"  )), findsOneWidget );
+   expect( find.byKey( Key( "dropdown2"  )), findsOneWidget );
+   expect( find.byKey( Key( "dropdown4"  )), findsOneWidget );
+   expect( find.byKey( Key( "input5"  )), findsOneWidget );
+   expect( await tapit( tester, find.byKey( Key( "Cancel" )), 0 ), true );
+   
+   return true;
+}
+
+Future<bool> setOrg( tester, String cep, String org ) async {
+   expect( await goCEP( tester, cep ), true );
+   expect( await tapit( tester, find.byKey( Key( "Edit profile" )), 0 ), true );
+
+   final Finder o = find.byKey( Key( "input5" ));
+   expect( o, findsOneWidget );
+   await tester.enterText( o, org );
    return true;
 }
 
 Future<bool> addRepo( tester, String cev, String cep ) async {
+   expect( await goCEP( tester, cep ), true );
+   expect( await tapit( tester, find.byKey( Key( "Add Code Repos" )), 4 ), true );
+
+   // Failure, no repos in TeaHolics org
+   expect( find.text( "No candidates found" ), findsOneWidget );
+   expect( find.textContaining( "Candidates must be in the" ), findsOneWidget );
+   expect( await tapit( tester, find.byKey( Key( "Cancel" )), 0 ), true );
+
+   // update org and try again
+   expect( await setOrg( tester, cep, "codeequity" ), true );
+   expect( find.text( "codeequity"), findsOneWidget );
+   expect( await tapit( tester, find.byKey( Key( "Add Code Repos" )), 4 ), true );
+
+   // Success.
+   expect( find.text( "Check the repos to add" ), findsOneWidget );
+   expect( find.text( "codeequity/unaffiliated" ), findsOneWidget );
+   expect( find.text( "codeequity/unaffiliated2" ), findsOneWidget );
+   expect( await tapit( tester, find.text( "codeequity/unaffiliated" ), 0 ), true );
+   expect( await tapit( tester, find.byKey( Key( "Save" )), 0 ), true );
+
+   // Expect to be in the equity plan
+   expect( find.text( "Connect the Equity Table and your Host Repository" ), findsOneWidget );
+   expect( find.textContaining( "PEQs arrive with a host" ), findsOneWidget );
+   expect( await tapit( tester, find.byKey( Key( "confirmContinue" )), 0 ), true );
+   expect( find.text( "Associated host project name" ), findsOneWidget );
+   expect( find.text( "20,000,000" ), findsOneWidget );
+
+   // Check for repo and collab
+   expect( await goCEP( tester, cep ), true );
+   expect( find.text( "codeequity/unaffiliated (R_kgDOUXcgww)" ), findsOneWidget );
+   expect( find.text( "Ari Star (Ari)" ), findsOneWidget );
+   expect( find.textContaining( "CE MD App Testing" ), findsOneWidget );
+   
    return true;
 }
 
@@ -369,6 +498,22 @@ Future<bool> goCEV( tester, String cev ) async {
    
    return true;
    
+}
+
+Future<bool> goCEP( tester, String cep ) async {
+
+   try{
+      expect( find.text( cep ), findsOneWidget );
+      expect( find.text( "Collaborators" ), findsOneWidget );
+   }
+   catch (e) {
+      expect( await goHome( tester ), true );
+      expect( await tapit( tester, find.text( cep ), 2 ), true );
+      expect( find.text( cep ), findsOneWidget );
+      expect( find.text( "Collaborators" ), findsOneWidget );
+   }
+   
+   return true;
 }
 
 
@@ -441,18 +586,14 @@ void main() {
          // As new user
          expect( await verifyAriHome( tester ), true );
 
-         /*
-           // XXX
          expect( await validateAriWithdraw( tester ), true );  // start from scratch
          await login( tester, true );
          expect( await verifyAriHome( tester, subset: [] ), true );
          expect( await failCreateCEV( tester, cev ), true );
-         */
+         expect( await createCEV( tester, cev, "a descr", "a website" ), true );
          
-         // expect( await createCEV( tester, cev, "a descr", "a website" ), true );
          expect( await createCEP( tester, cev, cep ), true );
 
-         // XXX do stuff
 
          // XXX
          // expect( await dissolveCEV( tester, cev), true );

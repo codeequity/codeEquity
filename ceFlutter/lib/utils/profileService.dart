@@ -489,6 +489,9 @@ void initProject( context, container, CEProject cep, List<TextEditingController>
    if( cep.hostPlatform == HostPlatforms.end ) {
       cep.hostPlatform = await chooseHost( context );
    }
+
+   // Make sure these start blank.
+   cont.forEach( (c) => c.clear() );
    
    if( cep.hostPlatform == HostPlatforms.GitHub ) {
       assert( cont.length == 1 );

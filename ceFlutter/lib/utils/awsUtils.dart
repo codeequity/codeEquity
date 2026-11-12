@@ -290,7 +290,7 @@ Future<List<Person>> fetchCEPeople( context, container ) async {
       List<Person> cePeeps = l.map( (sketch)=> sketch == -1 ? Person.empty() : Person.fromJson(sketch) ).toList();
       return cePeeps;
    } else if( response.statusCode == 204) {
-      print( "Fetch: no CEPeople found" );
+      // print( "Fetch: no CEPeople found" );
       return [];
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
@@ -382,7 +382,7 @@ Future<Map<String, dynamic>> fetchProfileImage( context, container, query ) asyn
       final p = json.decode(utf8.decode(response.bodyBytes));
       return p;
    } else if( response.statusCode == 204) {
-      print( "Fetch: no Profile Image found" );
+      // print( "Fetch: no Profile Image found" );
       return {};
    }
    else {

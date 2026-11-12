@@ -1029,9 +1029,7 @@ class _CEProfileState extends State<CEProfilePage> {
         
         if( cepId == "-1" ) {
            print( "Creating a project" );
-           String intro = "Welcome to your new Project's profile!  \n";
-           intro += "Click \'Edit Profile\' to start adding details";
-           cep.description = intro;
+           cep.description = "Welcome to your new Project's profile!";
            cep.ceProjectId = randAlpha( 10 );
 
            assert( screenArgs["ventId"] != null );

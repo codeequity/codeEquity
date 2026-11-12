@@ -152,7 +152,7 @@ Future<bool> tapit( WidgetTester tester, Finder link, int wait ) async {
    expect( link, findsOneWidget );
    await tester.tap( link );
    if( wait > 0 ) {
-      await pumpSettle( tester, wait, verbose: true );
+      await pumpSettle( tester, wait );
    }
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();

@@ -148,7 +148,9 @@ void logout( context, appState ) async {
 
 void addControllerPool( List<TextEditingController> controllerPool, int ith ) {
    assert( controllerPool.length >= ith );
-   if( controllerPool.length > ith ) { return; }
+   if( controllerPool.length > ith ) {
+      return;
+   }
    else {
       controllerPool.add( new TextEditingController() );
    }
