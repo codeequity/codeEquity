@@ -254,6 +254,8 @@ def runTests( test = "focus" ):
         tsum = runTest( "launch_test.dart", False, False, False )
     elif( test == "onboard" ):
         tsum = runTest( "onboard_test.dart", False, False, False )
+    elif( test == "createCEV" ):
+        tsum = runTest( "createCEV_test.dart", False, False, False )
         
 
     resultsSum  += tsum
@@ -309,6 +311,7 @@ def main( cmd ):
     elif( cmd == "repair" ) : summary = runTests( test = "repair" )
     elif( cmd == "launch" ) : summary = runTests( test = "launch" )
     elif( cmd == "onboard" ) : summary = runTests( test = "onboard" )
+    elif( cmd == "createCEV" ) : summary = runTests( test = "createCEV" )
     else :
         thread = Thread( target=globals()[cmd]( ) )
         thread.start()

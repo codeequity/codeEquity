@@ -76,7 +76,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       _scrollController.dispose();
       controllerPool.forEach( (c) => c.dispose() );
       super.dispose();
-      if( appState.verbose >= 2 ) { print( "HP dispose" ); }
+      if( appState.verbose >= 4 ) { print( "HP dispose" ); }
    }
 
    void _reject() async {
@@ -109,27 +109,39 @@ class _CEActivityState extends State<CEActivityPanel> {
       await radioDialog( context, "Withdraw from which?", choices, choices[0], _withdraw, () => pop( context ), execArgs: [ cePeep ] );
    }
 
+   // XXX merge this with withdrawCEV
    // Note: do not need to await updateDynamo for withdrawAll - user will reload only after logging in, which takes a while.
    void _withdrawCE( Person cePeep ) async {
       print( "WITHDRAW CE" );
-         
+
+      bool dissolved = false;
       cePeep.withdraw();
       
       // This is insufficient.  In error conditions, a CEV can hold a cePeep while the cePeep does not see the CEV.  Then subsequent onboarding fails.
       // List<CEVenture> cevs = cePeep.getCEVs( appState.ceVenture );
-      for( var cev in appState.ceVenture.values ) {
+      for( String cevId in appState.ceVenture.keys.toList() ) {
+         CEVenture cev = appState.ceVenture[ cevId ]!;
          List<dynamic> res = cev.drop( appState, cePeep );
-         bool found            = res[0];
+         bool found        = res[0];
          
          if( found ) {
-            print( "WITHDRAW from " + cev.name + " " +cePeep.id );
-            String cevs = json.encode( cev );
-            String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
-            updateDynamo( context, container, ppostData, "UpdateCEV" );
+            if( cev.roles.entries.length == 0 ) {
+               print( "CEV has no more users.  Dissolve it." );
+               dissolved = true;
+               // dissolve is cev/cep centric, handles things like equity tables, images, peq summaries.  
+               await dissolve( context, container, cev, {}, withdraw: true );
+            }
+            else {
+               print( "WITHDRAW from " + cev.name + " " +cePeep.id );
+               String cevs = json.encode( cev );
+               String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+               updateDynamo( context, container, ppostData, "UpdateCEV" );
+            }
          }
       }
-      
+
       // delete CEHostUser entry - cePeep may have multiple hostUser accounts (i.e. have hostUIDs on multiple platforms)
+      // XXX Currently retaining host user id, PAT.  Perhaps should kill PAT?
       List<String> huids = [];
       for( var host in appState.myHostAccounts ) {
          print( "Clearing all CEPs, CEVs from host UID: " + host.hostUserId );
@@ -143,7 +155,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       String user = json.encode( cePeep );
       String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
       updateDynamo( context, container, ppostData, "PutPerson" );
-      
+
       // Clear host accounts so initMDState reloads it upon login
       pop( context );
       appState.ceHostAccounts.clear();
@@ -162,7 +174,6 @@ class _CEActivityState extends State<CEActivityPanel> {
       writeWithdrawPAct( appState, context, container, cePeep, cev );
       
       List<dynamic> res = cev!.drop( appState, cePeep );
-      bool found        = res[0];
       
       String cevs = json.encode( cev! );
       String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';

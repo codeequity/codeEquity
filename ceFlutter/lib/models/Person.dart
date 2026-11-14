@@ -121,6 +121,7 @@ class Person {
       reject( DocType.equity );
       reject( DocType.privacy );
       phone = "";
+      viewedEA = false;
       assert( userDocs.length == 0 );
    }
 

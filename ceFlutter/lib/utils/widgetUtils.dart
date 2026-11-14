@@ -209,7 +209,7 @@ class _EditFormState extends State<EditForm> {
 
 Future<String> editList( BuildContext context, appState, scrollHeader,
                        List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc, 
-                         { saveName: "Save", headerWidth: -1, subHeader = "", multi = false }) async {
+                         { saveName: "Save", headerWidth: -1, subHeader = "", multi = false, keyUseIndex = false }) async {
    double stepWidth = 40;
    double editWidth = appState.MAX_PANE_WIDTH * .75;
    bool edit = scrollHeader.contains( "Edit" ) || scrollHeader.contains( "Update" );
@@ -217,9 +217,10 @@ Future<String> editList( BuildContext context, appState, scrollHeader,
    List<Widget> editVals = [];
    Widget c = Container( height: 1, width: appState.MID_PAD );
    for( int i = 0; i < values.length; i++ ) {
+      String key = keyUseIndex ? "editRow" + i.toString() :  "editRow " + values[i];
       Widget text = multi ?
-                    makeInputBox( appState, values[i], controllers[i], editWidth, keyName: "editRow " + values[i], edit: edit) :
-                    makeInputField( appState, values[i], false, controllers[i], keyName: "editRow " + values[i], edit: edit);
+                    makeInputBox( appState, values[i], controllers[i], editWidth, keyName: key, edit: edit) :
+                    makeInputField( appState, values[i], false, controllers[i], keyName: key, edit: edit);
       Widget h = headerWidth > 0 ?
                  Container( width: headerWidth, child: Text(itemHeaders[i] )) :
                  IntrinsicWidth( stepWidth: stepWidth, child: Text( itemHeaders[i] ));
@@ -332,7 +333,7 @@ Future<void> editBox( BuildContext context, appState, maxWidth, boxHeader, itemH
 
 
 // This dialog can be a mix of drop down and full text entries.  every list is same length .. make entries "" if not relevant
-Future<String> showDropdownDialog(BuildContext context, container, String title, List<String> header, List<bool> isDD, List<List<String>> ddOptions,
+Future<String?> showDropdownDialog(BuildContext context, container, String title, List<String> header, List<bool> isDD, List<List<String>> ddOptions,
                                 List<String> hints, List<String> toolTips, List<TextEditingController?> controllers, execFunc, cancelFunc) async {
    List<Widget> buttons  = [];
    List<String> saveData = [];
@@ -358,6 +359,7 @@ Future<String> showDropdownDialog(BuildContext context, container, String title,
          rows.add(
             Wrap( children: [ makeToolTip( makeTableText( appState, header[i], appState.MIN_PANE_WIDTH/1.3, appState.CELL_HEIGHT, false, 1 ), toolTips[i] ),
                               DropdownMenu<String>(
+                                 key: Key( "dropdown" + i.toString() ),
                                  initialSelection: initSel,
                                  enableSearch: true, // Allows typing to find items
                                  enableFilter: true, // Filters items as you type
@@ -374,7 +376,7 @@ Future<String> showDropdownDialog(BuildContext context, container, String title,
          bool   edit = hints[i] == "" ? false     : true;
          rows.add(
             Wrap( children: [ makeToolTip( makeTableText( appState, header[i], appState.MIN_PANE_WIDTH/1.3, appState.CELL_HEIGHT, false, 1 ), toolTips[i] ),
-                              Container( width: appState.MIN_PANE_WIDTH, child: makeInputField( appState, hint, false, controllers[i]!, edit: edit ))
+                              Container( width: appState.MIN_PANE_WIDTH, child: makeInputField( appState, hint, false, controllers[i]!, edit: edit, keyName: "input" + i.toString() ))
                                 ])
                );
       }
@@ -504,12 +506,13 @@ Widget makeActionButtonSmall( appState, buttonText, fn ) {
 
 Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 12.0);
+   String key = buttonText + ( fn == null ? " disabled" : "" );
    return Material(
       elevation: 5.0,
       borderRadius: BorderRadius.circular(10.0),
       color: fn == null ? appState.DISABLE_COLOR : appState.BUTTON_COLOR,
       child: MaterialButton(
-         key: Key( buttonText ),
+         key: Key( key ),
          minWidth: minWidth,
          onPressed: fn,
          child: Text( buttonText,
@@ -697,7 +700,7 @@ Widget makeText( appState, title, width, height, wrap, lines,
                  { tgap = -1, lgap = 0, bgap = 0.0, keyTxt = null, fontSize = 14, mux = 1.0, bold = true, iw = false, sw = null, color = Colors.black, italic = false } ) {
    if( lgap == 0 )  { lgap = mux * appState.GAP_PAD; }
    if( tgap == -1 ) { tgap = appState.TINY_PAD; }
-   
+
    if( iw ) {
       return Padding(
          padding: EdgeInsets.fromLTRB( lgap, tgap, appState.TINY_PAD, bgap),

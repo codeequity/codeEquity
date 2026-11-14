@@ -181,18 +181,19 @@ class _CEHomeState extends State<CEHomePage> {
                   screenArgs["initialPage"] = 1;
                }
                
+               // uninitialized go to profile to add encourage completion
                if( initialized ) {
                   // initialized CEVs go to equity page, CEPs go to peq summary
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: screenArgs ));
-                  confirmedNav( context, container, newPage );
+                  confirmedNav( context, container, newPage );                  
                }
                else {
-                  // uninitialized go to profile to add encourage completion
-                  Map<String,String> screenArgs = {"id": itemId, "profType": "CEProject" };
-                  if( ceVent ) { screenArgs["profType"] = "CEVenture"; }
+                  assert( !ceVent );
+                  Map<String,String> screenArgs = {"id": itemId, "profType": "CEProject", "ventId": partner };
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
                   confirmedNav( context, container, newPage );
-               }}},
+               }
+            }},
          child: itemTxt
          );
    }
@@ -304,17 +305,17 @@ class _CEHomeState extends State<CEHomePage> {
       }
       else if( segment == "body" ) {
 
-         // triggers when ventures are found but CEP is either uncreated, or not yet connected to repos for the current user
+         // triggers when ventures are found but CEP is either uncreated, or not yet connected to repos for the current user (check caller)
          if( cev != null ) {
             // XXX doesn't scale well, see profilePage
             CEProject? cep = appState.ceProject.values.firstWhereOrNull( (cep) => cep.ceVentureId == cev.ceVentureId );
             String cepId = cep != null ? cep.ceProjectId : "";
 
-            chunks.add( _makeChunk( cev.name, cev.ceVentureId, cepId, ceVent:true, ));
+            chunks.add( _makeChunk( cev.name, cev.ceVentureId, cepId, ceVent:true ));
             ventIds.add( cev.ceVentureId );
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
             if( cep != null ) { chunks.add( _makeChunk( cep!.name, cepId, cev.ceVentureId, initialized: false )); }
-            else              { chunks.add( _makeChunk("<No CodeEquity Project yet>", "-1", cev.ceVentureId )); }
+            else              { chunks.add( _makeChunk( "(No name yet)", "-1", cev.ceVentureId, initialized: false )); }         // XXX formalize
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.TINY_PAD;
          }
          else {

@@ -520,7 +520,6 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
 
       // Jump to equity page
       pop( context );  // save dialog
-      appState.selectedCEVenture = cep.ceVentureId;
       Map<String,int> sa = {"initialPage": 2};
       MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
       confirmedNav( context, container, newPage );
@@ -557,7 +556,7 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
       if( candidate.length == 0 ) {
          String msg = "No candidate repositories were found.  Candidates must be in the " + cep.hostOrganization + " organization, ";
          msg       += "and you must be a member of that organization with access to the candidate repository.";
-         Widget body = makeBodyText( appState, msg, textWidth * 3, true, 2 );
+         Widget body = makeBodyText( appState, msg, textWidth * 3, true, 3 );
          confirm( context, "No candidates found", msg, () => pop( context ), () => pop( context ), body: body );
       }
       else {
@@ -601,9 +600,9 @@ Future<String> initGHProject( context, container, CEProject cep, TextEditingCont
 
    // Note profOptions plus controllers means every header will either be paired with a list of options, or a textEditingController
    String popupTitle = "Describe where and how your code is hosted:";
-   String res = await showDropdownDialog( context, container, popupTitle,
-                                          GHVals.profHeader, GHVals.profDD, GHVals.profOptions, GHVals.profCurVals, GHVals.profToolTips, controllers, _save, () => pop( context ) );
-   return res;
+   String? res = await showDropdownDialog( context, container, popupTitle,
+                                           GHVals.profHeader, GHVals.profDD, GHVals.profOptions, GHVals.profCurVals, GHVals.profToolTips, controllers, _save, () => pop( context ) );
+   return res == null ? "Cancel" : res;
 }
 
 

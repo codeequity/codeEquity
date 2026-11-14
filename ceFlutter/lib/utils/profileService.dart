@@ -18,7 +18,7 @@ import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/Person.dart';
 
 
-void dissolve( context, container, dynamic prime, Map<String, String> screenArgs ) async {
+Future<void> dissolve( context, container, dynamic prime, Map<String, String> screenArgs, { withdraw = false } ) async {
    final appState  = container.state;
    
    bool         choseRepo = true;
@@ -53,7 +53,7 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
       // reload's Cancel briefly pops back to prof page before navigating. 
       screenArgs["profType"] = "---";
       pop( context );
-      reload( context, container );
+      await reload( context, container );
    }
    
    void _removeRepo( List<bool> on ) {
@@ -85,7 +85,7 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
 
    void _removeProject() async {
       // remove CEP from all hostusers
-      // remove all non-ACCR peqs with cepId (delVen already does .. most of this?)
+      // remove all non-ACCR peqs with cepId (delVen already does .. most of this?)..
       
       // Make sure peqs are updated first, then delete all non-ACCR
       await updateCEPeqs( container, context, cepId: prime.ceProjectId );
@@ -104,12 +104,17 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
    _removeVenture() async {
       if( peqs.length > 0 ) {
          List<String> peqIds = peqs.map( (p) => p.id ).toList();
+         // Don't wait
          _deletePeqs( peqIds );
       }
 
       List<String> cepIds = ceps.map( (p) => p.ceProjectId ).toList();
 
-      _cleanDynamo( prime.ceVentureId, "false", cepIds );
+      // clean appState
+      flushVenture( appState, prime.ceVentureId );
+
+      // Wait here for reload
+      await _cleanDynamo( prime.ceVentureId, "false", cepIds );
    }
    
    _setRepoOrProj( String choice ) {
@@ -127,7 +132,7 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
    // are you exec? 
    assert( appState.ceVenture[ prime.ceVentureId ] != null );
    CEVenture cev = appState.ceVenture[ prime.ceVentureId ]!;
-   if( cev.roles[ appState.ceUserId ] != MemberRole.Executive ) {
+   if( !withdraw && cev.roles[ appState.ceUserId ] != MemberRole.Executive ) {
       String msg = "Only an Executive can carry out this operation.";
       showToast( msg );
       return;
@@ -176,8 +181,10 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
    else { // remove Venture
       // remove peqs for all ceps in cev (usually 1)
       for( CEProject cep in appState.ceProject.values ) {
-         if( cep.ceVentureId == cev.ceVentureId ) { ceps.add( cep ); }
-         await updateCEPeqs( container, context, cepId: cep.ceProjectId );
+         if( cep.ceVentureId == cev.ceVentureId ) {
+            ceps.add( cep ); 
+            await updateCEPeqs( container, context, cepId: cep.ceProjectId );
+         }
       }
       for( CEProject cep in ceps ) {
          peqs.addAll( appState.cePeqs[ cep.ceProjectId ] ?? [] );
@@ -193,13 +200,14 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
          if( peq.peqType == PeqType.pending ) { pend += 1; }
          if( peq.peqType == PeqType.plan )    { plan += 1; }
       }
-      
+
+      // If coming from withdraw, reduce number of confirmations
       // are there granted peqs?
       if( accr > 0 ) {
-         String msg = "CodeEquity guantees that once a PEQ has been granted, it can no longer be modified.  Your Venture\n";
+         String msg = "CodeEquity guarantees that once a PEQ has been granted, it can no longer be modified.  Your Venture\n";
          msg       += " has " + accr.toString() + " individual PEQ grants for total of " + accrPeqs.toString() + " options.\n";
          msg       += " This Venture can not be deleted.";
-         showToast( msg );
+         if( !withdraw ) { showToast( msg ); }
          return;
       }
       // are you sure?
@@ -207,20 +215,25 @@ void dissolve( context, container, dynamic prime, Map<String, String> screenArgs
          String msg = "There are " + pend.toString() + " pending PEQs, which means work has already been carried out on this Venture.\n";
          msg       += " If you delete the Venture, these pending PEQs will be removed as well, and will no longer be valid.\n";
          msg       += " Are you sure you want to delete this Venture?  There is no going back.";
-         confirm( context, "Delete Venture", msg, _doubleConfirm, () => pop( context ) );
+         if( withdraw ) { await _removeVenture(); }
+         else           { confirm( context, "Delete Venture", msg, _doubleConfirm, () => pop( context ) ); }
       }
       // never got past planning stage
       else if( plan > 0 ) {
          String msg = "There are " + plan.toString() + " planned PEQs already.\n";
          msg       += " If you delete the Venture, these PEQs will be removed as well.\n";
          msg       += " Are you sure you want to delete this Venture?  There is no going back.";
-         confirm( context, "Delete Venture", msg, _doubleConfirm, () => pop( context ) );
+         if( withdraw ) { await _removeVenture(); }
+         else           { confirm( context, "Delete Venture", msg, _doubleConfirm, () => pop( context ) ); }
       }
       // Empty venture
       else {
-         _doubleConfirm();
+         print( "Empty venture, remove" );
+         if( withdraw ) { await _removeVenture(); }         
+         else           { _doubleConfirm(); }
       }
    }
+   print( "Dissolve finished" );
 }
 
 Future<void> updatePersonData( context, container, String profId ) async {
@@ -468,6 +481,12 @@ Future<void> updateRepos( context, container, HostPlatforms hplat ) async {
 
 // relies on updateRepos, handles connection between CEP and repos
 Future<void> initCEPRepos( context, container, CEProject cep, { reposLoadedCallback = null } ) async {
+   // This path might avoid loading venture details.  Make sure this happens first.
+   final appState = container.state;
+   appState.selectedCEVenture = cep.ceVentureId;
+   appState.selectedCEProject = cep.ceProjectId;
+   await reloadCEProject( context, container );
+   
    if( cep.hostPlatform == HostPlatforms.GitHub ) {
       await initGHRepos( context, container, cep, reposLoadedCallback );
    }
@@ -481,6 +500,9 @@ void initProject( context, container, CEProject cep, List<TextEditingController>
    if( cep.hostPlatform == HostPlatforms.end ) {
       cep.hostPlatform = await chooseHost( context );
    }
+
+   // Make sure these start blank.
+   cont.forEach( (c) => c.clear() );
    
    if( cep.hostPlatform == HostPlatforms.GitHub ) {
       assert( cont.length == 1 );

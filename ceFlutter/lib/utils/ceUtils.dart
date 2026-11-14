@@ -148,7 +148,9 @@ void logout( context, appState ) async {
 
 void addControllerPool( List<TextEditingController> controllerPool, int ith ) {
    assert( controllerPool.length >= ith );
-   if( controllerPool.length > ith ) { return; }
+   if( controllerPool.length > ith ) {
+      return;
+   }
    else {
       controllerPool.add( new TextEditingController() );
    }
@@ -233,6 +235,31 @@ Future<void> flushAppState( context, container ) async {
    appState.updateEquityView = true;
    appState.loaded           = true;
 }
+
+void flushProject( appState, String cepId ) {
+   appState.ceProject.remove( cepId );
+   appState.cePeqs.remove( cepId );
+   appState.hostPeqs.remove( cepId );
+   appState.cePEQSummaries.remove( cepId );
+   appState.ceHostLinks.remove( cepId );
+   appState.ceImages.remove( cepId );
+   
+   appState.selectedCEProject = "";
+}
+
+void flushVenture( appState, String cevId ) {
+   // Avoid concurrent mod
+   for( String cepId in appState.ceProject.keys.toList() ) {
+      CEProject cep = appState.ceProject[ cepId ];
+      if( cep.ceVentureId == cevId ) {
+         flushProject( appState, cepId );
+      }
+   }
+   appState.ceVenture.remove( cevId );
+   appState.ceEquityPlans.remove( cevId );
+   appState.selectedCEVenture = "";
+}
+
 
 // flush everything, and reload back to homepage.
 Future<void> reload( context, container ) async {
@@ -354,11 +381,11 @@ String ceUIDFromHost( appState, String hostUID ) {
 }
 class HostVals {
    // CEP host profile related data
-   static List<String>       profHeader( HostPlatforms hplat )   => hplat == HostPlatforms.GitHub ? GHVals.profHeader   : ["Host platform"];
-   static List<bool>         profDD( HostPlatforms hplat )       => hplat == HostPlatforms.GitHub ? GHVals.profDD       : [false];
-   static List<List<String>> profOptions( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profOptions  : [ [""] ];
-   static List<String>       profCurVals( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profCurVals  : ["No host platform details yet"];
-   static List<String>       profToolTips( HostPlatforms hplat ) => hplat == HostPlatforms.GitHub ? GHVals.profToolTips : [""];
+   static List<String>       profHeader( HostPlatforms hplat )   => hplat == HostPlatforms.GitHub ? GHVals.profHeader   : [];
+   static List<bool>         profDD( HostPlatforms hplat )       => hplat == HostPlatforms.GitHub ? GHVals.profDD       : [];
+   static List<List<String>> profOptions( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profOptions  : [];
+   static List<String>       profCurVals( HostPlatforms hplat )  => hplat == HostPlatforms.GitHub ? GHVals.profCurVals  : [];
+   static List<String>       profToolTips( HostPlatforms hplat ) => hplat == HostPlatforms.GitHub ? GHVals.profToolTips : [];
 }                                  
 
 
