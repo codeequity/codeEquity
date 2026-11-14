@@ -596,6 +596,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       List<List<Widget>> categories = [];
 
       CEVenture? cev = appState.ceVenture[ appState.selectedCEVenture ];
+
       // Was anything set yet?
       if( cev == null ) { return makeTitleText( appState, "First choose Venture from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
 

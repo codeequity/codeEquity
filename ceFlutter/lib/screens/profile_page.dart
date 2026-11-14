@@ -214,8 +214,6 @@ class _CEProfileState extends State<CEProfilePage> {
      Widget cepLink =
         cepId == "-1" ?
         makeTitleText( appState, "No CE Project yet", textWidth, false, 1, fontSize: 14 ) : 
-        // makeTitleText( appState, "<Not finalized - connect host repos>", textWidth, false, 1, fontSize: 14 ) : 
-        // makeTitleText( appState, "<this project needs your host repos>", textWidth, false, 1, fontSize: 14 ) : 
         GestureDetector(
            onTap: () async
            {
@@ -224,7 +222,7 @@ class _CEProfileState extends State<CEProfilePage> {
               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
               confirmedNav( context, container, newPage );
            },
-           child: makeActionableText( appState, cep.name, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
+           child: makeActionableText( appState, cep.name, cepId, _setTitle, _unsetTitle, textWidth, false, 1, keyPreface: "ProjCard" ),
            );
 
      
@@ -239,7 +237,6 @@ class _CEProfileState extends State<CEProfilePage> {
                  cepLink,
                  miniSpacer,
                  makeTitleText( appState, cep.description, textWidth, false, 1, fontSize: 14 ),
-                 // makeTitleText( appState, "Venture: " + cev.name, textWidth, false, 1, fontSize: 14 ),
                  _makeCEVLink( cev.name, cev.ceVentureId, cepIds, textWidth ),
                  ]
               )

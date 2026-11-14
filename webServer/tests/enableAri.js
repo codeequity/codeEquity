@@ -49,7 +49,7 @@ async function addCEHostProject( authData, actor, cepId ) {
     let actorPAT   = await auth.getPAT( config.TEST_ACTOR );
 
     let hostUser = await awsUtils.getHostUser( authData, actorCEUID, config.HOST_GH );
-    console.log( "Current host user:", hostUser );
+    console.log( "Current host user:", hostUser.HostUserName );
     console.log( "Current CEPs:", hostUser.CEProjectIds );
     let mod      = false;
     if( !hostUser.CEProjectIds.includes( cepId ) ) {

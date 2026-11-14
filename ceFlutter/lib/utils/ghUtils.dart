@@ -520,7 +520,6 @@ Future<void> initGHRepos( context, container, CEProject cep, reposLoadedCallback
 
       // Jump to equity page
       pop( context );  // save dialog
-      appState.selectedCEVenture = cep.ceVentureId;
       Map<String,int> sa = {"initialPage": 2};
       MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: sa ));
       confirmedNav( context, container, newPage );
@@ -601,9 +600,9 @@ Future<String> initGHProject( context, container, CEProject cep, TextEditingCont
 
    // Note profOptions plus controllers means every header will either be paired with a list of options, or a textEditingController
    String popupTitle = "Describe where and how your code is hosted:";
-   String res = await showDropdownDialog( context, container, popupTitle,
-                                          GHVals.profHeader, GHVals.profDD, GHVals.profOptions, GHVals.profCurVals, GHVals.profToolTips, controllers, _save, () => pop( context ) );
-   return res;
+   String? res = await showDropdownDialog( context, container, popupTitle,
+                                           GHVals.profHeader, GHVals.profDD, GHVals.profOptions, GHVals.profCurVals, GHVals.profToolTips, controllers, _save, () => pop( context ) );
+   return res == null ? "Cancel" : res;
 }
 
 

@@ -333,7 +333,7 @@ Future<void> editBox( BuildContext context, appState, maxWidth, boxHeader, itemH
 
 
 // This dialog can be a mix of drop down and full text entries.  every list is same length .. make entries "" if not relevant
-Future<String> showDropdownDialog(BuildContext context, container, String title, List<String> header, List<bool> isDD, List<List<String>> ddOptions,
+Future<String?> showDropdownDialog(BuildContext context, container, String title, List<String> header, List<bool> isDD, List<List<String>> ddOptions,
                                 List<String> hints, List<String> toolTips, List<TextEditingController?> controllers, execFunc, cancelFunc) async {
    List<Widget> buttons  = [];
    List<String> saveData = [];

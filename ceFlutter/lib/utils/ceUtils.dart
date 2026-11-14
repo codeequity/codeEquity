@@ -248,13 +248,13 @@ void flushProject( appState, String cepId ) {
 }
 
 void flushVenture( appState, String cevId ) {
-   for( CEProject cep in appState.ceProject.values ) {
+   // Avoid concurrent mod
+   for( String cepId in appState.ceProject.keys.toList() ) {
+      CEProject cep = appState.ceProject[ cepId ];
       if( cep.ceVentureId == cevId ) {
-         String cepId = cep.ceProjectId;
          flushProject( appState, cepId );
       }
    }
-   
    appState.ceVenture.remove( cevId );
    appState.ceEquityPlans.remove( cevId );
    appState.selectedCEVenture = "";

@@ -180,7 +180,7 @@ Future<bool> goHome(  WidgetTester tester ) async {
       final Finder goHome = find.byIcon( customIcons.home );
       expect( goHome, findsOneWidget );
       await tester.tap( goHome );
-      await pumpSettle( tester, 4, verbose: true );
+      await pumpSettle( tester, 4 );
       await tester.pumpAndSettle();
       await tester.pumpAndSettle();
    }
