@@ -88,7 +88,7 @@ Future<http.Response> awsPost( String shortName, postData, container ) async {
 
    var response;
 
-   if( appState.verbose >= 3 ) {
+   if( appState.verbose >= 5 ) {
       var now = DateTime.now();
       var expire = appState.cogUserService.tokenExpiration( appState.idToken );
       print( "awsPost reauthbusy? " + appState.reauthBusy.toString()  + shortName + " " + now.hour.toString() + " " + now.minute.toString() + " " + now.second.toString() );

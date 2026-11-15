@@ -25,12 +25,7 @@ const UNAFFIL2 = "codeequity/unaffiliated2";
 
 Future<bool> popCreateVenture( tester ) async {
    print( "Pop create venture" );
-   final Finder reg = find.byKey( const Key( "Create a Venture" ));
-   expect( reg, findsOneWidget );
-
-   await tester.tap( reg );
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
+   expect( await tapit( tester, find.byKey( const Key( "Create a Venture" )), 0 ), true );
    return true;
 }
 
@@ -149,13 +144,8 @@ Future<bool> editCEVProfile( tester, String cev, String descr, String web ) asyn
    final Finder vweb = find.byKey( Key( "editRow2" ));
    expect( vweb, findsOneWidget );
    await tester.enterText( vweb, web );
-   
-   final Finder save = find.byKey( Key( "Save" ));
-   expect( save, findsOneWidget );
-   await tester.tap( save );
-   await pumpSettle( tester, 2, verbose: true );    
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
+
+   expect( await tapit( tester, find.byKey( Key( "Save" )), 2 ), true ); 
 
    expect( await verifyCEVProfile( tester, cev, descr, web, hasName: true ), true );
 
@@ -192,11 +182,7 @@ Future<bool> editCEPProfile( tester, String cev, String cep ) async {
 Future<bool> addEquityPlan( tester, String cev, { useDefault = true } ) async {
    expect( await goCEV( tester, cev ), true );
 
-   Finder bep = find.byKey( Key( "Build Initial Equity Plan" ));
-   expect( bep, findsOneWidget );
-   await tester.tap( bep );
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
+   expect( await tapit( tester, find.byKey( Key( "Build Initial Equity Plan" )), 0 ), true );
 
    expect( find.text( cev ), findsOneWidget );
    expect( find.textContaining( "strawman equity plan" ), findsOneWidget );
@@ -207,11 +193,7 @@ Future<bool> addEquityPlan( tester, String cev, { useDefault = true } ) async {
    expect( find.text( "0" ), findsOneWidget );   
 
    if( useDefault ) {
-      Finder here = find.byKey( Key( "here" ) );
-      expect( here, findsOneWidget );
-      await tester.tap( here );
-      await tester.pumpAndSettle();
-      await tester.pumpAndSettle();
+      expect( await tapit( tester, find.byKey( Key( "here" )), 0 ), true );
       
       expect( find.text("20,000,000"), findsOneWidget );
       expect( find.text("Founders grants"), findsOneWidget );
@@ -223,32 +205,16 @@ Future<bool> addEquityPlan( tester, String cev, { useDefault = true } ) async {
 
 Future<bool> viewEA( tester, String cev, String descr, String web ) async {
    expect( await goCEV( tester, cev ), true );
-   
-   Finder bep = find.byKey( Key( "Equity Agreement" ));
-   expect( bep, findsOneWidget );
-   await tester.tap( bep );
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
 
+   expect( await tapit( tester, find.byKey( Key( "Equity Agreement" )), 0 ), true );
    expect( find.text( "View the Equity Agreement" ), findsOneWidget );
    expect( find.textContaining( "must sign the Equity Agreement" ), findsOneWidget );
-   
-   Finder view = find.byKey( Key( "confirmContinue" ));
-   expect( view, findsOneWidget );
-   await tester.tap( view );
-   await pumpSettle( tester, 2, verbose: true );
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
 
+   expect( await tapit( tester, find.byKey( Key( "confirmContinue" )), 2 ), true );
    expect( find.textContaining( "Provisional Company" ), findsAtLeast(1) );
    expect( find.textContaining( "Software Contributions" ), findsAtLeast(1) );
-   
-   Finder dismiss = find.byKey( Key( "Dismiss" ));
-   expect( dismiss, findsOneWidget );
-   await tester.tap( dismiss );
-   await tester.pumpAndSettle();
-   await tester.pumpAndSettle();
 
+   expect( await tapit( tester, find.byKey( Key( "Dismiss" )), 0 ), true );
    expect( await verifyCEVProfile( tester, cev, descr, web, hasName: true, hasEA: true ), true );
 
    return true;
@@ -615,23 +581,6 @@ void main() {
    
    report( 'Create CEV/CEP', group:true );
 
-   // Basic flow, create cev.  edit.  create cep.  edit.     SSLL: swap, swap, swap, verify.  logout login verify.    Dissolve.
-   //    ari after withdraw
-   //    ari already in place
-   // Dissolve.
-   //    cep first empty
-   //    cev first empty
-   //    cev with peq  (LATER, AFTER resolve cev w/no cep)
-   // partial cev.  SSLL
-   //    name, web
-   //    equity self
-   //    equity default
-   // partial cev, partial cep.  SSLL
-   //    w/wout equity
-   //    name no host
-   // partial cev, full cep. SSLL
-   //     no equity, full cep.
-   
    print( "Basic flow" );
    // testWidgets('Basic flow', skip:true, (WidgetTester tester) async {
    testWidgets('Basic flow', skip:skip, (WidgetTester tester) async {

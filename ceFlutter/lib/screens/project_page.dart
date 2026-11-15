@@ -209,7 +209,7 @@ class _CEProjectState extends State<CEProjectPage> {
                ]);
          
       } else {
-         print( "AppState not ? Loaded" );
+         print( "AppState (pp) not ? Loaded" );
          return CircularProgressIndicator();
       }
    }

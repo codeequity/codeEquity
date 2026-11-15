@@ -40,7 +40,7 @@ Future<void> dissolve( context, container, dynamic prime, Map<String, String> sc
       String postData = '{ "Endpoint": "$shortName", "id": "$id", "isProject": "$isProject" }';
       bool res = await updateDynamo( context, container, postData, shortName );
       
-      // tell ingest
+      // tell ingest.  twice if coming from withdraw
       String cepId = isProject == "true" ? id                 : "-1";
       String note  = isProject == "true" ? "Remove CEProject" : "Remove CEVenture";
       sendPAct( context, container, cepId, [id], HostPlatforms.GitHub, note );  // XXX platform
@@ -52,7 +52,8 @@ Future<void> dissolve( context, container, dynamic prime, Map<String, String> sc
 
       // reload's Cancel briefly pops back to prof page before navigating. 
       screenArgs["profType"] = "---";
-      pop( context );
+      if( !withdraw ) { pop( context ); }  // withdraw skips double confirm, which should be popped
+      print( "CD mounted? " + context.mounted.toString() );
       await reload( context, container );
    }
    
@@ -98,7 +99,7 @@ Future<void> dissolve( context, container, dynamic prime, Map<String, String> sc
          _deletePeqs( peqIds );
       }
 
-      _cleanDynamo( prime.ceProjectId, "true", [] );
+      await _cleanDynamo( prime.ceProjectId, "true", [] );
    }
    
    _removeVenture() async {
@@ -141,8 +142,8 @@ Future<void> dissolve( context, container, dynamic prime, Map<String, String> sc
    if( prime is CEProject ) {
       List<String> choices = [ "Remove a repo", "Delete this project" ]; // XXX formalize
 
-      String res = await radioDialog( context, "Are you removing a repo, or deleting this project?", choices, choices[0], _setRepoOrProj, () => pop( context ) );
-      if( res == "Cancel" ) { return; }
+      String? res = await radioDialog( context, "Are you removing a repo, or deleting this project?", choices, choices[0], _setRepoOrProj, () => pop( context ) );
+      if( res == null || res == "Cancel" ) { return; }
 
       bool proceed = false;
       
@@ -233,7 +234,7 @@ Future<void> dissolve( context, container, dynamic prime, Map<String, String> sc
          else           { _doubleConfirm(); }
       }
    }
-   print( "Dissolve finished" );
+   // print( "Dissolve finished" );
 }
 
 Future<void> updatePersonData( context, container, String profId ) async {
@@ -365,7 +366,7 @@ void dissolveHost( context, container ) async {
             
             // update cemd
             reload( context, container );
-            
+
             break;
          }
       }
@@ -378,8 +379,8 @@ void dissolveHost( context, container ) async {
          });
          
       pop( context ); // Delete host linkage
-      String res = await radioDialog( context, "Choose which Host platform to withdraw from", choices, choices[0], _setHPlat, () => pop( context ) );
-      if( res != "Cancel" ) { await _removeHost(); }
+      String? res = await radioDialog( context, "Choose which Host platform to withdraw from", choices, choices[0], _setHPlat, () => pop( context ) );
+      if( res != null || res != "Cancel" ) { await _removeHost(); }
 
       return "";
    }
@@ -461,7 +462,7 @@ Future<HostPlatforms> chooseHost( context ) async {
       pop( context );
    }   
    
-   String res = await radioDialog( context, "Choose which Host platform to work with:", choices, choices[0], _setPlat, () => pop( context ) );
+   await radioDialog( context, "Choose which Host platform to work with:", choices, choices[0], _setPlat, () => pop( context ) );
    
    return plat;
 }

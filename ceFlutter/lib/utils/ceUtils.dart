@@ -228,6 +228,8 @@ Future<void> reloadCEProject( context, container ) async {
 // eliminate most everything in appState, start over.
 Future<void> flushAppState( context, container ) async {
    final appState  = container.state;
+   // Stop access from other threads for a moment
+   appState.loaded           = false;
    appState.initAppData();
    await initMDState( context, container );
    appState.updateAllocTree  = true;
@@ -249,6 +251,7 @@ void flushProject( appState, String cepId ) {
 
 void flushVenture( appState, String cevId ) {
    // Avoid concurrent mod
+   print( "Flush venture" );
    for( String cepId in appState.ceProject.keys.toList() ) {
       CEProject cep = appState.ceProject[ cepId ];
       if( cep.ceVentureId == cevId ) {
@@ -263,9 +266,13 @@ void flushVenture( appState, String cevId ) {
 
 // flush everything, and reload back to homepage.
 Future<void> reload( context, container ) async {
-   await flushAppState( context, container );
    MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage() );
-   confirmedNav( context, container, newPage );
+   final navigator = Navigator.of( context );
+
+   // This unmounts context, somehow.  
+   await flushAppState( context, container );
+
+   confirmedNav( context, container, newPage, nav: navigator );
 }
 
 // Called on login, signup, refreshProjects, delete venture
@@ -333,6 +340,7 @@ Future<void> initMDState( context, container ) async {
          appState.idMapHost = await fetchHostMap( context, container, hostPlat, appState.cePeople );
       }
    }
+   print( "initMD end" );
 }
 
 // Called on refreshProjects
@@ -651,11 +659,17 @@ Future<void> updateHostPeqs( container, CEProject cep ) async {
    }
 }
 
-void confirmedNav( context, container, newPage ) {
+// Once a context is unmounted, never remounts
+void confirmedNav( context, container, newPage, { NavigatorState? nav = null }  ) {
    final appState  = container.state;
+   assert( appState != null );
+   assert( appState.cogUser != null );
 
    if( appState.cogUser!.confirmed ) {
-      Navigator.push( context, newPage );
+      assert( context != null );
+      if( context.mounted )    { Navigator.push( context, newPage ); }
+      else if( nav != null )   { nav.push( newPage ); }
+      else                     { return; }
    }
    else {
       assert( context != null );
@@ -665,7 +679,6 @@ void confirmedNav( context, container, newPage ) {
          ModalRoute.withName("CESplashPage")
          );
    }
-
 }
 
 MemberRole getUserAuth( container ) {

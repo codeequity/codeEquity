@@ -265,7 +265,7 @@ Future<String> editList( BuildContext context, appState, scrollHeader,
 }
 
 // remember to have funcs execute pop to properly break out of this
-Future<String> radioDialog( BuildContext context, boxHeader, List<String> choices, String initChoice, executeFunc, cancelFunc, {execArgs = null} ) async {
+Future<String?> radioDialog( BuildContext context, boxHeader, List<String> choices, String initChoice, executeFunc, cancelFunc, {execArgs = null} ) async {
 
    String? _choice = initChoice;
 
@@ -399,7 +399,7 @@ Future<String?> showDropdownDialog(BuildContext context, container, String title
 }
 
 // okFunc and cancelFunc need to return strings.  See home_screen:confirm
-Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc, { String confName = "Continue", Widget? body = null } ) async {
+Future<String?> confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc, { String confName = "Continue", Widget? body = null } ) async {
    return await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -419,7 +419,7 @@ Future<String> confirm( BuildContext context, confirmHeader, confirmBody, okFunc
               });
 }
 
-Future<String> justConfirm( BuildContext context, confirmHeader, confirmBody, okFunc, { Widget? body = null } ) async {
+Future<String?> justConfirm( BuildContext context, confirmHeader, confirmBody, okFunc, { Widget? body = null } ) async {
    return await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -769,8 +769,8 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
    final spacer      = Container( width: 2.0 * appState.GAP_PAD );
    final miniSpace   = Container( width: appState.MID_PAD );
    Widget search     = CESearch();
-   
-   return PreferredSize(
+
+   PreferredSizeWidget tab = PreferredSize(
       preferredSize: Size.fromHeight( appState.screenHeight*.054 ),
       child: AppBar(
          leading: IconButton(
@@ -831,5 +831,6 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 1.0)
                ),
             ]));
+   return tab;
 }
 
