@@ -443,7 +443,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             {
                await createDefaultEquityTable();
             },
-            child: makeActionableText( appState, content, hovKey, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
+            child: makeActionableText( appState, content, hovKey, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0, sub: true ),
             );
       }
       // XXX aside from limits in EA, for example once a 2nd collab can't suddenly assign yourself 30% of the total PEQ allocations

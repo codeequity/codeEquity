@@ -1275,6 +1275,9 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
    }
 }
 
+// NOTE several withdrawal notices are just that - notification only.  Withdraw CEP manages peq.
+// NOTE Dispose notices are all notification.. Remove CEP, Remove CEV - all related peqs were individually deleted.  The existence or not of a CEP
+// without PEQs is not relevant to allocs.  Nor is the existence or not of a CEV without PEQs.
 // find the peqs that dropout is on, create a new todoPact for each and update each of the three function parameters
 Future<int> processWithdrawal( PEQAction pact, int index, context, container, List<PEQAction> todoPActions, List<String> pactIds, List<String> peqIds ) async {
    if( pact.note != PActNotes['withdraw'] ) { return -1; }

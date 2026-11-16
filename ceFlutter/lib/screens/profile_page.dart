@@ -1150,7 +1150,7 @@ class _CEProfileState extends State<CEProfilePage> {
      Widget rolesWid      = spacer;
      final svWidth        = rhsFrameMinWidth * 2.0;             // XXX oi
      bool creating        = false;
-     
+
      if( !loadingData ) {
         assert( appState.ceVenture != {} );
         cev = appState.ceVenture[ screenArgs["id"] ] ?? CEVenture.empty();
@@ -1383,28 +1383,28 @@ class _CEProfileState extends State<CEProfilePage> {
   @override
   Widget build(BuildContext context) {
 
-      container = AppStateContainer.of(context);
-      appState  = container.state;
-      assert( appState != null );
-      screenArgs = ModalRoute.of(context)!.settings.arguments as Map<String,String>;
-
-      lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;  // XXX move to appState
-      lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
-      rhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
-      rhsFrameMaxWidth = appState.MAX_PANE_WIDTH - lhsFrameMaxWidth;      
-      spacer           = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
-      miniSpacer       = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
-      vSpace           = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
-      empty            = Container( width: 1, height: 1 );
-
-      // print( "PP build " + screenArgs.toString() );
-
-      updatePerson( context, container );
-      updateProjects( context, container, HostPlatforms.GitHub );  // XXX Github only?
-      
-      return Scaffold(
-         appBar: makeTopAppBar( context, "Profile" ),
-         body: chooseProfile( context, container, screenArgs["profType"], HostPlatforms.GitHub )
-         );
+     container = AppStateContainer.of(context);
+     appState  = container.state;
+     assert( appState != null );
+     screenArgs = ModalRoute.of(context)!.settings.arguments as Map<String,String>;
+     
+     lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;  // XXX move to appState
+     lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
+     rhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
+     rhsFrameMaxWidth = appState.MAX_PANE_WIDTH - lhsFrameMaxWidth;      
+     spacer           = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
+     miniSpacer       = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
+     vSpace           = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
+     empty            = Container( width: 1, height: 1 );
+     
+     // print( "PP build " + screenArgs.toString() + " loading: " + loadingData.toString()  );
+     
+     updatePerson( context, container );
+     updateProjects( context, container, HostPlatforms.GitHub );  // XXX Github only?
+     
+     return Scaffold(
+        appBar: makeTopAppBar( context, "Profile" ),
+        body: chooseProfile( context, container, screenArgs["profType"], HostPlatforms.GitHub )
+        );
   }
 }

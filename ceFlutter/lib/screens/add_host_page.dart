@@ -117,7 +117,7 @@ class _CEAddHostState extends State<CEAddHostPage> {
          else                                              { print( "Host organization not recognized." ); return Container( width: 10 ); }
       }
       else {
-         if( appState.verbose >= 1 ) { print( "AppState not ? Loaded" ); }
+         if( appState.verbose >= 1 ) { print( "AppState (ah) not ? Loaded" ); }
          return CircularProgressIndicator();
       }
    }

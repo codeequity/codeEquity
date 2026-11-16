@@ -109,12 +109,10 @@ class _CEActivityState extends State<CEActivityPanel> {
       await radioDialog( context, "Withdraw from which?", choices, choices[0], _withdraw, () => pop( context ), execArgs: [ cePeep ] );
    }
 
-   // XXX merge this with withdrawCEV
    // Note: do not need to await updateDynamo for withdrawAll - user will reload only after logging in, which takes a while.
    void _withdrawCE( Person cePeep ) async {
       print( "WITHDRAW CE" );
 
-      bool dissolved = false;
       cePeep.withdraw();
       
       // This is insufficient.  In error conditions, a CEV can hold a cePeep while the cePeep does not see the CEV.  Then subsequent onboarding fails.
@@ -124,20 +122,7 @@ class _CEActivityState extends State<CEActivityPanel> {
          List<dynamic> res = cev.drop( appState, cePeep );
          bool found        = res[0];
          
-         if( found ) {
-            if( cev.roles.entries.length == 0 ) {
-               print( "CEV has no more users.  Dissolve it." );
-               dissolved = true;
-               // dissolve is cev/cep centric, handles things like equity tables, images, peq summaries.  
-               await dissolve( context, container, cev, {}, withdraw: true );
-            }
-            else {
-               print( "WITHDRAW from " + cev.name + " " +cePeep.id );
-               String cevs = json.encode( cev );
-               String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
-               updateDynamo( context, container, ppostData, "UpdateCEV" );
-            }
-         }
+         if( found ) { await _withdrawCEV( cePeep, cevId, cvent: cev ); }
       }
 
       // delete CEHostUser entry - cePeep may have multiple hostUser accounts (i.e. have hostUIDs on multiple platforms)
@@ -150,8 +135,12 @@ class _CEActivityState extends State<CEActivityPanel> {
          String newHostA = json.encode( host );
          String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
          updateDynamo( context, container, postData, "PutHostA" );
+
+         // notice only
+         writeWithdrawCE( appState, context, container, cePeep.id, host );
       }
-      
+
+      // User will need to view equity agreement again if come back to create a venture
       String user = json.encode( cePeep );
       String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
       updateDynamo( context, container, ppostData, "PutPerson" );
@@ -164,52 +153,69 @@ class _CEActivityState extends State<CEActivityPanel> {
 
    // Note that withdraw follows role removal rules.  For example, if sole founder withdraws, next highest level of collabs are promoted to founder.
    //      if founder is the sole collaborator and withdraws, the CEV will no longer be operable by anyone.  Contact CE staff.
-   void _withdrawCEV( Person cePeep, String cevId ) async {
+   Future<void> _withdrawCEV( Person cePeep, String cevId, { CEVenture? cvent = null } ) async {
       print( "WITHDRAW Vent " + cevId );
-
-      CEVenture? cev = appState.ceVenture[ cevId ];
+      bool withdrawCE = cvent != null;
+      bool dissolved  = false;
+         
+      CEVenture? cev = withdrawCE ? cvent : appState.ceVenture[ cevId ];
       assert( cev != null );
       
+      if( !withdrawCE ) { cev!.drop( appState, cePeep ); }
+
       // notify aws so next ingest can clean non-ACCR peqs.  don't wait.
-      writeWithdrawPAct( appState, context, container, cePeep, cev );
+      // If last person, there will be both withdraw and remove PActs.
+      writeWithdrawPAct( appState, context, container, cePeep, cev! );
       
-      List<dynamic> res = cev!.drop( appState, cePeep );
-      
-      String cevs = json.encode( cev! );
-      String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
-      await updateDynamo( context, container, ppostData, "UpdateCEV" );
-      
-      // remove 1 CEV from CEHostUser
-      List<CEProject>   ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev!.ceVentureId ).toList();
-      List<HostUser>? ha  = appState.ceHostAccounts[ cePeep.id ];
-      assert( ha != null );
-      for( var host in ha! ) {
-         bool mod = false;
-         ceps.forEach( (p) {
-               if( host.ceProjectIds.contains( p.ceProjectId ) ) {
-                  mod = true;
-                  host.ceProjectIds.remove( p.ceProjectId ); 
-               }
-            });
-         if( mod ) {
-            print( "HostUser mods made" );
-            String newHostA = json.encode( host );
-            String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
-            await updateDynamo( context, container, postData, "PutHostA" );
-         }
+      if( cev!.roles.entries.length == 0 ) {
+         print( "CEV has no more users.  Dissolve it." );
+         // dissolve is cev/cep centric, handles things like equity tables, images, peq summaries.  
+         await dissolve( context, container, cev!, {}, withdraw: true );
+         dissolved = true;
+      }
+      else {
+         print( "WITHDRAW from " + cev!.name + " " +cePeep.id );
+         String cevs = json.encode( cev! );
+         String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
+         await updateDynamo( context, container, ppostData, "UpdateCEV" );
       }
       
-      // Clear host accounts, reload, then update homepage.
-      appState.ceHostAccounts.clear();
-      await initMDState( context, container );
-      widget.updateHomeView(); 
+      if( !withdrawCE ) {
+         // remove 1 CEV from CEHostUser
+         List<CEProject>   ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev!.ceVentureId ).toList();
+         List<HostUser>? ha  = appState.ceHostAccounts[ cePeep.id ];
+         assert( ha != null );
+         for( var host in ha! ) {
+            bool mod = false;
+            ceps.forEach( (p) {
+                  if( host.ceProjectIds.contains( p.ceProjectId ) ) {
+                     mod = true;
+                     host.ceProjectIds.remove( p.ceProjectId ); 
+                  }
+               });
+            if( mod ) {
+               print( "HostUser mods made" );
+               String newHostA = json.encode( host );
+               String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
+               await updateDynamo( context, container, postData, "PutHostA" );
+            }
+         }
+
+         // dissolve does a harder flush
+         if( !dissolved ) {
+            // Clear host accounts, reload, then update homepage.
+            appState.ceHostAccounts.clear();
+            await initMDState( context, container );
+         }
+         widget.updateHomeView();
+      }
    }
    
    void _withdraw( Person cePeep, String choice ) async {
       if( choice == "All of CodeEquity" ) { // XXX
          String msg = "This action will end your participation in CodeEquity and any CodeEquity Ventures.\n All Provisional Equity that hasn't vested already will be terminated.\n";
          msg       += "Your login will survive.  Press \'Continue\' to withdraw.";
-         String ret = await confirm( context, "Withdraw from CodeEquity?", msg, () => pop( context, retVal: "noop" ), () => pop( context ) );
+         String? ret = await confirm( context, "Withdraw from CodeEquity?", msg, () => pop( context, retVal: "noop" ), () => pop( context ) );
 
          if( ret == "noop" ) { _withdrawCE( cePeep ); }
       }
@@ -223,9 +229,8 @@ class _CEActivityState extends State<CEActivityPanel> {
          String msg = "This action will end your participation in this Venture.\n All Provisional Equity in this Venture that hasn't vested already will be terminated.\n";
          msg       += "If you are the last member of the Venture, the Venture will no longer be accessible.\n";
          msg       += "Press \'Continue\' to withdraw.";
-         String ret = await confirm( context, "Withdraw from Venture?", msg, () => pop( context, retVal: "noop"), () => pop( context ) );
-
-         if( ret == "Cancel" )    { return; }
+         String? ret = await confirm( context, "Withdraw from Venture?", msg, () => pop( context, retVal: "noop"), () => pop( context ) );
+         if( ret == null || ret == "Cancel" )    { return; }
 
          // select screen .. pop early to avoid awaits
          pop( context );
@@ -601,9 +606,9 @@ class _CEActivityState extends State<CEActivityPanel> {
                }
                
                if( applicant.appliedToCEV( targCEV ) ) {
-                  String ret = await confirm( context, "More Edits?", "You have already sent a Venture Agreement for " + cevName + " to the Founders.  Do you want to edit it?",
+                  String? ret = await confirm( context, "More Edits?", "You have already sent a Venture Agreement for " + cevName + " to the Founders.  Do you want to edit it?",
                                               () => pop( context, retVal: "noop" ), () => pop( context ) );
-                  if( ret == 'Cancel' ) { return; }
+                  if( ret == null || ret == 'Cancel' ) { return; }
                   
                   // Need to load, then use values from applicant
                   scrollDoc = applicant.copyStoredEquityVals( targCEV.ceVentureId );
@@ -808,38 +813,44 @@ class _CEActivityState extends State<CEActivityPanel> {
    }
 
    Widget _makeActivityZone() {
-      final w1 = widget.rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
-
-      // Turn each getting started off if done
-      // Turn pending/daily off if have getting started
-
-      if( updateView ) {
-         tasks = [];
+      if( appState.loaded ) {
+         final w1 = widget.rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
          
-         // Getting started 
-         tasks.addAll( makeGettingStarted() );
-         tasks.addAll( makeRegister() );
-         tasks.addAll( makePending() );
-         tasks.addAll( makeDaily() );
-      
-         updateView = false;
+         // Turn each getting started off if done
+         // Turn pending/daily off if have getting started
+         
+         if( updateView ) {
+            tasks = [];
+            
+            // Getting started 
+            tasks.addAll( makeGettingStarted() );
+            tasks.addAll( makeRegister() );
+            tasks.addAll( makePending() );
+            tasks.addAll( makeDaily() );
+            
+            updateView = false;
+         }
+         
+         Widget allActivity = Column( 
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: tasks
+            );
+         
+         return Column( 
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: <Widget>[
+               Container( width: w1, height: appState.GAP_PAD ),
+               Container( color: appState.BACKGROUND, child: makeTitleText( appState, "Activity", w1, true, 1 )),
+               Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
+               allActivity
+               ]);
       }
-
-      Widget allActivity = Column( 
-         crossAxisAlignment: CrossAxisAlignment.start,
-         mainAxisAlignment: MainAxisAlignment.start,
-         children: tasks
-         );
-         
-      return Column( 
-         crossAxisAlignment: CrossAxisAlignment.start,
-         mainAxisAlignment: MainAxisAlignment.start,
-         children: <Widget>[
-            Container( width: w1, height: appState.GAP_PAD ),
-            Container( color: appState.BACKGROUND, child: makeTitleText( appState, "Activity", w1, true, 1 )),
-            Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
-            allActivity
-            ]);
+      else {
+         if( appState.verbose >= 0 ) { print( "AppState (ap) reloading" ); }
+         return CircularProgressIndicator();
+      }
    }
 
    

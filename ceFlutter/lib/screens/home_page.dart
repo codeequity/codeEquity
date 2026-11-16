@@ -32,7 +32,7 @@ class _CEHomeState extends State<CEHomePage> {
    late var      container;
    late AppState appState;
    late bool     ceProjectLoading;
-
+   
    var      runningLHSHeight;
 
    // Frames are screen-specific, fit inside Panes which are app-level.
@@ -63,17 +63,6 @@ class _CEHomeState extends State<CEHomePage> {
       controllerPool.forEach( (c) => c.dispose() );
       super.dispose();
       ventIds = [];
-   }
-
-   Widget _newCEProjButton() {
-      return makeActionButtonFixed(
-         appState,
-         "New",
-         buttonWidth, 
-         () async
-         {
-            notYetImplemented(context);            
-         });
    }
 
    Widget _addHostAcct( HostPlatforms hostPlat ) {
@@ -296,7 +285,6 @@ class _CEHomeState extends State<CEHomePage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[ makeTitleText( appState, "CodeEquity Ventures", textWidth, false, 1 ),
                                 Container( width: 10 ),
-                                _newCEProjButton(),
                                 Container( width: 10 ),
                ]);
          
@@ -344,6 +332,7 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
    void _updateHost() {
+      print( "UPDATE VIEW SS" );
       setState(() => updateView = true );
    }
    
@@ -395,7 +384,7 @@ class _CEHomeState extends State<CEHomePage> {
       if( appState.screenWidth < wrapPoint ) {
          lhsHeight = min( lhsHeight, runningLHSHeight );
       }
-      
+
       return ConstrainedBox(
          constraints: new BoxConstraints(
             minHeight: appState.BASE_TXT_HEIGHT,
@@ -411,7 +400,6 @@ class _CEHomeState extends State<CEHomePage> {
 
    Widget _getActivityPanel() {
       final w1 = rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
-      
       return ceProjectLoading ? 
          Column( 
          crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,22 +434,24 @@ class _CEHomeState extends State<CEHomePage> {
                   ]);
       }
       else {
-         if( appState.verbose >= 0 ) { print( "AppState not ? Loaded" ); }
+         if( appState.verbose >= 0 ) { print( "AppState (home) reloading" ); }
          return CircularProgressIndicator();
       }
    }
 
    @override
       Widget build(BuildContext context) {
+      assert( AppStateContainer != null );
 
       container   = AppStateContainer.of(context);
+      assert( container != null );
       appState    = container.state;
-
-      rhsFrameMaxWidth = appState.MAX_PANE_WIDTH - lhsFrameMaxWidth;
-      overlayMaxWidth  = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
       
       assert( appState != null );
       
+      rhsFrameMaxWidth = appState.MAX_PANE_WIDTH - lhsFrameMaxWidth;
+      overlayMaxWidth  = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
+
       // ListView horizontal messes with singleChildScroll (to prevent overflow on orientation change). only on this page.
       SystemChrome.setPreferredOrientations([ DeviceOrientation.portraitUp, DeviceOrientation.portraitDown ]);
       appState.screenHeight = MediaQuery.of(context).size.height;
@@ -469,7 +459,6 @@ class _CEHomeState extends State<CEHomePage> {
       runningLHSHeight = 0;
       
       if( appState.verbose >= 3 ) { print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() ); }
-      if( appState.verbose >= 3 ) { print( getToday() ); }
 
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),
