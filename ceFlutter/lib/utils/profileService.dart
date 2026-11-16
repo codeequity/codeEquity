@@ -42,12 +42,12 @@ Future<void> dissolve( context, container, dynamic prime, Map<String, String> sc
       
       // tell ingest.  twice if coming from withdraw
       String cepId = isProject == "true" ? id                 : "-1";
-      String note  = isProject == "true" ? "Remove CEProject" : "Remove CEVenture";
-      sendPAct( context, container, cepId, [id], HostPlatforms.GitHub, note );  // XXX platform
+      String note  = isProject == "true" ? "Remove CEProject" : "Remove CEVenture"; // XXX formalize
+      sendPAct( context, container, cepId, [cepId], HostPlatforms.GitHub, note );  // XXX platform
 
       // if cepIds, removing venture, send pacts to remove ceps as well
       for( String c in cepIds ) {
-         sendPAct( context, container, c, [c], HostPlatforms.GitHub, "Remove CEProject" );
+         sendPAct( context, container, c, [c], HostPlatforms.GitHub, "Remove CEProject" ); // XXX formalize
       }
 
       // reload's Cancel briefly pops back to prof page before navigating. 
@@ -207,8 +207,17 @@ Future<void> dissolve( context, container, dynamic prime, Map<String, String> sc
       if( accr > 0 ) {
          String msg = "CodeEquity guarantees that once a PEQ has been granted, it can no longer be modified.  Your Venture\n";
          msg       += " has " + accr.toString() + " individual PEQ grants for total of " + accrPeqs.toString() + " options.\n";
-         msg       += " This Venture can not be deleted.";
-         if( !withdraw ) { showToast( msg ); }
+         msg       += " The granted PEQs and this Venture can not be deleted.  The non-granted PEQS have been removed.";
+         if( !withdraw ) {
+            showToast( msg );
+            if( peqs.length > 0 ) {
+               List<String> peqIds = peqs
+                                     .where( (p) => p.peqType != PeqType.grant )
+                                     .map( (p) => p.id )
+                                     .toList();
+               _deletePeqs( peqIds );
+            }
+         }
          return;
       }
       // are you sure?

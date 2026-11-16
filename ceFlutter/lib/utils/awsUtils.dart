@@ -589,8 +589,13 @@ Future<void> writeCEPerson( appState, context, container, cePeep ) async {
    }
 }
 
+// withdraw from cev, and all child ceps
 Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) async {
    String              note = "withdraw";
+
+   // from cev
+   sendPAct( context, container, "-1", [ cev.ceVentureId ], HostPlatforms.end, note + " CEV",  // XXX formalize.  notice only
+             ingested: "false", ceuid: cePeep.id, hostUserId: "-1"  );
    
    // get all ceps in cev.  for each, get the huid and send the pact.  include the huname since withdraw impacts host user data
    List<CEProject> ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev.ceVentureId ).toList();
@@ -599,18 +604,24 @@ Future<void> writeWithdrawPAct( appState, context, container, cePeep, cev ) asyn
          assert( ha != null );
          for( var host in ha! ) {
             if( host.hostPlatform == p.hostPlatform ) {
-               sendPAct( context, container, p.ceProjectId, [ cev.ceVentureId, host.hostUserName ], p.hostPlatform, note,
+               sendPAct( context, container, p.ceProjectId, [ cev.ceVentureId, host.hostUserName ], p.hostPlatform, note + " CEP",
                          ingested: "false", ceuid: cePeep.id, hostUserId: host.hostUserId  );
             }
          }
       });
 }
 
-
 Future<void> writeWithdrawProjPAct( appState, context, container, String ceUserId, HostUser hu, String cepId ) async {
    String              note = "withdraw from host"; // XXX formalize.  This is notice only, ignore.
    
    sendPAct( context, container, cepId, [ ceUserId, hu.hostUserId ], hu.hostPlatform, note,
+             ingested: "false", ceuid: ceUserId, hostUserId: hu.hostUserId  );
+}
+
+Future<void> writeWithdrawCE( appState, context, container, String ceUserId, HostUser hu ) async {
+   String              note = "withdraw CE"; // XXX formalize.  This is notice only, ignore.
+   
+   sendPAct( context, container, "-1", [ ceUserId, hu.hostUserId ], hu.hostPlatform, note,
              ingested: "false", ceuid: ceUserId, hostUserId: hu.hostUserId  );
 }
 

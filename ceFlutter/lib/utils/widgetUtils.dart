@@ -607,7 +607,7 @@ Widget makeActionableWidget( appState, Widget w, String key, String text, id, ho
 }
 
 
-Widget makeActionableText( appState, title, id, hov, nohov, width, wrap, lines, {keyPreface = "", sub = false, lgap = -1, tgap=-1, bgap=0} ) {
+Widget makeActionableText( appState, title, id, hov, nohov, width, wrap, lines, {keyPreface = "", sub = false, lgap = -1, tgap=-1, bgap=0, italic=false} ) {
 
    String lead = "";
    for( int i = 0; i < title.length; i++ ) {
@@ -632,6 +632,7 @@ Widget makeActionableText( appState, title, id, hov, nohov, width, wrap, lines, 
                         style: TextStyle(fontSize: 14,
                                          color: id == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
                                          fontWeight: sub ? FontWeight.normal : FontWeight.bold,
+                                         fontStyle: italic ? FontStyle.italic : null, 
                                          decoration: id == appState.hoverChunk ? TextDecoration.underline : null
                            ))))
       );

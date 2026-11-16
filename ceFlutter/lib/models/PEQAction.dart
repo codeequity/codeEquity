@@ -39,7 +39,7 @@ Map<String,String> PActNotes = Map.unmodifiable( {
       'titRename':   "Change title", 
       'pvUpdate':    "peq val update",
       'badXfer':     "Bad transfer attempted",
-      'withdraw':    "withdraw"
+         'withdraw':    "withdraw CEP"             // also withdraw CEV, withdraw CE, withdraw from host, Remove CEProject, Remove CEVenture - all notice only
    });
 
 class PEQAction {

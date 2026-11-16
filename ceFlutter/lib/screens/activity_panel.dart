@@ -109,101 +109,6 @@ class _CEActivityState extends State<CEActivityPanel> {
       await radioDialog( context, "Withdraw from which?", choices, choices[0], _withdraw, () => pop( context ), execArgs: [ cePeep ] );
    }
 
-   /*
-   // Note: do not need to await updateDynamo for withdrawAll - user will reload only after logging in, which takes a while.
-   void _withdrawCE( Person cePeep ) async {
-      print( "WITHDRAW CE" );
-
-      cePeep.withdraw();
-      
-      // This is insufficient.  In error conditions, a CEV can hold a cePeep while the cePeep does not see the CEV.  Then subsequent onboarding fails.
-      // List<CEVenture> cevs = cePeep.getCEVs( appState.ceVenture );
-      for( String cevId in appState.ceVenture.keys.toList() ) {
-         CEVenture cev = appState.ceVenture[ cevId ]!;
-         List<dynamic> res = cev.drop( appState, cePeep );
-         bool found        = res[0];
-         
-         if( found ) {
-            if( cev.roles.entries.length == 0 ) {
-               print( "CEV has no more users.  Dissolve it." );
-               // dissolve is cev/cep centric, handles things like equity tables, images, peq summaries.  
-               await dissolve( context, container, cev, {}, withdraw: true );
-            }
-            else {
-               print( "WITHDRAW from " + cev.name + " " +cePeep.id );
-               String cevs = json.encode( cev );
-               String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
-               updateDynamo( context, container, ppostData, "UpdateCEV" );
-            }
-         }
-      }
-
-      // delete CEHostUser entry - cePeep may have multiple hostUser accounts (i.e. have hostUIDs on multiple platforms)
-      // XXX Currently retaining host user id, PAT.  Perhaps should kill PAT?
-      List<String> huids = [];
-      for( var host in appState.myHostAccounts ) {
-         print( "Clearing all CEPs, CEVs from host UID: " + host.hostUserId );
-         host.ceProjectIds = [];
-         host.futureCEProjects = [];
-         String newHostA = json.encode( host );
-         String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
-         updateDynamo( context, container, postData, "PutHostA" );
-      }
-      
-      String user = json.encode( cePeep );
-      String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $user, "Verify": "false" }';
-      updateDynamo( context, container, ppostData, "PutPerson" );
-
-      // Clear host accounts so initMDState reloads it upon login
-      pop( context );
-      appState.ceHostAccounts.clear();
-      logout( context, appState );
-   }
-
-   // Note that withdraw follows role removal rules.  For example, if sole founder withdraws, next highest level of collabs are promoted to founder.
-   //      if founder is the sole collaborator and withdraws, the CEV will no longer be operable by anyone.  Contact CE staff.
-   void _withdrawCEV( Person cePeep, String cevId ) async {
-      print( "WITHDRAW Vent " + cevId );
-
-      CEVenture? cev = appState.ceVenture[ cevId ];
-      assert( cev != null );
-      
-      // notify aws so next ingest can clean non-ACCR peqs.  don't wait.
-      writeWithdrawPAct( appState, context, container, cePeep, cev );
-      
-      List<dynamic> res = cev!.drop( appState, cePeep );
-      
-      String cevs = json.encode( cev! );
-      String ppostData = '{ "Endpoint": "UpdateCEV", "ceVenture": $cevs }';
-      await updateDynamo( context, container, ppostData, "UpdateCEV" );
-      
-      // remove 1 CEV from CEHostUser
-      List<CEProject>   ceps = appState.ceProject.values.where( ( v ) => v.ceVentureId == cev!.ceVentureId ).toList();
-      List<HostUser>? ha  = appState.ceHostAccounts[ cePeep.id ];
-      assert( ha != null );
-      for( var host in ha! ) {
-         bool mod = false;
-         ceps.forEach( (p) {
-               if( host.ceProjectIds.contains( p.ceProjectId ) ) {
-                  mod = true;
-                  host.ceProjectIds.remove( p.ceProjectId ); 
-               }
-            });
-         if( mod ) {
-            print( "HostUser mods made" );
-            String newHostA = json.encode( host );
-            String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
-            await updateDynamo( context, container, postData, "PutHostA" );
-         }
-      }
-      
-      // Clear host accounts, reload, then update homepage.
-      appState.ceHostAccounts.clear();
-      await initMDState( context, container );
-      widget.updateHomeView(); 
-   }
-   */
-
    // Note: do not need to await updateDynamo for withdrawAll - user will reload only after logging in, which takes a while.
    void _withdrawCE( Person cePeep ) async {
       print( "WITHDRAW CE" );
@@ -230,6 +135,9 @@ class _CEActivityState extends State<CEActivityPanel> {
          String newHostA = json.encode( host );
          String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true" }';
          updateDynamo( context, container, postData, "PutHostA" );
+
+         // notice only
+         writeWithdrawCE( appState, context, container, cePeep.id, host );
       }
 
       // User will need to view equity agreement again if come back to create a venture
@@ -253,10 +161,10 @@ class _CEActivityState extends State<CEActivityPanel> {
       CEVenture? cev = withdrawCE ? cvent : appState.ceVenture[ cevId ];
       assert( cev != null );
       
-      
       if( !withdrawCE ) { cev!.drop( appState, cePeep ); }
 
       // notify aws so next ingest can clean non-ACCR peqs.  don't wait.
+      // If last person, there will be both withdraw and remove PActs.
       writeWithdrawPAct( appState, context, container, cePeep, cev! );
       
       if( cev!.roles.entries.length == 0 ) {

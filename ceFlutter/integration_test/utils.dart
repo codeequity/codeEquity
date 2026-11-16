@@ -268,7 +268,6 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    expect( find.text( 'Activity' ),               findsOneWidget );
    expect( find.text( 'CodeEquity Ventures' ),    findsOneWidget );
    // expect( find.text( 'GitHub Repositories' ), findsOneWidget );
-   expect( find.byKey(const Key( 'New' )),        findsOneWidget );
    expect( find.byKey(const Key( 'Refresh Projects' )),      findsOneWidget );
 
    // testing ceproject - no.
