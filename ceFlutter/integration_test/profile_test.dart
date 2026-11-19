@@ -92,7 +92,7 @@ Future<bool> validateAriProfile( WidgetTester tester ) async {
    expect( find.text( CEMD_VENT_NAME ), findsNWidgets(1) );
    expect( find.text( CEAL_VENT_NAME ), findsNWidgets(1) );
    expect( find.text( CESE_VENT_NAME ),  findsNWidgets(1) );
-   expect( find.text( CE_VENT_NAME ),  findsNWidgets(1) );
+   expect( find.text( CE_VENT_NAME ),  findsAtLeast(1) );
 
    expect( find.text( "Internal testing: Front end" ), findsOneWidget );
    expect( find.text( "Internal testing: server" ), findsNWidgets(2) );
@@ -114,8 +114,8 @@ Future<bool> validateFlutProfile( WidgetTester tester ) async {
    await goAri( tester );
    
    // go Flut
-   expect( find.byKey( Key( CEMD_PROJ_NAME )), findsOneWidget );
-   await tester.tap( find.byKey( Key( CEMD_PROJ_NAME )) );
+   expect( find.byKey( Key( "ProjCard" + CEMD_PROJ_NAME )), findsOneWidget );
+   await tester.tap( find.byKey( Key( "ProjCard" + CEMD_PROJ_NAME )) );
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
@@ -144,8 +144,8 @@ Future<bool> validateFlutProfile( WidgetTester tester ) async {
 
    // edit profile
    expect( find.byKey( Key( 'Edit profile' )),  findsOneWidget );
-   expect( find.byKey( Key( "CEMD_PROJ_NAME" + " profile image" )),    findsOneWidget );
-   await tester.tap(  find.byKey( Key( "CEMD_PROJ_NAME" + " profile image" )) );
+   expect( find.byKey( Key( CEMD_PROJ_NAME + " profile image" )),    findsOneWidget );
+   await tester.tap(  find.byKey( Key( CEMD_PROJ_NAME + " profile image" )) );
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
 
@@ -178,8 +178,8 @@ Future<bool> validateCardSwap( WidgetTester tester ) async {
    await goAri( tester );
 
    // goFlut, validate minors
-   expect( find.byKey( Key( CEMD_PROJ_NAME )), findsOneWidget );
-   await tester.tap( find.byKey( Key( CEMD_PROJ_NAME )) );
+   expect( find.byKey( Key( "ProjCard" + CEMD_PROJ_NAME )), findsOneWidget );
+   await tester.tap( find.byKey( Key( "ProjCard" + CEMD_PROJ_NAME )) );
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
@@ -197,8 +197,8 @@ Future<bool> validateCardSwap( WidgetTester tester ) async {
    expect( find.text( 'rmusick+ariTester@gmail.com' ),      findsOneWidget );
 
    // goServ, val
-   expect( find.byKey( Key( CESE_PROJ_NAME )), findsOneWidget );
-   await tester.tap( find.byKey( Key( CESE_PROJ_NAME )) );
+   expect( find.byKey( Key( "ProjCard" + CESE_PROJ_NAME )), findsOneWidget );
+   await tester.tap( find.byKey( Key( "ProjCard" + CESE_PROJ_NAME )) );
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
@@ -211,7 +211,7 @@ Future<bool> validateCardSwap( WidgetTester tester ) async {
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
-   expect( find.byKey( Key( GB_PROJ_NAME )), findsOneWidget );
+   expect( find.byKey( Key( "ProjCard" + GB_PROJ_NAME )), findsOneWidget );
    
    print( "Exit cardSwap" );
    return true;

@@ -49,6 +49,7 @@ class AppState {
 
    // App logic   
    late bool loaded;                           // control expensive aspects of state initialization
+   late bool showApprovals;                    // control activity screen
 
    late String                          ceUserId;           // set during signup, login, refresh, etc.
    late String                          selectedCEVenture;  // always set if seeing equity plan                    cev id
@@ -132,6 +133,7 @@ class AppState {
    
    initAppData() {
       loaded = false;
+      showApprovals = false;
 
       ceUserId            = "";
       idMapHost           = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, ceUserName:, hostUserName:}} i.e. idMapHost["sysdkag"]["ceUID"]

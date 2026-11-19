@@ -12,7 +12,7 @@ import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/screens/summary_frame.dart';
 import 'package:ceFlutter/screens/detail_page.dart';
 import 'package:ceFlutter/screens/equity_frame.dart';
-import 'package:ceFlutter/screens/approval_frame.dart';
+import 'package:ceFlutter/screens/founder_frame.dart';
 import 'package:ceFlutter/screens/collab_frame.dart';
 import 'package:ceFlutter/screens/status_frame.dart';
 
@@ -136,7 +136,7 @@ class _CEProjectState extends State<CEProjectPage> {
          }
 
          Widget getApprovalFrame() {
-            return CEApprovalFrame(
+            return CEFounderFrame(
                appContainer:           container,
                frameHeightUsed:        fhu );
          }

@@ -340,7 +340,6 @@ Future<void> initMDState( context, container ) async {
          appState.idMapHost = await fetchHostMap( context, container, hostPlat, appState.cePeople );
       }
    }
-   print( "initMD end" );
 }
 
 // Called on refreshProjects
@@ -439,7 +438,6 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
       List<String> myCEPs = [];
       List<HostUser> myHA = appState.ceHostAccounts[ appState.ceUserId ];
       for( final host in myHA ) { myCEPs.addAll( host.ceProjectIds );  }
-
       // Collect all peqs by cep
       String shortName = "GetEntries";
       List< Future<List<PEQ>> > futs = [];
@@ -450,7 +448,6 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
 
       List<List<PEQ>> cepPeqs = await Future.wait( futs );   // all peqs for all ceps user is part of
       appState.gotUserPeqs = true;
-      
       // each peq has ceHolderId. accumulate per, put into appState.userPeqs
       // Note: peqs do not cross CEP boundaries
       for( final oneProjPeqs in cepPeqs ) {
@@ -463,7 +460,6 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
             }
          }
       }
-
    }
 }
 
@@ -686,7 +682,7 @@ MemberRole getUserAuth( container ) {
    assert( appState.selectedCEVenture != null );
 
    CEVenture? cev = appState.ceVenture[ appState.selectedCEVenture ];
-   assert( cev != null );
+   if( cev == null ) { return MemberRole.end; }
 
    return cev!.roles[ appState.ceUserId ] ?? MemberRole.end;
 }

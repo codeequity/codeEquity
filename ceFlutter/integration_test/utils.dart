@@ -190,7 +190,7 @@ Future<bool> goHome(  WidgetTester tester ) async {
 // go home first, might be in proj profile
 Future<bool> goAri(  WidgetTester tester ) async {
 
-   try{ expect( find.text( 'Ari Star (Ari)' ), findsOneWidget ); }
+   try{ expect( find.text( 'Ari\'s CodeEquity Projects' ), findsOneWidget ); }
    catch(e) {
 
       try{ expect( find.byIcon( customIcons.profile ),  findsOneWidget ); }
@@ -200,7 +200,7 @@ Future<bool> goAri(  WidgetTester tester ) async {
       }
       
       expect( await tapit( tester, find.byIcon( customIcons.profile ), 4 ), true ); 
-      Finder txt = find.text( 'Ari Star (Ari)' );
+      Finder txt = find.text( 'Ari\'s CodeEquity Projects' );
       expect( txt, findsOneWidget );
    }
    return true;
@@ -281,7 +281,7 @@ Future<bool> verifyAriHome( WidgetTester tester, {List<String>? subset} ) async 
 
    List<String> check = subset ?? ["CEMD", "CEAL", "CESE"];
       
-   //  Four CE Ventures, CE Projects
+   //  Three CE Ventures, CE Projects
    if( check.contains( "CEMD" ) ) { expect( find.byKey( const Key(CEMD_VENT_NAME )), findsOneWidget ); }
    if( check.contains( "CEAL" ) ) { expect( find.byKey( const Key(CEAL_VENT_NAME )), findsOneWidget ); }
    if( check.contains( "CESE" ) ) { expect( find.byKey( const Key(CESE_VENT_NAME )), findsOneWidget ); }

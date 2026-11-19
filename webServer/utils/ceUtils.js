@@ -38,13 +38,12 @@ async function postCE( shortName, postData ) {
 	body: postData
     };
 
-    // XXX This has been throwing FetchError: request to http://127.0.0.1:3000/github/testing failed, reason: connect ECONNREFUSED 127.0.0.1:3000
-    //     occasionally during nighttime regressions.  Have yet to see it otherwise.
     let ret = "";
     try  {
 	ret = await fetch( ceServerTestingURL, params )
     }
     catch( err ) {
+	// Try, but chances are server is no longer listening
 	console.log( "WARNING.  Connection refused by ceServer.", err );
 	ret = await errorHandler( "postCE", err, postCE, shortName, postData ); 
     }

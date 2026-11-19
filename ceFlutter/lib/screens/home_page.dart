@@ -19,6 +19,7 @@ import 'package:ceFlutter/screens/add_host_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
 import 'package:ceFlutter/screens/profile_page.dart';
 import 'package:ceFlutter/screens/activity_panel.dart';
+import 'package:ceFlutter/screens/approval_panel.dart';
 
 class CEHomePage extends StatefulWidget {
    CEHomePage({Key? key}) : super(key: key);
@@ -63,6 +64,7 @@ class _CEHomeState extends State<CEHomePage> {
       controllerPool.forEach( (c) => c.dispose() );
       super.dispose();
       ventIds = [];
+      print( "home dispose" );
    }
 
    Widget _addHostAcct( HostPlatforms hostPlat ) {
@@ -400,18 +402,23 @@ class _CEHomeState extends State<CEHomePage> {
 
    Widget _getActivityPanel() {
       final w1 = rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
-      return ceProjectLoading ? 
-         Column( 
-         crossAxisAlignment: CrossAxisAlignment.start,
-         mainAxisAlignment: MainAxisAlignment.start,
-         children: <Widget>[
-            Container( width: w1, height: appState.GAP_PAD ),
-            Container( color: appState.BACKGROUND, child: makeTitleText( appState, "Activity", w1, true, 1 )),
-            Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
-            Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) 
-            ])
-         : 
-         CEActivityPanel( updateHomeView: _updateHost, overlayMaxWidth: overlayMaxWidth, rhsFrameMinWidth: rhsFrameMinWidth, rhsFrameMaxWidth: rhsFrameMaxWidth );
+      if( ceProjectLoading ) {
+         return Column( 
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: <Widget>[
+               Container( width: w1, height: appState.GAP_PAD ),
+               Container( color: appState.BACKGROUND, child: makeTitleText( appState, "Activity", w1, true, 1 )),
+               Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
+               Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) 
+               ]);
+      }
+      else if( appState.showApprovals ) {
+         return CEApprovalPanel( updateHomeView: _updateHost, rhsFrameMaxWidth: rhsFrameMaxWidth, frameHeightUsed: 10 );
+      }
+      else {
+         return CEActivityPanel( updateHomeView: _updateHost, overlayMaxWidth: overlayMaxWidth, rhsFrameMinWidth: rhsFrameMinWidth, rhsFrameMaxWidth: rhsFrameMaxWidth );
+      }
    }
    
    Widget _makeBody( ) {

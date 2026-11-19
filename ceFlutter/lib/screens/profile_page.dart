@@ -782,7 +782,7 @@ class _CEProfileState extends State<CEProfilePage> {
            confirmedNav( context, container, newPage );
         },
         child: pi );
-     
+
      pigd = makeActionableWidget( appState, pigd, name + " profile image", "Change your image", id+"image", _set, _unset );
      return pigd;
   }

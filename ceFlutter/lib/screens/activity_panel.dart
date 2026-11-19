@@ -76,7 +76,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       _scrollController.dispose();
       controllerPool.forEach( (c) => c.dispose() );
       super.dispose();
-      if( appState.verbose >= 4 ) { print( "HP dispose" ); }
+      if( appState.verbose >= 1 ) { print( "activity dispose" ); }
    }
 
    void _reject() async {
@@ -390,9 +390,19 @@ class _CEActivityState extends State<CEActivityPanel> {
 
       if( msg != "" ) { showToast( "You can't do that yet.\n"+msg ); }
       else            { _showDoc( applicant, docType, cevId: cevId, cevName: targCEV.name, isApplicant: isApplicant ); }
-   }
-   
-   List<Widget> _makeGetApplications() {
+    }
+
+    // XXX title
+    Widget _makeApprovals() {
+       return _makeLink( "14 pending approvals", 2.0 * appState.MID_PAD,
+                         () {
+                            setState(() => appState.showApprovals = true );
+                            widget.updateHomeView();
+                         }
+          );
+    }
+    
+    List<Widget> _makeGetApplications() {
       List<Widget> subTasks = [];
       assert( appState.ceUserId != "" );
       Person? cePeep = appState.cePeople[ appState.ceUserId ];
@@ -786,7 +796,7 @@ class _CEActivityState extends State<CEActivityPanel> {
       subTasks.add( Wrap( spacing: 0, children: [ pending, togglePending ? expand : shrink ] ));
 
       if( !togglePending ) {
-         subTasks.add( _makeEntry( "14 pending approvals", 2.0 * appState.MID_PAD, false ) );
+         subTasks.add( _makeApprovals());
          subTasks.add( _makeEntry( "2 pending invites", 2.0 * appState.MID_PAD, false ) );
          subTasks.addAll( _makeGetApplications() );
       }

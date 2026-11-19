@@ -1054,6 +1054,10 @@ Future<bool> validateUnAssign40( WidgetTester tester ) async {
    expect( assign >= 2, true );   
 
    int unassign = 0;
+   // have seen this in pos 0 with 200ms gap.  ingest repairs it..
+   if( await validateUnAssign( tester, repo, issue, "",          "0 0 confirm change" ) ) { unassign += 1; }
+   if( await validateUnAssign( tester, repo, issue, "",          "1 0 confirm change" ) ) { unassign += 1; }
+   if( await validateUnAssign( tester, repo, issue, "",          "2 0 confirm change" ) ) { unassign += 1; }
    if( await validateUnAssign( tester, repo, issue, "",          "3 0 confirm change" ) ) { unassign += 1; }
    if( await validateUnAssign( tester, repo, issue, "",          "4 0 confirm change" ) ) { unassign += 1; }
    if( await validateUnAssign( tester, repo, issue, "",          "5 0 confirm change" ) ) { unassign += 1; }
