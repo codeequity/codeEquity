@@ -1538,6 +1538,7 @@ async function moveCard( authData, pid, itemId, fieldId, value ) {
 
     // can not move directly to no status.  test utils need to handle this case.
     assert( value != config.GH_NO_STATUS ); 
+    if( value == "-1" ) { console.log( "WARNING.  Trying to move card to a column that doesn't exist." ); }
     
     let query     = `mutation( $pid:ID!, $itemId:ID!, $fieldId:ID! $value:String! ) 
                       { updateProjectV2ItemFieldValue( input:{ projectId: $pid, itemId: $itemId, fieldId: $fieldId, value: {singleSelectOptionId: $value }})  

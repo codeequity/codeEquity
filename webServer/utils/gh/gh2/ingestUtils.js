@@ -15,7 +15,10 @@ var locked = [];
 
 function unlockCards( cardId ) {
     for( let i = 0; i < locked.length; i++ ) {
-	if( locked[i] == cardId ) { locked.splice( i, 1 ); }
+	if( locked[i] == cardId ) {
+	    console.log( cardId, "unlocked" );
+	    locked.splice( i, 1 );
+	}
     }
 }
 

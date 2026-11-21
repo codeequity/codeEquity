@@ -494,6 +494,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let newRepo     = pd.reqBody.changes.new_repository.full_name;
 	    let newCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, newRepo );
 
+	    // This can time out before hitting 1s if server is running quickly
 	    if( utils.validField( pd, "checkDuplicate" ) ) {
 		// want 1s, times are in ms.
 		let tdiff = ( Date.now() - pd.checkDuplicate ) / 1000.0;

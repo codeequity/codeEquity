@@ -138,14 +138,24 @@ async function demoteJob( jd ) {
     let spliceIndex = 1;
     let jobs = ceJobs.jobs.getAll();
 
-    const stepCost = config.STEP_COST * oldDelayCount;   
-    
+    const stepCost = config.STEP_COST * oldDelayCount;
+
+    // Handle the case where the same job has multiple components on the q, all waiting for something the same thing.
+    // Without a sleep, the jobq will spin out within a few milliseconds, no delay at all.
+    // for example, blast might have 2 assignees, 1 label, and the two assignees keep the queue popping.
+    // Without this mod, failures have occured once or twice a year during nightly regressions
+    const delayBuf = Math.min( Math.trunc( config.MAX_DELAYS/5 ), 10 );
+    let allJobsDelayed = false;
+    if( oldDelayCount > delayBuf ) {
+	const minDelayJob = jobs.reduce((min, job) => job.delayCount < min.delayCount ? job : min );
+	if( minDelayJob.delayCount > delayBuf - 1 ) {
+	    allJobsDelayed = true;
+	}
+    }
+
     // If nothing else is here yet, delay.  Overall, will delay over a minute
-    // XXX this doesn't work well if the only other thing on the queue is from the same issue.
-    //     for example, blast might have 2 assignees, 1 label, and the two assignees keep the queue popping.
-    //     this has failed 2x in 3 years.  if it fails again, modify the else condition strategy.
-    if( jobs.length <= 1 ) {
-	console.log( "... empty queue, sleep" );
+    if( jobs.length <= 1 || allJobsDelayed ) {
+	console.log( "... empty or repeating queue, sleep" );
 	let delay = oldDelayCount > 4 ? stepCost + config.NOQ_DELAY : stepCost;
 	await utils.sleep( delay );
     }
